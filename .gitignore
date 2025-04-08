@@ -1,0 +1,31 @@
+# 操作系统生成文件
+.DS_Store
+Thumbs.db
+*.swp
+._*
+
+# IDE特定文件
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Java项目
+/target/
+*.class
+*.jar
+*.war
+*.ear
+*.iml
+
+# Maven
+log/
+dependency-reduced-pom.xml
+.flattened-pom.xml
+
+# 日志文件
+*.log
+logs/
