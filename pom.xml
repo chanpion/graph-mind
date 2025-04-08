@@ -12,6 +12,7 @@
     <modules>
         <module>graph-mind-dependency</module>
         <module>graph-mind-common</module>
+        <module>graph-mind-core</module>
     </modules>
 
     <properties>
