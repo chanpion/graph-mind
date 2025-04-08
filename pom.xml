@@ -13,6 +13,7 @@
         <module>graph-mind-dependency</module>
         <module>graph-mind-common</module>
         <module>graph-mind-core</module>
+        <module>graph-mind-nebula</module>
     </modules>
 
     <properties>
