@@ -32,14 +32,16 @@ public interface GraphOperations {
     /**
      * 列出图
      *
+     * @param graphConf 图配置信息
      * @return 图谱列表
      */
-    List<Graph> listGraphs();
+    List<Graph> listGraphs(GraphConf graphConf);
 
     /**
      * 应用图谱schema
      *
+     * @param graphConf   图配置信息
      * @param graphSchema 图谱schema
      */
-    void applySchema(GraphSchema graphSchema);
+    void applySchema(GraphConf graphConf, GraphSchema graphSchema);
 }

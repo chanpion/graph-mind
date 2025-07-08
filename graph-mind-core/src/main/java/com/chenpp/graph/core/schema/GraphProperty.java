@@ -40,4 +40,9 @@ public class GraphProperty {
 
     private Boolean isWriteGraph;
 
+    /**
+     * 是否允许为空
+     */
+    private Boolean nullable;
+
 }

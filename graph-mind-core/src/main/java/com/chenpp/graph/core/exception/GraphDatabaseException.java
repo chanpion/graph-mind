@@ -20,6 +20,11 @@ public class GraphDatabaseException extends RuntimeException {
     public GraphDatabaseException(ErrorCode errorCode, String message, Map<String, Object> context) {
         super(message);
         this.errorCode = errorCode;
-        this.context = Collections.unmodifiableMap(new HashMap<>(context));
+        this.context = Map.copyOf(context);
+    }
+
+
+    public GraphDatabaseException(String message) {
+        this(ErrorCode.CONNECTION_FAILED, message);
     }
 }
