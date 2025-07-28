@@ -1,0 +1,150 @@
+/* src/assets/main.css */
+/* 基于参考图优化的全局样式方案 */
+
+/***** 基础变量定义 *****/
+:root {
+    /* 主色系 */
+    --primary-blue: #263238;    /* 侧边导航栏深蓝 */
+    --secondary-blue: #304156;  /* 子菜单背景 */
+    --accent-blue: #409EFF;     /* 操作按钮蓝 */
+
+    /* 功能色 */
+    --success-green: #67C23A;   /* 新增/成功状态 */
+    --warning-orange: #E6A23C;  /* 修改/警告状态 */
+    --danger-red: #F56C6C;      /* 删除/危险状态 */
+
+    /* 中性色 */
+    --light-bg: #f0f2f5;        /* 内容区背景 */
+    --table-header: #f8f9fa;    /* 表格标题背景 */
+    --border-gray: #ebeef5;     /* 边框颜色 */
+}
+
+/***** 全局布局重置 *****/
+html {
+    height: 100%;
+    box-sizing: border-box;
+}
+
+body {
+    height: 100%;
+    margin: 0;
+    font-family: "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    background-color: var(--light-bg);
+}
+
+/***** 通用组件样式 *****/
+/* 统一按钮规范 (匹配参考图操作按钮) */
+.el-button {
+    border-radius: 4px;
+    padding: 9px 15px;
+    transition: all 0.2s;
+
+    &--primary {
+        background: var(--accent-blue);
+        border-color: var(--accent-blue);
+
+        &:hover {
+            background: #337ecc;
+            border-color: #337ecc;
+        }
+    }
+
+    &--success {
+        background: var(--success-green);
+        border-color: var(--success-green);
+
+        &:hover {
+            background: #5daf34;
+        }
+    }
+
+    &--warning {
+        background: var(--warning-orange);
+        border-color: var(--warning-orange);
+
+        &:hover {
+            background: #cf9236;
+        }
+    }
+
+    &--danger {
+        background: var(--danger-red);
+        border-color: var(--danger-red);
+
+        &:hover {
+            background: #e65052;
+        }
+    }
+}
+
+/* 表格样式 (匹配参数列表) */
+.el-table {
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 15px 0;
+
+    th {
+        background-color: var(--table-header) !important;
+        font-weight: 600;
+        color: #606266;
+    }
+
+    td {
+        padding: 12px 0;
+    }
+
+    &__body tr:hover > td {
+        background-color: #f5f7fa !important;
+    }
+}
+
+/* 表单控件 (匹配搜索区域) */
+.el-input {
+    &__inner {
+        border-radius: 4px;
+        &:focus {
+            border-color: var(--accent-blue);
+        }
+    }
+
+    &--prefix .el-input__inner {
+        padding-left: 35px;
+    }
+}
+
+/***** 通用布局类 *****/
+/* 内容区卡片样式 (匹配参数设置区域) */
+.content-card {
+    background: white;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05);
+}
+
+/* 操作按钮组容器 (匹配底部按钮组) */
+.action-bar {
+    display: flex;
+    justify-content: space-between;
+    margin: 15px 0;
+    padding: 10px 0;
+    border-top: 1px solid var(--border-gray);
+}
+
+/***** 响应式处理 *****/
+@media (max-width: 768px) {
+    /* 移动端隐藏侧边栏 */
+    .nav-sidebar {
+        display: none;
+    }
+
+    /* 表格响应式处理 */
+    .el-table {
+        overflow-x: auto;
+
+        &__body {
+            min-width: 600px;
+        }
+    }
+}

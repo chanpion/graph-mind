@@ -1,0 +1,152 @@
+/* ================= 全局容器 ================= */
+/* 系统主容器，控制整体布局和主题变量 */
+.system-container {
+    height: 100vh;                 /* 全屏高度 */
+    --sidebar-bg: #304156;         /* 侧边栏背景色变量 */
+    --header-bg: #ffffff;          /* 头部背景色变量 */
+    overflow: hidden;              /* 隐藏滚动条保持布局整洁 */
+}
+
+/* ================= 主布局结构 ================= */
+/* 主内容包裹容器，用于flex/grid布局 */
+.main-wrapper {
+    height: 100%;                  /* 继承父容器高度 */
+}
+
+/* ================= 侧边导航栏 ================= */
+/* 左侧导航栏容器，包含动态宽度过渡 */
+.nav-sidebar {
+    background: var(--sidebar-bg); /* 使用CSS变量设置背景 */
+    transition: width 0.3s ease;   /* 侧边栏展开/折叠动画 */
+}
+
+/* 系统LOGO容器 */
+.system-logo {
+    height: 60px;                  /* 固定高度 */
+    display: flex;
+    align-items: center;           /* 垂直居中 */
+    padding: 0 20px;               /* 左右内边距 */
+    border-bottom: 1px solid rgba(255,255,255,0.1); /* 底部半透明分割线 */
+    transition: padding 0.3s;      /* 内边距过渡动画 */
+}
+
+/* LOGO文字样式 */
+.logo-text {
+    color: #fff;                   /* 纯白色文字 */
+    font-size: 18px;
+    font-weight: 600;              /* 中等加粗 */
+    letter-spacing: 1px;           /* 字间距扩大 */
+    white-space: nowrap;           /* 防止文字换行 */
+}
+
+/* 折叠状态下的LOGO样式 */
+.logo-collapse {
+    padding: 0 10px;               /* 缩小内边距 */
+    justify-content: center;        /* 居中显示图标 */
+}
+
+/* ================= 折叠按钮 ================= */
+/* 侧边栏折叠触发器 */
+.collapse-btn {
+    color: #b0bac5;                /* 默认图标颜色 */
+    margin-right: 12px;            /* 右侧间距 */
+    transition: 0.3s;              /* 颜色过渡动画 */
+}
+
+/* 悬停状态样式 */
+.collapse-btn:hover {
+    color: #fff;                   /* 悬停时白色 */
+    background-color: rgba(255,255,255,0.1); /* 半透明背景 */
+}
+
+/* ================= 导航菜单样式 ================= */
+/* 深度选择器覆盖Element Plus默认样式 */
+:deep(.sidebar-menu) {
+    border-right: none !important; /* 移除右侧边框 */
+}
+
+/* 菜单项通用样式 */
+:deep(.el-menu-item),
+:deep(.el-sub-menu__title) {
+    height: 46px;                   /* 固定高度 */
+    line-height: 46px;              /* 垂直居中 */
+    transition: all 0.3s;           /* 状态过渡动画 */
+}
+
+/* 菜单项悬停效果 */
+:deep(.el-menu-item:hover),
+:deep(.el-sub-menu__title:hover) {
+    background-color: rgba(255,255,255,0.08) !important; /* 半透明背景 */
+}
+
+/* 激活菜单项样式 */
+:deep(.el-menu-item.is-active) {
+    background: rgba(64, 158, 255, 0.1) !important; /* 品牌色透明背景 */
+    border-left: 3px solid #409EFF;  /* 左侧指示条 */
+}
+
+/* 菜单图标样式 */
+.menu-icon {
+    margin-right: 8px;              /* 图标右侧间距 */
+    font-size: 18px;                /* 图标尺寸放大 */
+}
+
+/* ================= 折叠状态菜单 ================= */
+/* 折叠状态下的菜单样式覆盖 */
+:deep(.el-menu--collapse) {
+    border-right: none;             /* 移除右侧边框 */
+}
+
+/* 隐藏子菜单 */
+:deep(.el-menu--collapse .el-sub-menu > .el-menu) {
+    display: none;                  /* 完全隐藏子菜单 */
+}
+
+/* 折叠时隐藏文字 */
+:deep(.el-menu--collapse .el-sub-menu__title span),
+:deep(.el-menu--collapse .el-menu-item span) {
+    display: none;                  /* 隐藏文字仅显示图标 */
+}
+
+/* ================= 顶部操作栏 ================= */
+/* 头部操作栏容器 */
+.operate-header {
+    height: 56px;                   /* 固定高度 */
+    display: flex;
+    justify-content: space-between; /* 左右分布布局 */
+    align-items: center;            /* 垂直居中 */
+    background: var(--header-bg);   /* 使用CSS变量 */
+    border-bottom: 1px solid #e4e7ed; /* 底部分割线 */
+    padding: 0 24px;                /* 左右内边距 */
+}
+
+/* 左侧操作区 */
+.header-left {
+    display: flex;
+    align-items: center;            /* 垂直居中 */
+    gap: 12px;                      /* 元素间距 */
+}
+
+/* 面包屑导航样式 */
+.el-breadcrumb {
+    font-size: 15px;                /* 稍大的字号 */
+}
+
+/* ================= 内容区域 ================= */
+/* 内容卡片容器 */
+.content-card {
+    background: #fff;              /* 纯白背景 */
+    border-radius: 4px;             /* 圆角效果 */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05); /* 柔和阴影 */
+    padding: 16px;                  /* 内边距 */
+}
+
+.el-main {
+    --el-main-padding: 10px;      /* 边距 */
+    box-sizing: border-box;
+    display: block;
+    flex: 1;
+    flex-basis: auto;
+    overflow: auto;
+    padding: var(--el-main-padding);
+}
