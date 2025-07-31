@@ -106,8 +106,41 @@ const toggleSidebar = () => {
 }
 
 // 菜单数据
-const activeMenuIndex = ref('200')
 const menu_list = menuData
+
+// 计算当前应该激活的菜单项
+const activeMenuIndex = computed(() => {
+  // 获取当前路由路径
+  const currentPath = route.path
+  
+  // 在菜单数据中查找匹配的菜单项
+  for (const menu of menu_list.data) {
+    // 检查一级菜单是否匹配
+    if (menu.path && currentPath.startsWith(menu.path)) {
+      // 检查子菜单是否匹配
+      for (const child of menu.children) {
+        if (child.path && currentPath === child.path) {
+          // 返回子菜单的路径作为激活索引
+          return child.path
+        }
+        
+        // 处理带参数的路由（如图详情页）
+        if (child.path && child.path.includes('/:')) {
+          const basePath = child.path.split('/:')[0]
+          if (currentPath.startsWith(basePath)) {
+            return child.path
+          }
+        }
+      }
+      
+      // 如果没有匹配的子菜单，返回一级菜单的ID
+      return String(menu.id)
+    }
+  }
+  
+  // 默认返回图库管理菜单ID
+  return '200'
+})
 
 // 折叠图标计算属性
 const collapseIcon = computed(() => isCollapse.value ? Expand : Fold)

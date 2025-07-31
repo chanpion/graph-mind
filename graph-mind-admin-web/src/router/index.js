@@ -3,15 +3,16 @@ import Home from '@/views/Home.vue'
 import Login from '@/views/Login.vue'
 
 // 系统管理模块
-import User from '@/views/system/user/User.vue'
-import Role from '@/views/admin/role/Role.vue'
-import Permission from '@/views/admin/permission/Permission.vue'
+import User from '@/views/system/User.vue'
+import Role from '@/views/system/Role.vue'
+import Permission from '@/views/system/Permission.vue'
 
 // 图库管理模块
 import Connection from '@/views/graph/connection/Connection.vue'
 import GraphList from '@/views/graph/list/GraphList.vue'
 import GraphDetail from '@/views/graph/detail/GraphDetail.vue'
 import GraphVisual from '@/views/graph/visual/GraphVisual.vue'
+import DataProcess from '@/views/graph/process/DataProcess.vue'
 
 // 布局组件
 const MainLayout = () => import('@/components/layout/MainLayout.vue')
@@ -59,7 +60,8 @@ const router = createRouter({
                         { path: 'connection', name: 'Connection', component: Connection, meta: { title: '图连接管理',closable: true  } },
                         { path: 'list', name: 'GraphList', component: GraphList, meta: { title: '图管理',closable: true  } },
                         { path: 'detail/:id', name: 'GraphDetail', component: GraphDetail, meta: { title: '图详情',closable: true  } },
-                        { path: 'visual', name: 'GraphVisual', component: GraphVisual, meta: { title: '图谱可视化',closable: true  } }
+                        { path: 'visual', name: 'GraphVisual', component: GraphVisual, meta: { title: '图可视化',closable: true  } },
+                        { path: 'process', name: 'DataProcess', component: DataProcess, meta: { title: '图数据',closable: true  } }
                     ]
                 }
             ]
@@ -92,4 +94,4 @@ router.beforeEach((to, from, next) => {
   next()
 })
 
-export default router 
+export default router

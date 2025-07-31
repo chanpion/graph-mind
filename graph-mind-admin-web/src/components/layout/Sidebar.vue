@@ -19,7 +19,7 @@
         :router="true"
     >
 
-      <!--      一级菜单-->
+      <!-- 一级菜单 -->
       <el-sub-menu
           v-for="item in menuData"
           :key="item.id"
@@ -32,11 +32,11 @@
           <span>{{ item.authName }}</span>
         </template>
 
-
+        <!-- 二级菜单 -->
         <el-menu-item
             v-for="child in item.children"
             :key="child.id"
-            :index="String(child.path)"
+            :index="child.path.startsWith('/') ? child.path : (item.path + '/' + child.path)"
         >
           <el-icon>
             <component :is="getIcon(child.icon)"/>
@@ -49,19 +49,17 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import { getIcon } from '@/utils/icons'
 
-defineProps({
+const props = defineProps({
   isCollapse: Boolean,
   menuData: Array,
   activeMenuIndex: String
 })
-
-import {getIcon} from '@/utils/icons'
 </script>
-
 
 <style scoped>
 @import '@/assets/home.css';
-
-
 </style>

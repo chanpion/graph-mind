@@ -199,6 +199,29 @@ Mock.mock(/\/api\/graphs\/\d+\/query/, 'post', {
   }
 })
 
+// 图数据加工接口
+Mock.mock(/\/api\/graphs\/\d+\/import\/prepare/, 'post', {
+  code: 200,
+  message: '准备成功',
+  data: {
+    headers: ['id', 'name', 'age', 'email'],
+    sampleData: [
+      { id: '1', name: '张三', age: '25', email: 'zhangsan@example.com' },
+      { id: '2', name: '李四', age: '30', email: 'lisi@example.com' }
+    ]
+  }
+})
+
+Mock.mock(/\/api\/graphs\/\d+\/import\/execute/, 'post', {
+  code: 200,
+  message: '导入成功',
+  data: {
+    successCount: '@integer(50, 1000)',
+    failCount: '@integer(0, 10)',
+    duration: '@integer(1000, 10000)'
+  }
+})
+
 // 数据库类型配置
 export const databaseTypes = {
   neo4j: {

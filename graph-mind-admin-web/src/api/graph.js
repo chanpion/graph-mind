@@ -30,7 +30,19 @@ const graphApi = {
   },
   queryGraph(graphId, query) {
     return request.post(`/graphs/${graphId}/query`, { query })
+  },
+  // 图数据加工相关接口
+  prepareImport(graphId, file, dataType) {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('dataType', dataType)
+    return request.post(`/graphs/${graphId}/import/prepare`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  executeImport(graphId, data) {
+    return request.post(`/graphs/${graphId}/import/execute`, data)
   }
 }
 
-export default graphApi 
+export default graphApi

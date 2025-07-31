@@ -1,7 +1,8 @@
 import {
     User, Avatar, Pointer, Menu,
     EditPen, Tools, HomeFilled, Food,
-    Opportunity, Fold, Expand, Share, Link
+    Opportunity, Fold, Expand, Share, Link,
+    Connection, Promotion, DataAnalysis, Upload
 } from '@element-plus/icons-vue'
 
 // 图标映射对象
@@ -18,10 +19,14 @@ export const iconComponents = {
     Fold,
     Expand,
     Share,
-    Link
+    Link,
+    Connection,
+    Promotion,
+    DataAnalysis,
+    Upload
 }
 
 // 获取图标函数
 export const getIcon = (iconName) => {
     return iconComponents[iconName] || User  // 默认返回User图标
-} 
+}
