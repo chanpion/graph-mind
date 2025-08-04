@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Home from '@/views/Home.vue'
 import Login from '@/views/Login.vue'
+import Index from '@/views/Index.vue'
 
 // 系统管理模块
 import User from '@/views/system/User.vue'
@@ -8,11 +9,11 @@ import Role from '@/views/system/Role.vue'
 import Permission from '@/views/system/Permission.vue'
 
 // 图库管理模块
-import Connection from '@/views/graph/connection/Connection.vue'
-import GraphList from '@/views/graph/list/GraphList.vue'
-import GraphDetail from '@/views/graph/detail/GraphDetail.vue'
-import GraphVisual from '@/views/graph/visual/GraphVisual.vue'
-import DataProcess from '@/views/graph/process/DataProcess.vue'
+import Connection from '@/views/graph/Connection.vue'
+import GraphList from '@/views/graph/GraphList.vue'
+import GraphDetail from '@/views/graph/GraphDetail.vue'
+import GraphVisual from '@/views/graph/GraphVisual.vue'
+import DataProcess from '@/views/graph/DataProcess.vue'
 
 // 布局组件
 const MainLayout = () => import('@/components/layout/MainLayout.vue')
@@ -28,7 +29,7 @@ const router = createRouter({
         },
         {
             path: '/',
-            redirect: '/home',
+            redirect: '/home',  // 直接重定向到首页
             meta: { hidden: true ,closable: true }
         },
         {
@@ -36,7 +37,6 @@ const router = createRouter({
             name: 'Home',
             component: Home,
             meta: { title: '首页',closable: true  },
-            // redirect: '/home/system', // 默认重定向到系统管理
             children: [
                 // 系统管理子模块
                 {
@@ -55,7 +55,7 @@ const router = createRouter({
                     path: 'graph',
                     name: 'Graph',
                     component: MainLayout,
-                    meta: { title: '图库管理' ,closable: true },
+                    meta: { title: '图库管理', closable: true },
                     children: [
                         { path: 'connection', name: 'Connection', component: Connection, meta: { title: '图连接管理',closable: true  } },
                         { path: 'list', name: 'GraphList', component: GraphList, meta: { title: '图管理',closable: true  } },

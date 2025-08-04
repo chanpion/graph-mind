@@ -2,6 +2,13 @@
 export const menuData = {
     data: [
         {
+            id: 100,
+            authName: "首页",
+            icon: "Odometer",
+            path: '/home',
+            children: []
+        },
+        {
             id: 102,
             authName: "系统管理",
             icon: "HomeFilled",

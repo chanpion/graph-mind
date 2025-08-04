@@ -55,13 +55,20 @@ export const useTabsStore = defineStore('tabs', {
         // 设置当前激活的标签
         setActiveTab(path) {
             this.activeTab = path
+        },
+
+        // 清空所有标签
+        clearTabs() {
+            this.tabs = [{ title: '首页', path: '/home', closable: false }]
+            this.activeTab = '/home'
         }
     },
-
-    // Pinia 持久化存储，保证刷新页面后状态不会丢失
-    persist: {
-        key: 'tabsStore', // 存储的 key
-        storage: localStorage, // 存储方式（localStorage 或 sessionStorage）
-        paths: ['tabs', 'activeTab'] // 需要持久化的字段
+    // 配置 Pinia 持久化存储插件
+    options: {
+        persist: {
+            key: 'tabsStore',
+            storage: localStorage,
+            paths: ['tabs', 'activeTab']
+        }
     }
-}) 
+})

@@ -80,7 +80,7 @@
         <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <el-button
-              v-if="row.status === 'disconnected'"
+              v-if="row.status === 0"
               type="success"
               size="small"
               @click="handleConnect(row)"
@@ -260,7 +260,6 @@ import {
   Search, Plus, Refresh, CircleCheck, CircleClose, Loading
 } from '@element-plus/icons-vue'
 import connectionApi from '@/api/connection'
-import { databaseTypes } from '@/mock'
 
 // 响应式数据
 const loading = ref(false)
@@ -336,27 +335,27 @@ const dialogTitle = computed(() => {
 // 方法
 const getStatusColor = (status) => {
   const colors = {
-    connected: '#67C23A',
-    disconnected: '#F56C6C',
-    connecting: '#E6A23C'
+    1: '#67C23A', // connected
+    0: '#F56C6C', // disconnected
+    2: '#E6A23C'  // connecting
   }
   return colors[status] || '#909399'
 }
 
 const getStatusTagType = (status) => {
   const types = {
-    connected: 'success',
-    disconnected: 'danger',
-    connecting: 'warning'
+    1: 'success',  // connected
+    0: 'danger',   // disconnected
+    2: 'warning'   // connecting
   }
   return types[status] || 'info'
 }
 
 const getStatusLabel = (status) => {
   const labels = {
-    connected: '已连接',
-    disconnected: '未连接',
-    connecting: '连接中'
+    1: '已连接',
+    0: '未连接',
+    2: '连接中'
   }
   return labels[status] || '未知'
 }
@@ -388,10 +387,11 @@ const fetchConnections = async () => {
       pageSize: pageSize.value,
       keyword: searchKeyword.value
     })
-    connections.value = response.data.list
+    connections.value = response.data.records || response.data.list || []
     total.value = response.data.total
   } catch (error) {
     console.error('获取连接列表失败:', error)
+    ElMessage.error('获取连接列表失败')
   } finally {
     loading.value = false
   }
@@ -442,15 +442,17 @@ const handleDelete = async (row) => {
 const handleConnect = async (row) => {
   try {
     loading.value = true
-    row.status = 'connecting'
+    row.status = 2 // connecting
     
     const response = await connectionApi.connectDatabase(row.id)
-    row.status = response.data.status
+    row.status = response.data.status === 'connected' ? 1 : 0
     row.lastConnectTime = response.data.lastConnectTime
     ElMessage.success('连接成功')
+    fetchConnections() // 刷新列表以确保状态同步
   } catch (error) {
-    row.status = 'disconnected'
+    row.status = 0 // disconnected
     console.error('连接失败:', error)
+    ElMessage.error('连接失败')
   } finally {
     loading.value = false
   }
@@ -469,11 +471,13 @@ const handleDisconnect = async (row) => {
     )
     
     await connectionApi.disconnectDatabase(row.id)
-    row.status = 'disconnected'
+    row.status = 0 // disconnected
     ElMessage.success('断开连接成功')
+    fetchConnections() // 刷新列表以确保状态同步
   } catch (error) {
     if (error !== 'cancel') {
       console.error('断开连接失败:', error)
+      ElMessage.error('断开连接失败')
     }
   }
 }
@@ -485,13 +489,30 @@ const handleTest = async (row) => {
     testDialogVisible.value = true
   } catch (error) {
     console.error('测试连接失败:', error)
+    ElMessage.error('测试连接失败')
   }
 }
 
 const handleTypeChange = (type) => {
-  if (type && databaseTypes[type]) {
-    form.port = databaseTypes[type].defaultPort
-    form.database = type === 'neo4j' ? 'neo4j' : type === 'nebula' ? 'nebula' : 'janusgraph'
+  if (type) {
+    // 根据数据库类型设置默认端口和数据库名
+    switch (type) {
+      case 'neo4j':
+        form.port = 7687
+        form.database = 'neo4j'
+        break
+      case 'nebula':
+        form.port = 9669
+        form.database = 'nebula'
+        break
+      case 'janus':
+        form.port = 8182
+        form.database = 'janusgraph'
+        break
+      default:
+        form.port = 7687
+        form.database = ''
+    }
   }
 }
 
@@ -524,19 +545,7 @@ const handleDialogClose = () => {
 }
 
 const resetForm = () => {
-  Object.assign(form, {
-    id: null,
-    name: '',
-    type: '',
-    host: '',
-    port: 7687,
-    database: '',
-    username: '',
-    password: '',
-    poolSize: 10,
-    timeout: 30,
-    description: ''
-  })
+  Object.assign(form, defaultForm)
   formRef.value?.clearValidate()
 }
 

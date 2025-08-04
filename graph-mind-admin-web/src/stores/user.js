@@ -68,4 +68,4 @@ export const useUserStore = defineStore('user', {
     storage: localStorage,
     paths: ['token', 'userInfo', 'isLoggedIn']
   }
-}) 
+})

@@ -4,7 +4,20 @@ import request from '@/utils/request'
 export const connectionApi = {
   // 获取连接列表
   getConnections(params) {
-    return request.get('/connections', { params })
+    return request.get('/api/connections', { params }).then(response => {
+      // 处理后端返回的分页数据格式
+      if (response.data && typeof response.data === 'object') {
+        // 确保records字段存在
+        if (!response.data.records) {
+          response.data.records = response.data.list || []
+        }
+        // 确保total字段存在
+        if (response.data.total === undefined) {
+          response.data.total = response.data.records.length
+        }
+      }
+      return response
+    })
   },
 
   // 新增连接
@@ -38,4 +51,4 @@ export const connectionApi = {
   }
 }
 
-export default connectionApi 
+export default connectionApi

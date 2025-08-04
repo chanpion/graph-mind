@@ -2,7 +2,8 @@ import {
     User, Avatar, Pointer, Menu,
     EditPen, Tools, HomeFilled, Food,
     Opportunity, Fold, Expand, Share, Link,
-    Connection, Promotion, DataAnalysis, Upload
+    Connection, Promotion, DataAnalysis, Upload,
+    Odometer
 } from '@element-plus/icons-vue'
 
 // 图标映射对象
@@ -23,7 +24,8 @@ export const iconComponents = {
     Connection,
     Promotion,
     DataAnalysis,
-    Upload
+    Upload,
+    Odometer
 }
 
 // 获取图标函数

@@ -12,7 +12,7 @@ const connectionApis = {
     code: 200,
     message: '获取成功',
     data: {
-      'list|10-20': [{
+      'records|10-20': [{
         'id|+1': 1,
         'name': '@ctitle(5, 10)',
         'type|1': ['neo4j', 'nebula', 'janus'],
@@ -20,15 +20,14 @@ const connectionApis = {
         'port|1': [7687, 9669, 8182, 7474, 8529],
         'database': '@word(5, 10)',
         'username': '@word(4, 8)',
-        'status|1': ['connected', 'disconnected', 'connecting'],
-        'lastConnectTime': '@datetime',
+        'status|0-2': 0,
         'poolSize|1-20': 10,
         'timeout|10-60': 30,
-        'description': '@csentence(10, 30)'
+        'description': '@csentence(10, 30)',
+        'createTime': '@datetime',
+        'updateTime': '@datetime'
       }],
-      'total': '@integer(10, 50)',
-      'page': 1,
-      'pageSize': 10
+      'total': '@integer(10, 50)'
     }
   },
 
@@ -94,21 +93,89 @@ Object.keys(connectionApis).forEach(key => {
 })
 
 // 图管理相关接口
-Mock.mock(/\/api\/graphs/, 'get', {
-  code: 200,
-  message: '获取成功',
-  data: {
-    'list|8-16': [
-      {
-        'id|+1': 1001,
+const graphApis = {
+  // 获取图列表
+  'GET /api/graphs': {
+    code: 200,
+    message: '获取成功',
+    data: {
+      'records|5-10': [{
+        'id|+1': 1,
         'name': '@ctitle(3, 8)图',
-        'connectionName|1': ['Neo4j生产环境', 'Nebula测试环境', 'JanusGraph开发环境'],
-        'nodeCount|1000-100000': 1,
-        'edgeCount|1000-100000': 1
-      }
-    ],
-    total: 12
+        'code': '@word(5, 15)',
+        'description': '@csentence(10, 30)',
+        'status|0-1': 1,
+        'connectionId|1-3': 1,
+        'createTime': '@datetime',
+        'updateTime': '@datetime'
+      }],
+      'total': '@integer(5, 10)'
+    }
+  },
+
+  // 根据连接ID获取图列表
+  'GET /api/graphs/connection/:connectionId': {
+    code: 200,
+    message: '获取成功',
+    data: {
+      'records|3-8': [{
+        'id|+1': 1,
+        'name': '@ctitle(3, 8)图',
+        'code': '@word(5, 15)',
+        'description': '@csentence(10, 30)',
+        'status|0-1': 1,
+        'connectionId': /\d+/,
+        'createTime': '@datetime',
+        'updateTime': '@datetime'
+      }],
+      'total': '@integer(3, 8)'
+    }
+  },
+
+  // 新增图
+  'POST /api/graphs': {
+    code: 200,
+    message: '添加成功',
+    data: {
+      'id': '@integer(1000, 9999)'
+    }
+  },
+
+  // 更新图
+  'PUT /api/graphs/:id': {
+    code: 200,
+    message: '更新成功',
+    data: null
+  },
+
+  // 删除图
+  'DELETE /api/graphs/:id': {
+    code: 200,
+    message: '删除成功',
+    data: null
+  },
+
+  // 获取图详情
+  'GET /api/graphs/:id': {
+    code: 200,
+    message: '获取成功',
+    data: {
+      'id': /\d+/,
+      'name': '@ctitle(3, 8)图',
+      'code': '@word(5, 15)',
+      'description': '@csentence(10, 30)',
+      'status|0-1': 1,
+      'connectionId|1-3': 1,
+      'createTime': '@datetime',
+      'updateTime': '@datetime'
+    }
   }
+}
+
+// 注册图管理接口
+Object.keys(graphApis).forEach(key => {
+  const [method, url] = key.split(' ')
+  Mock.mock(new RegExp(url.replace(/:\w+/g, '\\d+')), method.toLowerCase(), graphApis[key])
 })
 
 // 图详情相关接口

@@ -28,7 +28,7 @@
             <el-dropdown @command="handleCommand">
               <span class="user-info">
                 <el-avatar :size="32" :src="userInfo.avatar">
-                  {{ userInfo.nickname?.charAt(0) || 'U' }}
+                  {{ userInfo.nickname?.charAt(0) || userInfo.username?.charAt(0) || 'U' }}
                 </el-avatar>
                 <span class="username">{{ userInfo.nickname || userInfo.username }}</span>
                 <el-icon><ArrowDown /></el-icon>
@@ -51,7 +51,9 @@
         <el-main>
           <div class="content-card">
             <div class="table-container">
-              <RouterView/>
+              <!-- 直接在首页显示仪表盘内容 -->
+              <RouterView v-if="showChildRoutes"/>
+              <Dashboard v-else />
             </div>
           </div>
         </el-main>
@@ -71,6 +73,7 @@ import { useRoute } from 'vue-router'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import Breadcrumb from '@/components/layout/Breadcrumb.vue'
 import Tags from '@/components/layout/Tags.vue'
+import Dashboard from './Index.vue' // 导入仪表盘组件
 
 // 引入 Pinia stores
 import { useTabsStore } from '@/stores/tabs'
@@ -84,12 +87,17 @@ const userStore = useUserStore()
 // 用户信息
 const userInfo = computed(() => userStore.userInfo)
 
+// 判断是否显示子路由内容
+const showChildRoutes = computed(() => {
+  return route.path !== '/home' && route.path !== '/home/'
+})
+
 // 监听路由变化，自动添加页签（首页处理特殊）
 watch(
     () => route.path,
     (newPath) => {
       let title
-      if (newPath === '/home') {
+      if (newPath === '/home' || newPath === '/home/' || newPath === '/home/index') {
         title = '首页'
       } else {
         title = typeof route.meta.title === 'string' ? route.meta.title : '无标题'
@@ -112,6 +120,11 @@ const menu_list = menuData
 const activeMenuIndex = computed(() => {
   // 获取当前路由路径
   const currentPath = route.path
+  
+  // 特殊处理首页
+  if (currentPath === '/home' || currentPath === '/home/' || currentPath === '/home/index') {
+    return '100' // 首页菜单ID
+  }
   
   // 在菜单数据中查找匹配的菜单项
   for (const menu of menu_list.data) {
@@ -138,8 +151,8 @@ const activeMenuIndex = computed(() => {
     }
   }
   
-  // 默认返回图库管理菜单ID
-  return '200'
+  // 默认返回首页菜单ID
+  return '100'
 })
 
 // 折叠图标计算属性

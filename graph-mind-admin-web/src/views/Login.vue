@@ -90,6 +90,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { User, Lock, Key, HomeFilled } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
+import authApi from '@/api/auth'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -106,6 +107,8 @@ const loginForm = reactive({
 })
 
 // 表单验证规则
+const expectedCaptcha = ref('')
+
 const loginRules = {
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
@@ -117,7 +120,17 @@ const loginRules = {
   ],
   captcha: [
     { required: true, message: '请输入验证码', trigger: 'blur' },
-    { len: 4, message: '验证码长度为 4 位', trigger: 'blur' }
+    { len: 4, message: '验证码长度为 4 位', trigger: 'blur' },
+    {
+      validator: (rule, value, callback) => {
+        if (value !== expectedCaptcha.value) {
+          callback(new Error('验证码错误'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
   ]
 }
 
@@ -172,6 +185,7 @@ const generateCaptcha = () => {
   }
 
   captchaUrl.value = canvas.toDataURL()
+  expectedCaptcha.value = captcha
   return captcha
 }
 
@@ -180,35 +194,6 @@ const refreshCaptcha = () => {
   generateCaptcha()
 }
 
-// 模拟登录API
-const loginAPI = (data) => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      // 模拟验证逻辑
-      if (data.username === 'admin' && data.password === '123456') {
-        resolve({
-          code: 200,
-          message: '登录成功',
-          data: {
-            token: 'mock-token-' + Date.now(),
-            userInfo: {
-              id: 1,
-              username: data.username,
-              nickname: '管理员',
-              avatar: '',
-              roles: ['admin']
-            }
-          }
-        })
-      } else {
-        reject({
-          code: 401,
-          message: '用户名或密码错误'
-        })
-      }
-    }, 1000)
-  })
-}
 
 // 处理登录
 const handleLogin = async () => {
@@ -219,10 +204,13 @@ const handleLogin = async () => {
     loading.value = true
     
     // 调用登录API
-    const response = await loginAPI(loginForm)
+    const response = await authApi.login({
+      username: loginForm.username,
+      password: loginForm.password
+    })
     
     // 保存登录信息到store
-    userStore.login(response.data.token, response.data.userInfo)
+    userStore.login(response.data.token, response.data)
     
     // 记住我功能
     if (loginForm.rememberMe) {
@@ -240,11 +228,8 @@ const handleLogin = async () => {
     router.push('/home')
     
   } catch (error) {
-    if (error.code === 401) {
-      ElMessage.error(error.message)
-    } else {
-      ElMessage.error('登录失败，请重试')
-    }
+    const errorMessage = error.response?.data?.message || error.message || '登录失败，请重试'
+    ElMessage.error(errorMessage)
     // 刷新验证码
     refreshCaptcha()
   } finally {

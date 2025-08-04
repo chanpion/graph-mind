@@ -62,7 +62,7 @@
   - 支持记住我功能
 
 ### 新增文件
-- `src/views/graph/connection/Connection.vue` - 图连接管理页面
+- `src/views/graph/Connection.vue` - 图连接管理页面
 - `src/api/connection.js` - 图连接管理API服务
 - `src/utils/request.js` - Axios请求配置
 - `src/mock/index.js` - Mock数据配置
