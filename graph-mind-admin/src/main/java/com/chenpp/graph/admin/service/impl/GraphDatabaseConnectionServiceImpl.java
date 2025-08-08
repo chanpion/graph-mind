@@ -20,13 +20,21 @@ import java.time.LocalDateTime;
 public class GraphDatabaseConnectionServiceImpl extends ServiceImpl<GraphDatabaseConnectionDao, GraphDatabaseConnection> implements GraphDatabaseConnectionService {
     
     @Override
-    public Page<GraphDatabaseConnection> queryConnections(Page<GraphDatabaseConnection> page, String keyword) {
+    public Page<GraphDatabaseConnection> queryConnections(Page<GraphDatabaseConnection> page, String keyword, String type) {
         QueryWrapper<GraphDatabaseConnection> queryWrapper = new QueryWrapper<>();
         if (keyword != null && !keyword.isEmpty()) {
             queryWrapper.like("name", keyword).or().like("host", keyword);
         }
+        if (type != null && !type.isEmpty()) {
+            queryWrapper.eq("type", type);
+        }
         queryWrapper.orderByDesc("create_time");
         return this.page(page, queryWrapper);
+    }
+    
+    @Override
+    public Page<GraphDatabaseConnection> queryConnections(Page<GraphDatabaseConnection> page, String keyword) {
+        return queryConnections(page, keyword, null);
     }
     
     @Override

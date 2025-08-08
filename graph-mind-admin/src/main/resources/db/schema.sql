@@ -204,3 +204,71 @@ CREATE TABLE `graph` (
   UNIQUE KEY `uniq_code` (`code`) USING BTREE,
   KEY `idx_connection_id` (`connection_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='图信息表';
+
+-- ----------------------------
+-- Table structure for graph_node_def
+-- ----------------------------
+DROP TABLE IF EXISTS `graph_node_def`;
+CREATE TABLE `graph_node_def` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '节点定义ID',
+  `graph_id` bigint NOT NULL COMMENT '图ID',
+  `name` varchar(255) NOT NULL COMMENT '节点类型名称',
+  `description` text COMMENT '描述',
+  `status` varchar(20) NOT NULL DEFAULT 'active' COMMENT '状态：active-启用，inactive-停用',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_graph_id` (`graph_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='图节点定义表';
+
+-- ----------------------------
+-- Table structure for graph_edge_def
+-- ----------------------------
+DROP TABLE IF EXISTS `graph_edge_def`;
+CREATE TABLE `graph_edge_def` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '边定义ID',
+  `graph_id` bigint NOT NULL COMMENT '图ID',
+  `name` varchar(255) NOT NULL COMMENT '边类型名称',
+  `from` varchar(255) NOT NULL COMMENT '起点类型',
+  `to` varchar(255) NOT NULL COMMENT '终点类型',
+  `description` text COMMENT '描述',
+  `status` varchar(20) NOT NULL DEFAULT 'active' COMMENT '状态：active-启用，inactive-停用',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_graph_id` (`graph_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='图边定义表';
+
+-- ----------------------------
+-- Table structure for graph_node_property
+-- ----------------------------
+DROP TABLE IF EXISTS `graph_node_property`;
+CREATE TABLE `graph_node_property` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '属性ID',
+  `node_def_id` bigint NOT NULL COMMENT '节点定义ID',
+  `name` varchar(255) NOT NULL COMMENT '属性名',
+  `type` varchar(50) NOT NULL COMMENT '属性类型',
+  `desc` text COMMENT '属性描述',
+  `status` varchar(20) NOT NULL DEFAULT 'active' COMMENT '状态：active-启用，inactive-停用',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_node_def_id` (`node_def_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='图节点属性定义表';
+
+-- ----------------------------
+-- Table structure for graph_edge_property
+-- ----------------------------
+DROP TABLE IF EXISTS `graph_edge_property`;
+CREATE TABLE `graph_edge_property` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '属性ID',
+  `edge_def_id` bigint NOT NULL COMMENT '边定义ID',
+  `name` varchar(255) NOT NULL COMMENT '属性名',
+  `type` varchar(50) NOT NULL COMMENT '属性类型',
+  `desc` text COMMENT '属性描述',
+  `status` varchar(20) NOT NULL DEFAULT 'active' COMMENT '状态：active-启用，inactive-停用',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_edge_def_id` (`edge_def_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='图边属性定义表';

@@ -39,16 +39,18 @@ public class GraphDatabaseController {
      * @param page     页码
      * @param pageSize 每页数量
      * @param keyword  搜索关键词
+     * @param type     数据库类型
      * @return 连接列表
      */
     @GetMapping
     public Result<Page<GraphDatabaseConnection>> getConnections(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer pageSize,
-            @RequestParam(required = false) String keyword) {
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String type) {
 
         Page<GraphDatabaseConnection> pageObj = new Page<>(page, pageSize);
-        Page<GraphDatabaseConnection> result = connectionService.queryConnections(pageObj, keyword);
+        Page<GraphDatabaseConnection> result = connectionService.queryConnections(pageObj, keyword, type);
         return Result.success(result);
     }
 

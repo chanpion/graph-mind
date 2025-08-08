@@ -5,7 +5,7 @@ spring:
   application:
     name: graph-mind-admin
   profiles:
-    active: h2
+    active: mysql
 
 logging:
   level:
@@ -57,23 +57,23 @@ spring:
       on-profile: mysql
 
   datasource:
-    url: jdbc:mysql://localhost:3306/graph_mind?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
-    username: root
-    password: root
+    url: jdbc:mysql://10.58.11.13:3338/graph_mind?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: yuntu
+    password: yuntu
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   sql:
     init:
       schema-locations: classpath:db/mysql/schema.sql
       data-locations: classpath:db/mysql/data.sql
-      mode: always
+      mode: never
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
   type-aliases-package: com.chenpp.graph.admin.model
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+#    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
       id-type: auto

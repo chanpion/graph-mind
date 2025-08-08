@@ -45,6 +45,33 @@ INSERT INTO `sys_permission` VALUES (13, '权限删除', 10, 'F', 'system:permis
 COMMIT;
 
 -- ----------------------------
+-- Records of sys_user_role
+-- ----------------------------
+BEGIN;
+INSERT INTO `sys_user_role` VALUES (1, 1);
+COMMIT;
+
+-- ----------------------------
+-- Records of sys_role_permission
+-- ----------------------------
+BEGIN;
+-- 管理员角色拥有所有权限
+INSERT INTO `sys_role_permission` VALUES (1, 1);
+INSERT INTO `sys_role_permission` VALUES (1, 2);
+INSERT INTO `sys_role_permission` VALUES (1, 3);
+INSERT INTO `sys_role_permission` VALUES (1, 4);
+INSERT INTO `sys_role_permission` VALUES (1, 5);
+INSERT INTO `sys_role_permission` VALUES (1, 6);
+INSERT INTO `sys_role_permission` VALUES (1, 7);
+INSERT INTO `sys_role_permission` VALUES (1, 8);
+INSERT INTO `sys_role_permission` VALUES (1, 9);
+INSERT INTO `sys_role_permission` VALUES (1, 10);
+INSERT INTO `sys_role_permission` VALUES (1, 11);
+INSERT INTO `sys_role_permission` VALUES (1, 12);
+INSERT INTO `sys_role_permission` VALUES (1, 13);
+COMMIT;
+
+-- ----------------------------
 -- 初始化图数据库连接数据
 -- ----------------------------
 BEGIN;

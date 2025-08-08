@@ -43,7 +43,7 @@ public class Result<T> {
      * @param message 响应消息
      * @return Result
      */
-    public static<T> Result<T>  success(String message) {
+    public static <T> Result<T> success(String message) {
         return new Result<>(200, message);
     }
 
@@ -76,7 +76,7 @@ public class Result<T> {
      * @param message 响应消息
      * @return Result
      */
-    public static Result<Void> error(String message) {
+    public static <T> Result<T> error(String message) {
         return new Result<>(500, message);
     }
 

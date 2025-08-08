@@ -19,20 +19,4 @@
         ORDER BY r.role_sort, r.role_id
     </select>
 
-    <select id="selectRolesByUserId" resultType="com.chenpp.graph.admin.model.Role">
-        SELECT 
-            r.role_id,
-            r.role_name,
-            r.role_key,
-            r.role_sort,
-            r.status,
-            r.data_scope,
-            r.remark,
-            r.create_time,
-            r.update_time
-        FROM sys_role r
-        INNER JOIN sys_user_role ur ON r.role_id = ur.role_id
-        WHERE ur.user_id = #{userId}
-        ORDER BY r.role_sort, r.role_id
-    </select>
 </mapper>

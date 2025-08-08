@@ -39,14 +39,6 @@ CREATE TABLE `sys_role` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色信息表';
 
 -- ----------------------------
--- Records of sys_role
--- ----------------------------
-BEGIN;
-INSERT INTO `sys_role` VALUES (1, '管理员', 'admin', 1, 0, 1, '管理员角色', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-INSERT INTO `sys_role` VALUES (2, '普通用户', 'user', 2, 0, 5, '普通用户角色', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-COMMIT;
-
--- ----------------------------
 -- Table structure for sys_permission
 -- ----------------------------
 DROP TABLE IF EXISTS `sys_permission`;
@@ -68,31 +60,6 @@ CREATE TABLE `sys_permission` (
   PRIMARY KEY (`permission_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='权限表';
 
--- ----------------------------
--- Records of sys_permission
--- ----------------------------
-BEGIN;
--- 系统管理菜单
-INSERT INTO `sys_permission` VALUES (1, '系统管理', 0, 'M', '', '', '/system', 'system', 1, 0, 0, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-
--- 用户管理菜单及按钮权限
-INSERT INTO `sys_permission` VALUES (2, '用户管理', 1, 'C', 'system:user:list', 'system/user/index', '/system/user', 'user', 1, 0, 0, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-INSERT INTO `sys_permission` VALUES (3, '用户新增', 2, 'F', 'system:user:add', '', '', '', 1, 0, 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-INSERT INTO `sys_permission` VALUES (4, '用户修改', 2, 'F', 'system:user:edit', '', '', '', 2, 0, 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-INSERT INTO `sys_permission` VALUES (5, '用户删除', 2, 'F', 'system:user:remove', '', '', '', 3, 0, 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-
--- 角色管理菜单及按钮权限
-INSERT INTO `sys_permission` VALUES (6, '角色管理', 1, 'C', 'system:role:list', 'system/role/index', '/system/role', 'peoples', 2, 0, 0, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-INSERT INTO `sys_permission` VALUES (7, '角色新增', 6, 'F', 'system:role:add', '', '', '', 1, 0, 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-INSERT INTO `sys_permission` VALUES (8, '角色修改', 6, 'F', 'system:role:edit', '', '', '', 2, 0, 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-INSERT INTO `sys_permission` VALUES (9, '角色删除', 6, 'F', 'system:role:remove', '', '', '', 3, 0, 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-
--- 权限管理菜单及按钮权限
-INSERT INTO `sys_permission` VALUES (10, '权限管理', 1, 'C', 'system:permission:list', 'system/permission/index', '/system/permission', 'lock', 3, 0, 0, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-INSERT INTO `sys_permission` VALUES (11, '权限新增', 10, 'F', 'system:permission:add', '', '', '', 1, 0, 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-INSERT INTO `sys_permission` VALUES (12, '权限修改', 10, 'F', 'system:permission:edit', '', '', '', 2, 0, 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-INSERT INTO `sys_permission` VALUES (13, '权限删除', 10, 'F', 'system:permission:remove', '', '', '', 3, 0, 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-COMMIT;
 
 -- ----------------------------
 -- Table structure for sys_user_role
@@ -104,12 +71,6 @@ CREATE TABLE `sys_user_role` (
   PRIMARY KEY (`user_id`, `role_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户和角色关联表';
 
--- ----------------------------
--- Records of sys_user_role
--- ----------------------------
-BEGIN;
-INSERT INTO `sys_user_role` VALUES (1, 1);
-COMMIT;
 
 -- ----------------------------
 -- Table structure for sys_role_permission
@@ -121,27 +82,6 @@ CREATE TABLE `sys_role_permission` (
   PRIMARY KEY (`role_id`, `permission_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色和权限关联表';
 
--- ----------------------------
--- Records of sys_role_permission
--- ----------------------------
-BEGIN;
--- 管理员角色拥有所有权限
-INSERT INTO `sys_role_permission` VALUES (1, 1);
-INSERT INTO `sys_role_permission` VALUES (1, 2);
-INSERT INTO `sys_role_permission` VALUES (1, 3);
-INSERT INTO `sys_role_permission` VALUES (1, 4);
-INSERT INTO `sys_role_permission` VALUES (1, 5);
-INSERT INTO `sys_role_permission` VALUES (1, 6);
-INSERT INTO `sys_role_permission` VALUES (1, 7);
-INSERT INTO `sys_role_permission` VALUES (1, 8);
-INSERT INTO `sys_role_permission` VALUES (1, 9);
-INSERT INTO `sys_role_permission` VALUES (1, 10);
-INSERT INTO `sys_role_permission` VALUES (1, 11);
-INSERT INTO `sys_role_permission` VALUES (1, 12);
-INSERT INTO `sys_role_permission` VALUES (1, 13);
-COMMIT;
-
-SET FOREIGN_KEY_CHECKS = 1;
 
 -- ----------------------------
 -- Table structure for graph_database_connection

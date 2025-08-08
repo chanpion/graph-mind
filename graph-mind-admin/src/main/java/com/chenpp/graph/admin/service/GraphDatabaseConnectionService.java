@@ -16,6 +16,15 @@ public interface GraphDatabaseConnectionService extends IService<GraphDatabaseCo
      * 分页查询连接列表
      * @param page 分页对象
      * @param keyword 搜索关键词
+     * @param type 数据库类型
+     * @return 连接列表
+     */
+    Page<GraphDatabaseConnection> queryConnections(Page<GraphDatabaseConnection> page, String keyword, String type);
+    
+    /**
+     * 分页查询连接列表
+     * @param page 分页对象
+     * @param keyword 搜索关键词
      * @return 连接列表
      */
     Page<GraphDatabaseConnection> queryConnections(Page<GraphDatabaseConnection> page, String keyword);
