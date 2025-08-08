@@ -36,8 +36,8 @@
           
           <el-form-item label="数据类型">
             <el-radio-group v-model="form.dataType">
-              <el-radio label="node">点数据</el-radio>
-              <el-radio label="edge">边数据</el-radio>
+              <el-radio value="node">点数据</el-radio>
+              <el-radio value="edge">边数据</el-radio>
             </el-radio-group>
           </el-form-item>
         </el-form>

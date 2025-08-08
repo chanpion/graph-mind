@@ -123,7 +123,7 @@ const loginRules = {
     { len: 4, message: '验证码长度为 4 位', trigger: 'blur' },
     {
       validator: (rule, value, callback) => {
-        if (value !== expectedCaptcha.value) {
+        if (value.toLowerCase() !== expectedCaptcha.value.toLowerCase()) {
           callback(new Error('验证码错误'))
         } else {
           callback()
@@ -185,7 +185,7 @@ const generateCaptcha = () => {
   }
 
   captchaUrl.value = canvas.toDataURL()
-  expectedCaptcha.value = captcha
+  expectedCaptcha.value = captcha.toLowerCase()
   return captcha
 }
 

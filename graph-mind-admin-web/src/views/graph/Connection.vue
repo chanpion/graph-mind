@@ -12,7 +12,7 @@
           <el-input
             v-model="searchKeyword"
             placeholder="搜索连接名称或地址"
-            style="width: 300px"
+            style="width: 200px"
             clearable
             @input="handleSearch"
           >
@@ -20,6 +20,17 @@
               <el-icon><Search /></el-icon>
             </template>
           </el-input>
+          <el-select
+            v-model="searchType"
+            placeholder="数据库类型"
+            style="width: 150px; margin-left: 10px"
+            clearable
+            @change="handleSearch"
+          >
+            <el-option label="Neo4j" value="neo4j" />
+            <el-option label="Nebula Graph" value="nebula" />
+            <el-option label="JanusGraph" value="janus" />
+          </el-select>
         </div>
         <div class="action-area">
           <el-button type="primary" @click="handleAdd">
@@ -75,26 +86,8 @@
           </template>
         </el-table-column>
         
-        <el-table-column prop="lastConnectTime" label="最后连接时间" width="180" />
-        
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
-            <el-button
-              v-if="row.status === 0"
-              type="success"
-              size="small"
-              @click="handleConnect(row)"
-            >
-              连接
-            </el-button>
-            <el-button
-              v-else
-              type="warning"
-              size="small"
-              @click="handleDisconnect(row)"
-            >
-              断开
-            </el-button>
             <el-button
               type="info"
               size="small"
@@ -264,6 +257,7 @@ import connectionApi from '@/api/connection'
 // 响应式数据
 const loading = ref(false)
 const searchKeyword = ref('')
+const searchType = ref('') // 添加数据库类型搜索条件
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
@@ -290,6 +284,20 @@ const form = reactive({
   timeout: 30,
   description: ''
 })
+
+const defaultForm = {
+  id: null,
+  name: '',
+  type: '',
+  host: '',
+  port: 7687,
+  database: '',
+  username: '',
+  password: '',
+  poolSize: 10,
+  timeout: 30,
+  description: ''
+}
 
 // 表单验证规则
 const rules = {
@@ -319,13 +327,22 @@ const rules = {
 
 // 计算属性
 const filteredConnections = computed(() => {
-  if (!searchKeyword.value) {
-    return connections.value
+  let result = connections.value
+  
+  // 根据连接名称搜索
+  if (searchKeyword.value) {
+    result = result.filter(item =>
+      item.name.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
+      item.host.toLowerCase().includes(searchKeyword.value.toLowerCase())
+    )
   }
-  return connections.value.filter(item =>
-    item.name.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
-    item.host.toLowerCase().includes(searchKeyword.value.toLowerCase())
-  )
+  
+  // 根据数据库类型搜索
+  if (searchType.value) {
+    result = result.filter(item => item.type === searchType.value)
+  }
+  
+  return result
 })
 
 const dialogTitle = computed(() => {
@@ -385,7 +402,8 @@ const fetchConnections = async () => {
     const response = await connectionApi.getConnections({
       page: currentPage.value,
       pageSize: pageSize.value,
-      keyword: searchKeyword.value
+      keyword: searchKeyword.value,
+      type: searchType.value // 添加类型参数
     })
     connections.value = response.data.records || response.data.list || []
     total.value = response.data.total
@@ -409,6 +427,8 @@ const handleRefresh = () => {
 
 const handleAdd = () => {
   resetForm()
+  // 确保form.id为null，表示新增模式
+  form.id = null
   dialogVisible.value = true
 }
 
@@ -523,10 +543,12 @@ const handleSubmit = async () => {
     
     if (form.id) {
       // 编辑
+      console.log('正在更新连接:', form)
       await connectionApi.updateConnection(form.id, form)
       ElMessage.success('更新成功')
     } else {
       // 新增
+      console.log('正在创建连接:', form)
       await connectionApi.createConnection(form)
       ElMessage.success('添加成功')
     }
@@ -535,6 +557,7 @@ const handleSubmit = async () => {
     fetchConnections()
   } catch (error) {
     console.error('提交失败:', error)
+    ElMessage.error('提交失败: ' + (error.message || '未知错误'))
   } finally {
     submitLoading.value = false
   }
@@ -545,7 +568,19 @@ const handleDialogClose = () => {
 }
 
 const resetForm = () => {
-  Object.assign(form, defaultForm)
+  Object.assign(form, {
+    id: null,
+    name: '',
+    type: '',
+    host: '',
+    port: 7687,
+    database: '',
+    username: '',
+    password: '',
+    poolSize: 10,
+    timeout: 30,
+    description: ''
+  })
   formRef.value?.clearValidate()
 }
 
@@ -648,4 +683,4 @@ onMounted(() => {
     justify-content: center;
   }
 }
-</style> 
+</style>

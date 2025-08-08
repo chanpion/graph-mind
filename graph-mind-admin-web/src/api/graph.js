@@ -56,6 +56,46 @@ export const graphApi = {
   // 获取图详情
   getGraph(id) {
     return request.get(`/api/graphs/${id}`)
+  },
+  
+  // 获取点定义列表
+  getNodeDefs(graphId) {
+    return request.get(`/api/graphs/${graphId}/nodes`)
+  },
+  
+  // 获取边定义列表
+  getEdgeDefs(graphId) {
+    return request.get(`/api/graphs/${graphId}/edges`)
+  },
+  
+  // 新增点定义
+  addNodeDef(graphId, data) {
+    return request.post(`/api/graphs/${graphId}/nodes`, data)
+  },
+  
+  // 更新点定义
+  updateNodeDef(graphId, nodeId, data) {
+    return request.put(`/api/graphs/${graphId}/nodes/${nodeId}`, data)
+  },
+  
+  // 删除点定义
+  deleteNodeDef(graphId, nodeId) {
+    return request.delete(`/api/graphs/${graphId}/nodes/${nodeId}`)
+  },
+  
+  // 新增边定义
+  addEdgeDef(graphId, data) {
+    return request.post(`/api/graphs/${graphId}/edges`, data)
+  },
+  
+  // 更新边定义
+  updateEdgeDef(graphId, edgeId, data) {
+    return request.put(`/api/graphs/${graphId}/edges/${edgeId}`, data)
+  },
+  
+  // 删除边定义
+  deleteEdgeDef(graphId, edgeId) {
+    return request.delete(`/api/graphs/${graphId}/edges/${edgeId}`)
   }
 }
 

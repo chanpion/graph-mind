@@ -22,32 +22,32 @@ export const connectionApi = {
 
   // 新增连接
   createConnection(data) {
-    return request.post('/connections', data)
+    return request.post('/api/connections', data)
   },
 
   // 更新连接
   updateConnection(id, data) {
-    return request.put(`/connections/${id}`, data)
+    return request.put(`/api/connections/${id}`, data)
   },
 
   // 删除连接
   deleteConnection(id) {
-    return request.delete(`/connections/${id}`)
+    return request.delete(`/api/connections/${id}`)
   },
 
   // 连接数据库
   connectDatabase(id) {
-    return request.post(`/connections/${id}/connect`)
+    return request.post(`/api/connections/${id}/connect`)
   },
 
   // 断开连接
   disconnectDatabase(id) {
-    return request.post(`/connections/${id}/disconnect`)
+    return request.post(`/api/connections/${id}/disconnect`)
   },
 
   // 测试连接
   testConnection(id) {
-    return request.post(`/connections/${id}/test`)
+    return request.post(`/api/connections/${id}/test`)
   }
 }
 

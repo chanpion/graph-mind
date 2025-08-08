@@ -33,54 +33,80 @@
         </div>
       </div>
 
-      <!-- 图列表 -->
-      <el-table
-        :data="graphs"
-        style="width: 100%"
-        v-loading="loading"
-        stripe
-      >
-        <el-table-column prop="name" label="图名称" min-width="150" />
-        
-        <el-table-column prop="code" label="图编码" min-width="120" />
-        
-        <el-table-column prop="description" label="描述" min-width="200" />
-        
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="getStatusTagType(row.status)">
-              {{ getStatusLabel(row.status) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        
-        <el-table-column prop="connectionId" label="关联连接" min-width="120">
-          <template #default="{ row }">
-            <span>{{ getConnectionName(row.connectionId) }}</span>
-          </template>
-        </el-table-column>
-        
-        <el-table-column prop="createTime" label="创建时间" width="180" />
-        
-        <el-table-column label="操作" width="200" fixed="right">
-          <template #default="{ row }">
-            <el-button
-              type="primary"
-              size="small"
-              @click="handleEdit(row)"
-            >
-              编辑
-            </el-button>
-            <el-button
-              type="danger"
-              size="small"
-              @click="handleDelete(row)"
-            >
-              删除
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <!-- 图列表卡片 -->
+      <div v-loading="loading">
+        <el-row :gutter="20">
+          <el-col 
+            v-for="graph in graphs" 
+            :key="graph.id" 
+            :xs="24" 
+            :sm="12" 
+            :md="8" 
+            :lg="6" 
+            :xl="4"
+            class="graph-card-col"
+          >
+            <el-card class="graph-card" shadow="hover" @click="handleCardClick(graph)">
+              <template #header>
+                <div class="card-header">
+                  <span class="graph-name">{{ graph.name }}</span>
+                  <el-tag :type="getStatusTagType(graph.status)" size="small">
+                    {{ getStatusLabel(graph.status) }}
+                  </el-tag>
+                </div>
+              </template>
+              
+              <div class="card-content">
+                <div class="graph-info">
+                  <div class="info-item">
+                    <span class="info-label">图编码:</span>
+                    <span class="info-value">{{ graph.code }}</span>
+                  </div>
+                  
+                  <div class="info-item">
+                    <span class="info-label">关联连接:</span>
+                    <span class="info-value">{{ getConnectionName(graph.connectionId) }}</span>
+                  </div>
+                  
+                  <div class="info-item">
+                    <span class="info-label">创建时间:</span>
+                    <span class="info-value">{{ graph.createTime }}</span>
+                  </div>
+                  
+                  <div class="info-item description-item">
+                    <span class="info-label">描述:</span>
+                    <span class="info-value description-text">{{ graph.description || '暂无描述' }}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="card-actions">
+                <el-button 
+                  type="primary" 
+                  size="small" 
+                  @click.stop="handleEdit(graph)"
+                >
+                  编辑
+                </el-button>
+                <el-button 
+                  type="danger" 
+                  size="small" 
+                  @click.stop="handleDelete(graph)"
+                >
+                  删除
+                </el-button>
+              </div>
+            </el-card>
+          </el-col>
+          
+          <!-- 空状态 -->
+          <el-col v-if="graphs.length === 0 && !loading" :span="24">
+            <div class="empty-state">
+              <el-empty description="暂无图数据" />
+            </div>
+          </el-col>
+        </el-row>
+      </div>
 
       <!-- 分页 -->
       <div class="pagination-wrapper">
@@ -130,8 +156,8 @@
         
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="form.status">
-            <el-radio :label="1">启用</el-radio>
-            <el-radio :label="0">禁用</el-radio>
+            <el-radio :value="1">启用</el-radio>
+            <el-radio :value="0">禁用</el-radio>
           </el-radio-group>
         </el-form-item>
         
@@ -160,6 +186,7 @@
 <script setup name="GraphList">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRouter } from 'vue-router'
 import {
   Search, Plus, Refresh
 } from '@element-plus/icons-vue'
@@ -175,6 +202,7 @@ const total = ref(0)
 const dialogVisible = ref(false)
 const submitLoading = ref(false)
 const formRef = ref()
+const router = useRouter()
 
 // 图数据
 const graphs = ref([])
@@ -360,6 +388,11 @@ const handleCurrentChange = (val) => {
   fetchGraphs()
 }
 
+// 点击卡片跳转到图设计页面
+const handleCardClick = (graph) => {
+  router.push({ name: 'GraphDetail', params: { id: graph.id } })
+}
+
 // 生命周期
 onMounted(() => {
   fetchGraphs()
@@ -415,6 +448,107 @@ onMounted(() => {
   gap: 10px;
 }
 
+.graph-card-col {
+  margin-bottom: 20px;
+}
+
+.graph-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.graph-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-color: #409eff;
+}
+
+.graph-card :deep(.el-card__header) {
+  padding: 12px 15px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.graph-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.graph-card :deep(.el-card__body) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+}
+
+.card-content {
+  flex: 1;
+}
+
+.graph-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.info-item {
+  display: flex;
+  font-size: 13px;
+}
+
+.info-label {
+  color: #909399;
+  width: 70px;
+  flex-shrink: 0;
+}
+
+.info-value {
+  color: #606266;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.description-item {
+  flex-direction: column;
+  gap: 5px;
+}
+
+.description-text {
+  white-space: normal;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.card-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 15px;
+  gap: 10px;
+}
+
+.card-actions .el-button {
+  flex: 1;
+  font-size: 12px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 0;
+}
+
 .pagination-wrapper {
   display: flex;
   justify-content: center;
@@ -441,6 +575,17 @@ onMounted(() => {
   
   .action-area {
     justify-content: center;
+  }
+  
+  .graph-card-col {
+    margin-bottom: 15px;
+  }
+}
+
+/* 大屏幕适配 */
+@media (min-width: 1200px) {
+  .graph-card-col:nth-child(6n+1) {
+    clear: both;
   }
 }
 </style>

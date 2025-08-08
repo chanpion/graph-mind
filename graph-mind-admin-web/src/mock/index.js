@@ -85,12 +85,12 @@ const connectionApis = {
     }
   }
 }
-
-// 注册所有接口
-Object.keys(connectionApis).forEach(key => {
-  const [method, url] = key.split(' ')
-  Mock.mock(new RegExp(url.replace(/:\w+/g, '\\d+')), method.toLowerCase(), connectionApis[key])
-})
+//
+// // 注册所有接口
+// Object.keys(connectionApis).forEach(key => {
+//   const [method, url] = key.split(' ')
+//   Mock.mock(new RegExp(url.replace(/:\w+/g, '\\d+')), method.toLowerCase(), connectionApis[key])
+// })
 
 // 图管理相关接口
 const graphApis = {
@@ -172,82 +172,82 @@ const graphApis = {
   }
 }
 
-// 注册图管理接口
-Object.keys(graphApis).forEach(key => {
-  const [method, url] = key.split(' ')
-  Mock.mock(new RegExp(url.replace(/:\w+/g, '\\d+')), method.toLowerCase(), graphApis[key])
-})
+// // 注册图管理接口
+// Object.keys(graphApis).forEach(key => {
+//   const [method, url] = key.split(' ')
+//   Mock.mock(new RegExp(url.replace(/:\w+/g, '\\d+')), method.toLowerCase(), graphApis[key])
+// })
 
 // 图详情相关接口
-Mock.mock(/\/api\/graphs\/\d+\/nodes/, 'get', {
-  code: 200,
-  message: '获取成功',
-  data: {
-    'list|2-4': [
-      {
-        'id|+1': 1,
-        'name|+1': ['Person', 'Company', 'Product'],
-        'description': '@csentence(8, 20)',
-        'status|1': ['active', 'inactive'],
-        'properties|2-4': [
-          { 'name': '@word(3,8)', 'type|1': ['string', 'int', 'date', 'float'], 'desc': '@cword(2,6)' }
-        ]
-      }
-    ]
-  }
-})
-Mock.mock(/\/api\/graphs\/\d+\/edges/, 'get', {
-  code: 200,
-  message: '获取成功',
-  data: {
-    'list|1-3': [
-      {
-        'id|+1': 1,
-        'name|+1': ['WorksAt', 'Owns', 'Buys'],
-        'from|1': ['Person', 'Company', 'Product'],
-        'to|1': ['Company', 'Product', 'Person'],
-        'description': '@csentence(8, 20)',
-        'status|1': ['active', 'inactive'],
-        'properties|1-3': [
-          { 'name': '@word(3,8)', 'type|1': ['string', 'int', 'date', 'float'], 'desc': '@cword(2,6)' }
-        ]
-      }
-    ]
-  }
-})
+// Mock.mock(/\/api\/graphs\/\d+\/nodes/, 'get', {
+//   code: 200,
+//   message: '获取成功',
+//   data: {
+//     'list|2-4': [
+//       {
+//         'id|+1': 1,
+//         'name|+1': ['Person', 'Company', 'Product'],
+//         'description': '@csentence(8, 20)',
+//         'status|1': ['active', 'inactive'],
+//         'properties|2-4': [
+//           { 'name': '@word(3,8)', 'type|1': ['string', 'int', 'date', 'float'], 'desc': '@cword(2,6)' }
+//         ]
+//       }
+//     ]
+//   }
+// })
+// Mock.mock(/\/api\/graphs\/\d+\/edges/, 'get', {
+//   code: 200,
+//   message: '获取成功',
+//   data: {
+//     'list|1-3': [
+//       {
+//         'id|+1': 1,
+//         'name|+1': ['WorksAt', 'Owns', 'Buys'],
+//         'from|1': ['Person', 'Company', 'Product'],
+//         'to|1': ['Company', 'Product', 'Person'],
+//         'description': '@csentence(8, 20)',
+//         'status|1': ['active', 'inactive'],
+//         'properties|1-3': [
+//           { 'name': '@word(3,8)', 'type|1': ['string', 'int', 'date', 'float'], 'desc': '@cword(2,6)' }
+//         ]
+//       }
+//     ]
+//   }
+// })
 
 // 点定义增删改查
-Mock.mock(/\/api\/graphs\/\d+\/nodes/, 'post', {
-  code: 200,
-  message: '新增成功',
-  data: null
-})
-Mock.mock(/\/api\/graphs\/\d+\/nodes\/\d+/, 'put', {
-  code: 200,
-  message: '更新成功',
-  data: null
-})
-Mock.mock(/\/api\/graphs\/\d+\/nodes\/\d+/, 'delete', {
-  code: 200,
-  message: '删除成功',
-  data: null
-})
-// 边定义增删改查
-Mock.mock(/\/api\/graphs\/\d+\/edges/, 'post', {
-  code: 200,
-  message: '新增成功',
-  data: null
-})
-Mock.mock(/\/api\/graphs\/\d+\/edges\/\d+/, 'put', {
-  code: 200,
-  message: '更新成功',
-  data: null
-})
-Mock.mock(/\/api\/graphs\/\d+\/edges\/\d+/, 'delete', {
-  code: 200,
-  message: '删除成功',
-  data: null
-})
+// Mock.mock(/\/api\/graphs\/\d+\/nodes/, 'post', {
+//   code: 200,
+//   message: '新增成功',
+//   data: null
+// })
+// Mock.mock(/\/api\/graphs\/\d+\/nodes\/\d+/, 'put', {
+//   code: 200,
+//   message: '更新成功',
+//   data: null
+// })
+// Mock.mock(/\/api\/graphs\/\d+\/nodes\/\d+/, 'delete', {
+//   code: 200,
+//   message: '删除成功',
+//   data: null
+// })
+// // 边定义增删改查
+// Mock.mock(/\/api\/graphs\/\d+\/edges/, 'post', {
+//   code: 200,
+//   message: '新增成功',
+//   data: null
+// })
+// Mock.mock(/\/api\/graphs\/\d+\/edges\/\d+/, 'put', {
+//   code: 200,
+//   message: '更新成功',
+//   data: null
+// })
+// Mock.mock(/\/api\/graphs\/\d+\/edges\/\d+/, 'delete', {
+//   code: 200,
+//   message: '删除成功',
+//   data: null
+// })
 
 // 查询图数据
 Mock.mock(/\/api\/graphs\/\d+\/query/, 'post', {
