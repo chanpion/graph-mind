@@ -14,8 +14,14 @@ import java.util.Map;
 @Data
 public class GraphVertex implements Serializable {
 
-
+    /**
+     * 图库id
+     */
     private String id;
+    /**
+     * 唯一标识
+     */
+    private String uid;
     /**
      * 类型
      */

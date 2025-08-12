@@ -13,7 +13,11 @@ import java.util.Map;
 public class GraphEdge implements Serializable {
     private static final long serialVersionUID = -7475762228551385446L;
 
-    private String id;
+    /**
+     * 图库id
+     */
+    private Serializable id;
+    private String uid;
     /**
      * 类型
      */
@@ -22,6 +26,8 @@ public class GraphEdge implements Serializable {
      * 属性
      */
     private Map<String, Object> properties;
-    private String source;
-    private String target;
+    private String startUid;
+    private String startLabel;
+    private String endUid;
+    private String endLabel;
 }

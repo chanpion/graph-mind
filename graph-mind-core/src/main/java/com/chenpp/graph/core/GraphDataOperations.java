@@ -1,6 +1,7 @@
 package com.chenpp.graph.core;
 
 import com.chenpp.graph.core.exception.GraphException;
+import com.chenpp.graph.core.model.GraphData;
 import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphVertex;
 
@@ -17,9 +18,12 @@ public interface GraphDataOperations {
      * 添加节点
      *
      * @param vertex 点
+     * @return
      * @throws GraphException 插入异常
      */
-    void addVertex(GraphVertex vertex) throws GraphException;
+    GraphVertex addVertex(GraphVertex vertex) throws GraphException;
+
+    GraphVertex updateVertex(GraphVertex vertex) throws GraphException;
 
     /**
      * 批量添加节点
@@ -48,4 +52,16 @@ public interface GraphDataOperations {
      */
     void addEdges(Collection<GraphEdge> edges) throws GraphException;
 
+    int updateEdge(GraphEdge edge) throws GraphException;
+
+    int deleteEdge(GraphEdge edge) throws GraphException;
+    
+    /**
+     * 查询图数据
+     *
+     * @param cypher Cypher查询语句
+     * @return GraphData 图数据
+     * @throws GraphException 查询异常
+     */
+    GraphData query(String cypher) throws GraphException;
 }
