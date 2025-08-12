@@ -12,50 +12,51 @@
         <el-option label="力导向图" value="force" />
         <el-option label="层次布局" value="hierarchy" />
       </el-select>
-          
-      <!-- 右键菜单 -->
-      <div v-if="contextMenuVisible" class="context-menu" :style="{ left: contextMenuPosition.x + 'px', top: contextMenuPosition.y + 'px' }">
-        <ul>
-          <li @click="handleExpandNode">展开节点</li>
-          <li @click="handleCollapseNode">收起节点</li>
-          <li @click="handleDeleteNode">删除节点</li>
-          <li @click="handleFindPath">查找路径</li>
-        </ul>
-      </div>
-
-      <!-- 节点/关系详情抽屉 -->
-      <el-drawer v-model="detailDrawerVisible" :title="detailType==='node' ? '点详情' : '边详情'" direction="rtl" size="350px">
-        <div v-if="detailType==='node'">
-          <div><b>UID：</b>{{ detailData.uid }}</div>
-          <div><b>类型：</b>{{ detailData.label }}</div>
-          <div v-if="detailData.properties">
-            <b>属性：</b>
-            <el-table :data="formatProperties(detailData.properties)" size="small" border style="margin-top: 8px;">
-              <el-table-column prop="name" label="属性名" />
-              <el-table-column prop="value" label="属性值" />
-            </el-table>
-          </div>
-        </div>
-        <div v-else>
-          <div><b>UID：</b>{{ detailData.uid }}</div>
-          <div><b>类型：</b>{{ detailData.label }}</div>
-          <div><b>起点UID：</b>{{ detailData.startUid }}</div>
-          <div><b>起点类型：</b>{{ detailData.startLabel }}</div>
-          <div><b>终点UID：</b>{{ detailData.endUid }}</div>
-          <div><b>终点类型：</b>{{ detailData.endLabel }}</div>
-          <div v-if="detailData.properties">
-            <b>属性：</b>
-            <el-table :data="formatProperties(detailData.properties)" size="small" border style="margin-top: 8px;">
-              <el-table-column prop="name" label="属性名" />
-              <el-table-column prop="value" label="属性值" />
-            </el-table>
-          </div>
-        </div>
-      </el-drawer>
-      
-      <!-- 添加样式设置按钮 -->
-      <el-button type="primary" @click="styleDrawerVisible = true" style="margin-left: 12px;">样式设置</el-button>
     </div>
+    
+    <!-- 右键菜单 -->
+    <div v-if="contextMenuVisible" class="context-menu" :style="{ left: contextMenuPosition.x + 'px', top: contextMenuPosition.y + 'px' }">
+      <ul>
+        <li @click="handleExpandNode">展开节点</li>
+        <li @click="handleCollapseNode">收起节点</li>
+        <li @click="handleDeleteNode">删除节点</li>
+        <li @click="handleFindPath">查找路径</li>
+      </ul>
+    </div>
+          
+    <!-- 节点/关系详情抽屉 -->
+    <el-drawer v-model="detailDrawerVisible" :title="detailType==='node' ? '点详情' : '边详情'" direction="rtl" size="350px">
+      <div v-if="detailType==='node'">
+        <div><b>UID：</b>{{ detailData.uid }}</div>
+        <div><b>类型：</b>{{ detailData.label }}</div>
+        <div v-if="detailData.properties">
+          <b>属性：</b>
+          <el-table :data="formatProperties(detailData.properties)" size="small" border style="margin-top: 8px;">
+            <el-table-column prop="name" label="属性名" />
+            <el-table-column prop="value" label="属性值" />
+          </el-table>
+        </div>
+      </div>
+      <div v-else>
+        <div><b>UID：</b>{{ detailData.uid }}</div>
+        <div><b>类型：</b>{{ detailData.label }}</div>
+        <div><b>起点UID：</b>{{ detailData.startUid }}</div>
+        <div><b>起点类型：</b>{{ detailData.startLabel }}</div>
+        <div><b>终点UID：</b>{{ detailData.endUid }}</div>
+        <div><b>终点类型：</b>{{ detailData.endLabel }}</div>
+        <div v-if="detailData.properties">
+          <b>属性：</b>
+          <el-table :data="formatProperties(detailData.properties)" size="small" border style="margin-top: 8px;">
+            <el-table-column prop="name" label="属性名" />
+            <el-table-column prop="value" label="属性值" />
+          </el-table>
+        </div>
+      </div>
+    </el-drawer>
+      
+    <!-- 添加样式设置按钮 -->
+    <el-button type="primary" @click="styleDrawerVisible = true" style="margin-left: 12px;">样式设置</el-button>
+    
     <div class="visual-area">
       <svg ref="svgRef" :width="width" :height="height"></svg>
     </div>
@@ -398,18 +399,28 @@ const showDetail = (type, data) => {
 
 // 显示右键菜单
 const showContextMenu = (type, data, event) => {
-  event.preventDefault()
+  event.preventDefault() // 阻止默认右键菜单
+  event.stopPropagation() // 阻止事件冒泡
+  
   contextMenuType.value = type
   contextMenuData.value = data
   contextMenuPosition.value = { x: event.clientX, y: event.clientY }
   contextMenuVisible.value = true
   
   // 点击其他地方隐藏菜单
-  const handleClick = () => {
-    contextMenuVisible.value = false
-    document.removeEventListener('click', handleClick)
+  const handleClick = (e) => {
+    // 检查点击的元素是否在菜单内部
+    const menu = document.querySelector('.context-menu')
+    if (menu && !menu.contains(e.target)) {
+      contextMenuVisible.value = false
+      document.removeEventListener('click', handleClick)
+    }
   }
-  document.addEventListener('click', handleClick)
+  
+  // 延迟添加点击监听，避免立即触发
+  setTimeout(() => {
+    document.addEventListener('click', handleClick)
+  }, 100)
 }
 
 // 菜单操作处理函数
@@ -822,13 +833,13 @@ onMounted(() => {
 
 /* 右键菜单样式 */
 .context-menu {
-  position: absolute;
+  position: fixed; /* 改为fixed确保相对于视窗定位 */
   background: #fff;
   border: 1px solid #eee;
   border-radius: 4px;
   box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
   padding: 8px 0;
-  z-index: 999;
+  z-index: 9999; /* 提高z-index确保在最上层 */
   font-size: 14px;
 }
 

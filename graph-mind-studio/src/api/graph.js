@@ -113,6 +113,10 @@ export const graphApi = {
   // 图查询
   queryGraph(graphId, cypher) {
     return request.post(`/api/graphs/${graphId}/query`, { cypher })
+  },
+
+  publishSchema(graphId){
+    return request.post(`/api/graphs/${graphId}/publish`)
   }
 }
 
