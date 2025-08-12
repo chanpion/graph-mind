@@ -102,8 +102,16 @@
         <el-table :data="edgeDefs" style="width: 100%" row-key="id">
           <el-table-column prop="code" label="标识" />
           <el-table-column prop="name" label="名称" />
-          <el-table-column prop="from" label="起点类型" />
-          <el-table-column prop="to" label="终点类型" />
+          <el-table-column prop="from" label="起点类型">
+            <template #default="{ row }">
+              {{ getNodeNameById(row.from) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="to" label="终点类型">
+            <template #default="{ row }">
+              {{ getNodeNameById(row.to) }}
+            </template>
+          </el-table-column>
           <el-table-column prop="description" label="描述" />
           <el-table-column prop="status" label="状态" width="90">
             <template #default="{ row }">
@@ -269,12 +277,19 @@ const handleTabChange = (tabName) => {
   if (tabName === 'nodes') {
     fetchNodeDefs()
   } else if (tabName === 'edges') {
-    fetchEdgeDefs()
+    fetchNodeDefs().then(() => {
+      fetchEdgeDefs()
+    })
   }
 }
 
 onMounted(() => {
-  fetchNodeDefs()
+  fetchNodeDefs().then(() => {
+    // 如果默认显示的是边定义标签页，则获取边定义数据
+    if (activeTab.value === 'edges') {
+      fetchEdgeDefs()
+    }
+  })
 })
 
 // 点定义操作
@@ -388,6 +403,13 @@ const handleAddEdgeProperty = () => {
 }
 const handleRemoveEdgeProperty = (idx) => {
   edgeForm.value.properties.splice(idx, 1)
+}
+
+// 根据ID获取点定义名称
+const getNodeNameById = (nodeId) => {
+  if (!nodeId) return ''
+  const node = nodeDefs.value.find(node => node.id === nodeId)
+  return node ? node.name : nodeId
 }
 </script>
 

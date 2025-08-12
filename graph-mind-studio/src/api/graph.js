@@ -1,4 +1,4 @@
-import request from '@/utils/request'
+import request, { uploadRequest } from '@/utils/request'
 
 // 图管理API
 export const graphApi = {
@@ -96,6 +96,23 @@ export const graphApi = {
   // 删除边定义
   deleteEdgeDef(graphId, edgeId) {
     return request.delete(`/api/graphs/${graphId}/edges/${edgeId}`)
+  },
+  
+  // 导入点数据
+  importNodeData(graphId, nodeTypeId, data) {
+    // 使用FormData时，让浏览器自动设置Content-Type（包括boundary）
+    return uploadRequest.post(`/api/graphs/${graphId}/nodes/${nodeTypeId}/import`, data)
+  },
+  
+  // 导入边数据
+  importEdgeData(graphId, edgeTypeId, data) {
+    // 使用FormData时，让浏览器自动设置Content-Type（包括boundary）
+    return uploadRequest.post(`/api/graphs/${graphId}/edges/${edgeTypeId}/import`, data)
+  },
+  
+  // 图查询
+  queryGraph(graphId, cypher) {
+    return request.post(`/api/graphs/${graphId}/query`, { cypher })
   }
 }
 

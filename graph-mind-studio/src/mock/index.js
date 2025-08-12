@@ -250,21 +250,21 @@ const graphApis = {
 // })
 
 // 查询图数据
-Mock.mock(/\/api\/graphs\/\d+\/query/, 'post', {
-  code: 200,
-  message: '查询成功',
-  data: {
-    nodes: [
-      { id: '1', label: 'Alice', properties: [ { name: 'age', value: 30 }, { name: 'city', value: 'Beijing' } ] },
-      { id: '2', label: 'Bob', properties: [ { name: 'age', value: 28 }, { name: 'city', value: 'Shanghai' } ] },
-      { id: '3', label: 'Company', properties: [ { name: 'type', value: 'Tech' } ] }
-    ],
-    edges: [
-      { id: 'e1', source: '1', target: '2', label: 'knows', properties: [ { name: 'since', value: 2015 } ] },
-      { id: 'e2', source: '2', target: '3', label: 'worksAt', properties: [ { name: 'since', value: 2020 } ] }
-    ]
-  }
-})
+// Mock.mock(/\/api\/graphs\/\d+\/query/, 'post', {
+//   code: 200,
+//   message: '查询成功',
+//   data: {
+//     nodes: [
+//       { id: '1', label: 'Alice', properties: [ { name: 'age', value: 30 }, { name: 'city', value: 'Beijing' } ] },
+//       { id: '2', label: 'Bob', properties: [ { name: 'age', value: 28 }, { name: 'city', value: 'Shanghai' } ] },
+//       { id: '3', label: 'Company', properties: [ { name: 'type', value: 'Tech' } ] }
+//     ],
+//     edges: [
+//       { id: 'e1', source: '1', target: '2', label: 'knows', properties: [ { name: 'since', value: 2015 } ] },
+//       { id: 'e2', source: '2', target: '3', label: 'worksAt', properties: [ { name: 'since', value: 2020 } ] }
+//     ]
+//   }
+// })
 
 // 图数据加工接口
 Mock.mock(/\/api\/graphs\/\d+\/import\/prepare/, 'post', {
