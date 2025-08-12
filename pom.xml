@@ -14,6 +14,8 @@
         <module>graph-mind-common</module>
         <module>graph-mind-core</module>
         <module>graph-mind-nebula</module>
+        <module>graph-mind-neo4j</module>
+        <module>graph-mind-admin</module>
     </modules>
 
     <properties>
@@ -25,6 +27,17 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.1</version>
+                <configuration>
+                    <source>17</source>
+                    <target>17</target>
+                    <encoding>UTF-8</encoding>
+                    <parameters>true</parameters>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>flatten-maven-plugin</artifactId>

@@ -15,6 +15,7 @@ Thumbs.db
 
 # Java项目
 /target/
+*/target/
 *.class
 *.jar
 *.war

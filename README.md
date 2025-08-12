@@ -7,7 +7,7 @@
 
 ## 🌟 平台概述
 
-Knowledge Atlas Platform (KAP) 是一款面向企业级应用的智能知识图谱管理系统，提供从数据建模、知识抽取到图谱分析的全生命周期解决方案。
+Graph Mind Platform (GMP) 是一款面向企业级应用的智能知识图谱管理系统，提供从数据建模、知识抽取到图谱分析的全生命周期解决方案。
 
 ## 🚀 核心功能
 
@@ -56,7 +56,7 @@ graph-system
 
 ## 🛠️ 快速部署
 ### 前置要求
-- JD- K 17+
+- JDK 17+
 - MySQL 8.0+/PostgreSQL 14+
 - 图数据库服务（至少一种）
 - Node.js 16+（仅前端需要）
@@ -64,7 +64,7 @@ graph-system
 ### 后端启动
 ```shell
 # 1. 克隆仓库
-git clone https://github.com/your-org/kap.git
+git clone git@github.com:chanpion/graph-mind.git
 
 # 2. 配置数据库
 cp config/application-example.yml config/application.yml
@@ -76,7 +76,7 @@ vim config/application.yml  # 修改数据库配置
 
 ### 前端启动
 ```shell
-cd kap-ui
+cd graph-mind-ui
 npm install
 npm run dev
 ```
