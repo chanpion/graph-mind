@@ -27,9 +27,9 @@ public class GraphEdgeDef {
     private Long graphId;
 
     /**
-     * 标识
+     * 标签
      */
-    private String code;
+    private String label;
     /**
      * 边类型名称
      */
@@ -53,9 +53,9 @@ public class GraphEdgeDef {
     private String description;
 
     /**
-     * 状态：active-启用，inactive-停用
+     * 状态：0-未发布，1-已发布
      */
-    private String status;
+    private Integer status = 1;
 
     /**
      * 创建时间
@@ -70,5 +70,5 @@ public class GraphEdgeDef {
     /**
      * 边属性列表
      */
-    private List<GraphEdgeProperty> properties;
+    private List<GraphPropertyDef> properties;
 }

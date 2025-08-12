@@ -212,14 +212,36 @@ DROP TABLE IF EXISTS `graph_node_def`;
 CREATE TABLE `graph_node_def` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '节点定义ID',
   `graph_id` bigint NOT NULL COMMENT '图ID',
+  `label` varchar(255) DEFAULT NULL COMMENT '标签',
   `name` varchar(255) NOT NULL COMMENT '节点类型名称',
   `description` text COMMENT '描述',
-  `status` varchar(20) NOT NULL DEFAULT 'active' COMMENT '状态：active-启用，inactive-停用',
+  `status` int NOT NULL DEFAULT '1' COMMENT '状态：0-未发布，1-已发布',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
   KEY `idx_graph_id` (`graph_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='图节点定义表';
+
+-- ----------------------------
+-- Table structure for graph_property
+-- ----------------------------
+DROP TABLE IF EXISTS `graph_property_def`;
+CREATE TABLE `graph_property_def` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '属性ID',
+  `entity_id` bigint NOT NULL COMMENT '节点定义ID或边定义ID',
+  `code` varchar(255) NOT NULL COMMENT '属性标识',
+  `name` varchar(255) NOT NULL COMMENT '属性名',
+  `type` varchar(50) NOT NULL COMMENT '属性类型',
+  `desc` text COMMENT '属性描述',
+  `status` int NOT NULL DEFAULT '1' COMMENT '状态：0-未发布，1-已发布',
+  `indexed` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否索引：1-是，0-否',
+  `property_type` varchar(10) NOT NULL COMMENT '属性类型标记：node-节点属性，edge-边属性',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_entity_id` (`entity_id`) USING BTREE,
+  KEY `idx_property_type` (`property_type`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='图属性定义表';
 
 -- ----------------------------
 -- Table structure for graph_edge_def
@@ -228,11 +250,12 @@ DROP TABLE IF EXISTS `graph_edge_def`;
 CREATE TABLE `graph_edge_def` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '边定义ID',
   `graph_id` bigint NOT NULL COMMENT '图ID',
+  `label` varchar(255) DEFAULT NULL COMMENT '标签',
   `name` varchar(255) NOT NULL COMMENT '边类型名称',
   `from` varchar(255) NOT NULL COMMENT '起点类型',
   `to` varchar(255) NOT NULL COMMENT '终点类型',
   `description` text COMMENT '描述',
-  `status` varchar(20) NOT NULL DEFAULT 'active' COMMENT '状态：active-启用，inactive-停用',
+  `status` int NOT NULL DEFAULT '1' COMMENT '状态：0-未发布，1-已发布',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
@@ -246,10 +269,12 @@ DROP TABLE IF EXISTS `graph_node_property`;
 CREATE TABLE `graph_node_property` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '属性ID',
   `node_def_id` bigint NOT NULL COMMENT '节点定义ID',
+  `code` varchar(255) NOT NULL COMMENT '属性标识',
   `name` varchar(255) NOT NULL COMMENT '属性名',
   `type` varchar(50) NOT NULL COMMENT '属性类型',
   `desc` text COMMENT '属性描述',
-  `status` varchar(20) NOT NULL DEFAULT 'active' COMMENT '状态：active-启用，inactive-停用',
+  `status` int NOT NULL DEFAULT '1' COMMENT '状态：0-未发布，1-已发布',
+  `indexed` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否索引：1-是，0-否',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
@@ -263,10 +288,12 @@ DROP TABLE IF EXISTS `graph_edge_property`;
 CREATE TABLE `graph_edge_property` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '属性ID',
   `edge_def_id` bigint NOT NULL COMMENT '边定义ID',
+  `code` varchar(255) NOT NULL COMMENT '属性标识',
   `name` varchar(255) NOT NULL COMMENT '属性名',
   `type` varchar(50) NOT NULL COMMENT '属性类型',
   `desc` text COMMENT '属性描述',
-  `status` varchar(20) NOT NULL DEFAULT 'active' COMMENT '状态：active-启用，inactive-停用',
+  `status` int NOT NULL DEFAULT '1' COMMENT '状态：0-未发布，1-已发布',
+  `indexed` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否索引：1-是，0-否',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),

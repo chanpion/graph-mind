@@ -2,9 +2,11 @@ package com.chenpp.graph.admin.controller;
 
 import com.chenpp.graph.admin.model.GraphEdgeDef;
 import com.chenpp.graph.admin.model.GraphNodeDef;
+import com.chenpp.graph.admin.model.ImportResult;
 import com.chenpp.graph.admin.model.Result;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
 import com.chenpp.graph.admin.service.GraphNodeDefService;
+import com.chenpp.graph.admin.service.GraphSchemaService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,6 +36,9 @@ public class GraphSchemaController {
 
     @Autowired
     private GraphEdgeDefService edgeDefService;
+
+    @Autowired
+    private GraphSchemaService graphSchemaService;
 
     /**
      * 获取节点定义列表
@@ -206,6 +211,23 @@ public class GraphSchemaController {
         } catch (Exception e) {
             log.error("删除边定义失败", e);
             return Result.error("删除边定义失败");
+        }
+    }
+
+    /**
+     * 发布图Schema到图数据库
+     *
+     * @param graphId 图ID
+     * @return 发布结果
+     */
+    @PostMapping("/publish")
+    public Result<String> publishSchema(@PathVariable Long graphId) {
+        try {
+            graphSchemaService.publishSchema(graphId);
+            return Result.success(null);
+        } catch (Exception e) {
+            log.error("发布图Schema失败", e);
+            return Result.error("发布图Schema失败: " + e.getMessage());
         }
     }
 }

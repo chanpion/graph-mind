@@ -120,27 +120,24 @@ public class GraphDataServiceImpl implements GraphDataService {
             for (Map<String, String> rowData : dataList) {
                 try {
                     GraphVertex vertex = new GraphVertex();
-                    vertex.setLabel(nodeDef.getCode());
+                    vertex.setLabel(nodeDef.getLabel());
                     // 设置属性
                     Map<String, Object> properties = new HashMap<>(mappingMap.size());
-
                     mappingMap.forEach((prop, csvColumn) -> {
                         String value = rowData.get(csvColumn);
-                        // 如果映射到属性，则添加到properties中
+                        // 如果映射到uid，则设置为节点的uid
                         if ("uid".equals(prop)) {
                             // 从数据中获取唯一标识符，如果没有则生成
                             if (StringUtils.isBlank(value)) {
                                 value = java.util.UUID.randomUUID().toString();
                             }
                             vertex.setUid(value);
-                        } else if (value != null) {
+                        } else {
                             properties.put(prop, value);
                         }
-
                     });
                     properties.put("uid", vertex.getUid());
                     vertex.setProperties(properties);
-
                     vertices.add(vertex);
                     successCount++;
                 } catch (Exception e) {
@@ -312,7 +309,7 @@ public class GraphDataServiceImpl implements GraphDataService {
             for (Map<String, String> rowData : dataList) {
                 try {
                     GraphEdge edge = new GraphEdge();
-                    edge.setLabel(edgeDef.getCode());
+                    edge.setLabel(edgeDef.getLabel());
                     // 设置属性
                     Map<String, Object> properties = new HashMap<>(mappingMap.size());
                     mappingMap.forEach((prop, csvColumn) -> {
