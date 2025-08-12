@@ -12,6 +12,10 @@ logging:
     com.chenpp.graph.admin: info
     com.chenpp.graph.admin.mapper: info
 
+# 权限认证开关配置
+auth:
+  enabled: false
+
 ---
 spring:
   config:

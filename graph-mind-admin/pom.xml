@@ -113,6 +113,13 @@
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
         </dependency>
+        
+        <!-- Neo4j依赖 -->
+        <dependency>
+            <groupId>com.chenpp.graph</groupId>
+            <artifactId>graph-neo4j-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

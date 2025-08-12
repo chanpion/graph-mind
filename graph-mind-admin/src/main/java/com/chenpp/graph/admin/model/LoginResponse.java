@@ -1,5 +1,6 @@
 package com.chenpp.graph.admin.model;
 
+import com.chenpp.graph.admin.constant.Constants;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -10,7 +11,7 @@ import java.io.Serializable;
  */
 @Data
 public class LoginResponse implements Serializable {
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = Constants.SERIAL_VERSION_UID;
 
     /**
      * 访问令牌
@@ -20,7 +21,7 @@ public class LoginResponse implements Serializable {
     /**
      * 令牌类型
      */
-    private String tokenType = "Bearer";
+    private String tokenType = Constants.BEARER_PREFIX.trim();
 
     /**
      * 过期时间（毫秒）

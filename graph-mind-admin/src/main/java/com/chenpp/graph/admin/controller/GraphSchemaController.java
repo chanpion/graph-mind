@@ -1,10 +1,10 @@
 package com.chenpp.graph.admin.controller;
 
-import com.chenpp.graph.admin.model.GraphNodeDef;
 import com.chenpp.graph.admin.model.GraphEdgeDef;
+import com.chenpp.graph.admin.model.GraphNodeDef;
 import com.chenpp.graph.admin.model.Result;
-import com.chenpp.graph.admin.service.GraphNodeDefService;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
+import com.chenpp.graph.admin.service.GraphNodeDefService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -28,13 +28,13 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/graphs/{graphId}")
 public class GraphSchemaController {
-    
+
     @Autowired
     private GraphNodeDefService nodeDefService;
-    
+
     @Autowired
     private GraphEdgeDefService edgeDefService;
-    
+
     /**
      * 获取节点定义列表
      *
@@ -51,7 +51,7 @@ public class GraphSchemaController {
             return Result.error("获取节点定义列表失败");
         }
     }
-    
+
     /**
      * 新增节点定义
      *
@@ -74,12 +74,12 @@ public class GraphSchemaController {
             return Result.error("新增节点定义失败");
         }
     }
-    
+
     /**
      * 更新节点定义
      *
-     * @param graphId  图ID
-     * @param nodeId   节点定义ID
+     * @param graphId 图ID
+     * @param nodeId  节点定义ID
      * @param nodeDef 节点定义信息
      * @return 是否成功
      */
@@ -99,7 +99,7 @@ public class GraphSchemaController {
             return Result.error("更新节点定义失败");
         }
     }
-    
+
     /**
      * 删除节点定义
      *
@@ -121,7 +121,7 @@ public class GraphSchemaController {
             return Result.error("删除节点定义失败");
         }
     }
-    
+
     /**
      * 获取边定义列表
      *
@@ -138,7 +138,7 @@ public class GraphSchemaController {
             return Result.error("获取边定义列表失败");
         }
     }
-    
+
     /**
      * 新增边定义
      *
@@ -161,7 +161,7 @@ public class GraphSchemaController {
             return Result.error("新增边定义失败");
         }
     }
-    
+
     /**
      * 更新边定义
      *
@@ -186,7 +186,7 @@ public class GraphSchemaController {
             return Result.error("更新边定义失败");
         }
     }
-    
+
     /**
      * 删除边定义
      *

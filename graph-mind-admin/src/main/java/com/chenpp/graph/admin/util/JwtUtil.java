@@ -1,5 +1,6 @@
 package com.chenpp.graph.admin.util;
 
+import com.chenpp.graph.admin.constant.Constants;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -18,11 +19,16 @@ import java.util.Map;
  */
 @Component
 public class JwtUtil {
-    // JWT密钥
+    /**
+     * JWT密钥
+     */
+
     private final SecretKey secretKey = Keys.secretKeyFor(SignatureAlgorithm.HS512);
-    
-    // JWT过期时间（毫秒），默认24小时
-    private final long expiration = 24 * 60 * 60 * 1000;
+
+    /**
+     * JWT过期时间（毫秒），默认24小时
+     */
+    private final long expiration = Constants.JWT_EXPIRATION;
 
     /**
      * 生成JWT令牌
@@ -96,12 +102,11 @@ public class JwtUtil {
      * @return JWT令牌
      */
     public String getJwtTokenFromRequest(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
+        String bearerToken = request.getHeader(Constants.AUTHORIZATION_HEADER);
         // 检查Authorization头是否以"Bearer "开头
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
+        if (bearerToken != null && bearerToken.startsWith(Constants.BEARER_PREFIX)) {
+            return bearerToken.substring(Constants.BEARER_PREFIX_LENGTH);
         }
         return null;
     }
 }
-

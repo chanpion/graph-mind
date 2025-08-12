@@ -1,5 +1,6 @@
 package com.chenpp.graph.admin.config;
 
+import com.chenpp.graph.admin.constant.Constants;
 import com.chenpp.graph.admin.model.OperationLog;
 import com.chenpp.graph.admin.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -72,8 +73,8 @@ public class LogInterceptor implements HandlerInterceptor {
     private String extractUsernameFromRequest(HttpServletRequest request) {
         // 首先尝试从JWT token中获取用户名
         String token = jwtUtil.getJwtTokenFromRequest(request);
-        if (token != null && token.startsWith("Bearer ")) {
-            token = token.substring(7);
+        if (token != null && token.startsWith(Constants.BEARER_PREFIX)) {
+            token = token.substring(Constants.BEARER_PREFIX_LENGTH);
 
         }
         try {
@@ -88,7 +89,7 @@ public class LogInterceptor implements HandlerInterceptor {
         }
 
         // 如果以上方式都失败，返回匿名用户
-        return "anonymous";
+        return Constants.ANONYMOUS_USER;
     }
 
     /**

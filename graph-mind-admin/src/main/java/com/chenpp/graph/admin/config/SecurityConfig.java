@@ -1,6 +1,7 @@
 package com.chenpp.graph.admin.config;
 
 import com.chenpp.graph.admin.security.JwtAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -28,6 +29,10 @@ import java.util.Arrays;
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
+
+    @Value("${auth.enable:true}")
+    private Boolean authEnable;
+
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
@@ -63,12 +68,18 @@ public class SecurityConfig {
                 .exceptionHandling(exception -> {
                 })
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(authz -> authz
-                        .requestMatchers("/api/auth/**", "/h2-console", "/h2-console/**").permitAll() // 允许所有用户访问认证接口、允许访问H2控制台
-                        .requestMatchers("/api/**").hasAnyRole("admin")
-                        .anyRequest().authenticated()) // 其他所有请求都需要认证
                 .headers(headers -> headers
-                        .frameOptions(HeadersConfigurer.FrameOptionsConfig::disable)); // 禁用H2控制台的帧选项
+                        .frameOptions(HeadersConfigurer.FrameOptionsConfig::disable));
+
+        if (authEnable) {
+            http.authorizeHttpRequests(authz -> authz
+                    .requestMatchers("/api/auth/**", "/h2-console", "/h2-console/**").permitAll() // 允许所有用户访问认证接口、允许访问H2控制台
+                    .requestMatchers("/api/**").hasAnyRole("admin")
+                    .anyRequest().authenticated());
+        } else {
+            http.authorizeHttpRequests(authz -> authz.anyRequest().permitAll());
+        }
+
 
         // 添加JWT认证过滤器
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

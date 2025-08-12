@@ -10,6 +10,7 @@ import com.chenpp.graph.admin.service.GraphNodeDefService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -100,5 +101,14 @@ public class GraphNodeDefServiceImpl extends ServiceImpl<GraphNodeDefDao, GraphN
         
         // 删除节点定义
         return this.removeById(id);
+    }
+    
+    @Override
+    public boolean importNodeData(Long graphId, Long nodeTypeId, MultipartFile file, String headers, String mapping, String data) {
+        // TODO: 实现节点数据导入逻辑
+        // 这里应该解析CSV文件，根据映射关系将数据导入到图数据库中
+        // 可以使用graphId获取图数据库连接信息
+        // 可以使用nodeTypeId获取节点类型定义信息
+        return true;
     }
 }
