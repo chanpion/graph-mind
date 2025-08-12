@@ -28,6 +28,7 @@ import org.neo4j.driver.types.Node;
 import org.neo4j.driver.types.Path;
 import org.neo4j.driver.types.Relationship;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -104,7 +105,7 @@ public class Neo4jTest {
             List<GraphVertex> vertices = session.executeRead(tx -> tx.run(sql).list(record -> {
                 Node node = record.get(0).asNode();
                 GraphVertex vertex = new GraphVertex();
-                vertex.setId(node.id() + "");
+                vertex.setUid(node.id() + "");
                 vertex.setLabel(node.labels().iterator().next());
                 vertex.setProperties(node.asMap());
                 return vertex;
@@ -139,7 +140,7 @@ public class Neo4jTest {
 
     public GraphVertex convertToVertex(Node node) {
         GraphVertex vertex = new GraphVertex();
-        vertex.setId(node.elementId());
+        vertex.setUid(node.elementId());
         vertex.setLabel(node.labels().iterator().next());
         vertex.setProperties(node.asMap());
         node.elementId();
@@ -150,9 +151,9 @@ public class Neo4jTest {
         GraphEdge edge = new GraphEdge();
         String startId = relationship.startNodeElementId();
         String endId = relationship.endNodeElementId();
-        edge.setId(relationship.elementId());
-        edge.setSource(startId);
-        edge.setTarget(endId);
+        edge.setUid(relationship.elementId());
+        edge.setStartUid(startId);
+        edge.setEndUid(endId);
         edge.setLabel(relationship.type());
         edge.setProperties(relationship.asMap());
         return edge;
@@ -167,10 +168,73 @@ public class Neo4jTest {
 
     @Test
     public void testAddVertex() {
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("name", "同盾科技");
+        properties.put("uid", "C0001");
+        properties.put("create_time",  LocalDateTime.now());
 
+
+        try (Session session = driver.session()) {
+            String cypher = String.format(
+                    "CREATE (n:%s {id: $id}) SET n += $properties RETURN n",
+                    "Company"
+            );
+
+            Map<String, Object> params = new HashMap<>();
+            params.put("properties", properties);
+            params.put("id", properties.get("uid"));
+
+            Record record = session.run(cypher, params).single();
+            GraphVertex vertex = convertNodeToVertex(record.get(0).asNode());
+            System.out.println(vertex);
+        }
+    }
+
+    @Test
+    public void testUpdateVertex() {
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("name", "同盾科技有限公司");
+        properties.put("uid", "C0001");
+        properties.put("create_time",  LocalDateTime.now());
+
+        GraphVertex v = new GraphVertex();
+        v.setLabel("Company");
+        v.setProperties( properties);
+
+
+        try (Session session = driver.session()) {
+            String cypher = String.format(
+                    "MATCH (n:%s {id: $id}) SET n += $properties RETURN n",
+                    v.getLabel()
+            );
+
+            Map<String, Object> params = new HashMap<>();
+            params.put("properties", properties);
+            params.put("id", properties.get("uid"));
+
+            Record record = session.run(cypher, params).single();
+            GraphVertex vertex = convertNodeToVertex(record.get("n").asNode());
+            System.out.println(vertex);
+        }
     }
 
 
+    // 辅助方法：将Neo4j Node转换为GraphVertex
+    private GraphVertex convertNodeToVertex(Node node) {
+        GraphVertex vertex = new GraphVertex();
+        vertex.setUid(node.get("id").asString());
+        vertex.setLabel(node.labels().iterator().next());
+
+        Map<String, Object> properties = new HashMap<>();
+        node.asMap().forEach((key, value) -> {
+            if (!"id".equals(key)) {
+                properties.put(key, value);
+            }
+        });
+        vertex.setProperties(properties);
+
+        return vertex;
+    }
     @Test
     public void testAddEdge() {
         Map<String, Object> props = new HashMap<>();
@@ -198,7 +262,7 @@ public class Neo4jTest {
 
     @Test
     public void testQueryEdge() {
-        String query = "MATCH p=()-[r:friend]->() RETURN p LIMIT 25";
+        String query = "MATCH p=()-[r:ACTED_IN]->() RETURN p LIMIT 1";
         GraphData graphData = new GraphData();
         Set<String> vertexIds = new HashSet<>();
         Set<String> edgeIds = new HashSet<>();
