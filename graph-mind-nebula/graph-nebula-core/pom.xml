@@ -6,11 +6,10 @@
     <parent>
         <groupId>com.chenpp.graph</groupId>
         <artifactId>graph-mind-nebula</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>${reversion}</version>
     </parent>
 
-    <artifactId>graph-nebula-spring-boot-starter</artifactId>
-
+    <artifactId>graph-nebula-core</artifactId>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -21,18 +20,21 @@
     <dependencies>
         <dependency>
             <groupId>com.chenpp.graph</groupId>
-            <artifactId>graph-nebula-client</artifactId>
+            <artifactId>graph-mind-core</artifactId>
             <version>${project.version}</version>
         </dependency>
 
+
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-autoconfigure</artifactId>
+            <groupId>com.vesoft</groupId>
+            <artifactId>client</artifactId>
         </dependency>
+
+
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-configuration-processor</artifactId>
-            <optional>true</optional>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>
