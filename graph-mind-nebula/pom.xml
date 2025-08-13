@@ -10,11 +10,11 @@
     </parent>
 
     <artifactId>graph-mind-nebula</artifactId>
+    <version>${reversion}</version>
     <packaging>pom</packaging>
 
     <modules>
-        <module>graph-nebula-client</module>
-        <module>graph-nebula-spring-boot-starter</module>
+        <module>graph-nebula-core</module>
     </modules>
 
     <properties>
