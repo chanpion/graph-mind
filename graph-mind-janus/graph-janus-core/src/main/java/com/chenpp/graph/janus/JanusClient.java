@@ -65,6 +65,11 @@ public class JanusClient implements GraphClient {
         return new JanusGraphDataOperations(graph);
     }
 
+    @Override
+    public boolean checkConnection() {
+        return false;
+    }
+
     /**
      * 关闭图数据库连接
      */

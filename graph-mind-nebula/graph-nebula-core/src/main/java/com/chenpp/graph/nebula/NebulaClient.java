@@ -25,4 +25,9 @@ public class NebulaClient implements GraphClient {
     public GraphDataOperations opsForGraphData() {
         return new NebulaGraphDataOperations(nebulaConf);
     }
+
+    @Override
+    public boolean checkConnection() {
+        return false;
+    }
 }

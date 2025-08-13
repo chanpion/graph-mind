@@ -20,4 +20,12 @@ public interface GraphClient {
      * @return GraphDataOperations
      */
     GraphDataOperations opsForGraphData();
+
+
+    /**
+     * 检查连接
+     *
+     * @return true:连接正常, false:连接异常
+     */
+    boolean checkConnection();
 }

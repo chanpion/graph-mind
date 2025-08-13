@@ -30,7 +30,7 @@ public class GraphDatabaseConnection {
     private String username;
     private String password;
     /**
-     * 0: disconnected, 1: connected, 2: connecting
+     * 0: 未检测, 1: 通过, 2: 失败
      */
     private Integer status;
     private Integer poolSize;

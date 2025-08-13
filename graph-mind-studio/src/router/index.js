@@ -54,17 +54,49 @@ const router = createRouter({
                 },
                 // 图库管理子模块
                 {
-                    path: 'graph',
-                    name: 'Graph',
-                    component: MainLayout,
-                    meta: { title: '图库管理', closable: true },
-                    children: [
-                        { path: 'connection', name: 'Connection', component: Connection, meta: { title: '图连接管理',closable: true  } },
-                        { path: 'list', name: 'GraphList', component: GraphList, meta: { title: '图管理',closable: true  } },
-                        { path: 'detail/:id', name: 'GraphDetail', component: GraphDetail, meta: { title: '图详情',closable: true  } },
-                        { path: 'visual', name: 'GraphVisual', component: GraphVisual, meta: { title: '图可视化',closable: true  } },
-                        { path: 'process', name: 'DataProcess', component: DataProcess, meta: { title: '图数据',closable: true  } }
-                    ]
+                  path: 'graph',
+                  name: 'Graph',
+                  component: MainLayout,
+                  meta: { title: '图库管理', icon: 'Histogram' , closable: true},
+                  children: [
+                    {
+                      path: 'list',
+                      name: 'GraphList',
+                      component: () => import('@/views/graph/GraphList.vue'),
+                      meta: { title: '图列表', icon: 'List' }
+                    },
+                    {
+                      path: 'detail/:id',
+                      name: 'GraphDetail',
+                      component: () => import('@/views/graph/GraphDetail.vue'),
+                      meta: { title: '图详情', icon: 'Document' },
+                      props: true
+                    },
+                    {
+                      path: 'connection',
+                      name: 'Connection',
+                      component: () => import('@/views/graph/Connection.vue'),
+                      meta: { title: '连接管理', icon: 'Connection' }
+                    },
+                    {
+                      path: 'process',
+                      name: 'DataProcess',
+                      component: () => import('@/views/graph/DataProcess.vue'),
+                      meta: { title: '数据处理', icon: 'DataLine' }
+                    },
+                    {
+                      path: 'visual',
+                      name: 'GraphVisual',
+                      component: () => import('@/views/graph/GraphVisual.vue'),
+                      meta: { title: '图可视化', icon: 'View' }
+                    },
+                    {
+                      path: 'analysis',
+                      name: 'GraphAnalysis',
+                      component: () => import('@/views/graph/GraphAnalysis.vue'),
+                      meta: { title: '图分析', icon: 'DataAnalysis' }
+                    }
+                  ]
                 }
             ]
         }

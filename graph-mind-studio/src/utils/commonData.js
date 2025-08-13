@@ -28,7 +28,8 @@ export const menuData = {
                 { id: 200001, authName: "图连接管理", path: "/home/graph/connection", icon: "Connection", children: [] },
                 { id: 200002, authName: "图管理", path: "/home/graph/list", icon: "Promotion", children: [] },
                 { id: 200003, authName: "图可视化", path: "/home/graph/visual", icon: "DataAnalysis", children: [] },
-                { id: 200004, authName: "图数据", path: "/home/graph/process", icon: "Upload", children: [] }
+                { id: 200004, authName: "图数据", path: "/home/graph/process", icon: "Upload", children: [] },
+                { id: 200005, authName: "图分析", path: "/home/graph/analysis", icon: "DataAnalysis", children: [] }
             ]
         }
     ],

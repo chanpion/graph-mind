@@ -51,7 +51,7 @@
         v-loading="loading"
         stripe
       >
-        <el-table-column prop="name" label="连接名称" min-width="150">
+        <el-table-column prop="name" label="连接名称" min-width="120">
           <template #default="{ row }">
             <div class="connection-name">
               <el-icon :color="getStatusColor(row.status)">
@@ -89,8 +89,8 @@
         <el-table-column label="操作" width="150" fixed="right" align="center">
           <template #default="{ row }">
             <el-button
-              type="info"
-              :icon="Refresh"
+              type="success"
+              :icon="Connection"
               size="small"
               circle
               @click="handleTest(row)"
@@ -253,7 +253,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Search, Plus, Refresh, CircleCheck, CircleClose, Loading, Edit, Delete
+  Search, Plus, Refresh, CircleCheck, CircleClose, Loading, Edit, Delete, Connection
 } from '@element-plus/icons-vue'
 import connectionApi from '@/api/connection'
 
@@ -364,18 +364,18 @@ const getStatusColor = (status) => {
 
 const getStatusTagType = (status) => {
   const types = {
-    1: 'success',  // connected
-    0: 'danger',   // disconnected
-    2: 'warning'   // connecting
+    0: 'warning',
+    1: 'success',
+    2: 'danger'
   }
   return types[status] || 'info'
 }
 
 const getStatusLabel = (status) => {
   const labels = {
-    1: '已连接',
-    0: '未连接',
-    2: '连接中'
+    1: '通过',
+    0: '未检测',
+    2: '失败'
   }
   return labels[status] || '未知'
 }
@@ -508,11 +508,15 @@ const handleDisconnect = async (row) => {
 const handleTest = async (row) => {
   try {
     const response = await connectionApi.testConnection(row.id)
-    testResult.value = response.data
-    testDialogVisible.value = true
+    if (response.code === 200){
+      ElMessage.success("连接成功")
+    }else {
+      ElMessage.error('连接失败')
+    }
+    // testResult.value = response.data
+    // testDialogVisible.value = true
   } catch (error) {
-    console.error('测试连接失败:', error)
-    ElMessage.error('测试连接失败')
+    ElMessage.error('连接失败')
   }
 }
 
