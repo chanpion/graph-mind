@@ -20,7 +20,7 @@ public class Neo4jClient implements GraphClient {
 
     @Override
     public GraphOperations opsForGraph() {
-        return null;
+        return new Neo4jGraphOperations(neo4jConf, driver);
     }
 
     @Override

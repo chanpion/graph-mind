@@ -23,7 +23,8 @@ public class Neo4jGraphOperations implements GraphOperations {
     private Neo4jConf neo4jConf;
     private Driver driver;
 
-    public Neo4jGraphOperations(Driver driver) {
+    public Neo4jGraphOperations(Neo4jConf neo4jConf, Driver driver) {
+        this.neo4jConf = neo4jConf;
         this.driver = driver;
     }
 
