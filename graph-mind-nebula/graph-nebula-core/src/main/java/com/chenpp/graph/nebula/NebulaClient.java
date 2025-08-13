@@ -3,6 +3,7 @@ package com.chenpp.graph.nebula;
 import com.chenpp.graph.core.GraphClient;
 import com.chenpp.graph.core.GraphDataOperations;
 import com.chenpp.graph.core.GraphOperations;
+import com.vesoft.nebula.client.graph.net.NebulaPool;
 
 /**
  * @author April.Chen
@@ -28,6 +29,7 @@ public class NebulaClient implements GraphClient {
 
     @Override
     public boolean checkConnection() {
-        return false;
+        NebulaPool nebulaPool = NebulaClientFactory.getNebulaPool(nebulaConf);
+        return nebulaPool != null;
     }
 }

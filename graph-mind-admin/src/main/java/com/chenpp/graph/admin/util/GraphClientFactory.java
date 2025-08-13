@@ -9,6 +9,7 @@ import com.chenpp.graph.nebula.NebulaClient;
 import com.chenpp.graph.nebula.NebulaConf;
 import com.chenpp.graph.neo4j.Neo4jClient;
 import com.chenpp.graph.neo4j.Neo4jConf;
+import org.apache.commons.lang3.math.NumberUtils;
 
 /**
  * 图客户端工厂类，用于根据数据库类型动态创建对应的图客户端实例
@@ -36,6 +37,8 @@ public class GraphClientFactory {
             case "nebula":
                 NebulaConf nebulaConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), NebulaConf.class);
                 nebulaConf.setGraphCode(graphConf.getGraphCode());
+                nebulaConf.setHosts(graphConf.getParams().get("host").toString());
+                nebulaConf.setPort(NumberUtils.toInt(graphConf.getParams().getOrDefault("port", "").toString()));
                 return new NebulaClient(nebulaConf);
             case "janus":
                 // TODO: 实现JanusGraph客户端

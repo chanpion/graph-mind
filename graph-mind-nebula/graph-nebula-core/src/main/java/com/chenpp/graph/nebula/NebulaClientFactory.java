@@ -50,14 +50,15 @@ public class NebulaClientFactory {
         List<HostAddress> addresses = Arrays.stream(nebulaConf.getHosts().split(","))
                 .map(ip -> new HostAddress(ip, nebulaConf.getPort())).collect(Collectors.toList());
         NebulaPool pool = new NebulaPool();
-
         try {
             boolean initResult = pool.init(addresses, nebulaPoolConfig);
             if (!initResult) {
                 log.error("pool init failed.");
+                pool = null;
             }
         } catch (Exception e) {
             log.error("init nebula session error", e);
+            pool = null;
         }
         return pool;
     }
