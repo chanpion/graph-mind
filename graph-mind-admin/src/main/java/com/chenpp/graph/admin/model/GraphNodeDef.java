@@ -58,29 +58,4 @@ public class GraphNodeDef {
      * 节点属性列表
      */
     private List<GraphPropertyDef> properties;
-    
-    /**
-     * 获取包含默认uid属性的属性列表
-     * @return 属性列表
-     */
-    public List<GraphPropertyDef> getPropertiesWithUid() {
-        if (properties != null) {
-            // 检查是否已存在uid属性
-            boolean hasUid = properties.stream()
-                    .anyMatch(prop -> "uid".equals(prop.getCode()));
-            
-            // 如果不存在uid属性，则添加默认的uid属性
-            if (!hasUid) {
-                GraphPropertyDef uidProperty = new GraphPropertyDef();
-                uidProperty.setCode("uid");
-                uidProperty.setName("唯一标识");
-                uidProperty.setType("string");
-                uidProperty.setDesc("节点唯一标识符");
-                uidProperty.setStatus(1);
-                uidProperty.setPropertyType("node");
-                properties.add(0, uidProperty); // 将uid属性放在第一位
-            }
-        }
-        return properties;
-    }
 }

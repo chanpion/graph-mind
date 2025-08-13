@@ -1,7 +1,5 @@
 package com.chenpp.graph.admin.service.impl;
 
-import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONObject;
 import com.chenpp.graph.admin.model.Graph;
 import com.chenpp.graph.admin.model.GraphDatabaseConnection;
 import com.chenpp.graph.admin.model.GraphEdgeDef;
@@ -16,8 +14,8 @@ import com.chenpp.graph.core.GraphClient;
 import com.chenpp.graph.core.GraphDataOperations;
 import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphVertex;
-import com.chenpp.graph.neo4j.Neo4jClient;
-import com.chenpp.graph.neo4j.Neo4jConf;
+import com.chenpp.graph.admin.util.GraphClientFactory;
+import com.chenpp.graph.core.model.GraphConf;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -83,14 +81,6 @@ public class GraphDataServiceImpl implements GraphDataService {
                 return result;
             }
 
-            // 检查是否为Neo4j数据库
-            if (!"neo4j".equalsIgnoreCase(connection.getType())) {
-                log.error("暂不支持的数据库类型: {}", connection.getType());
-                errorMessages.add("暂不支持的数据库类型: " + connection.getType());
-                result.setErrorMessages(errorMessages.toArray(new String[0]));
-                return result;
-            }
-
             // 获取节点定义信息
             GraphNodeDef nodeDef = nodeDefService.getById(nodeTypeId);
             if (nodeDef == null) {
@@ -102,7 +92,8 @@ public class GraphDataServiceImpl implements GraphDataService {
 
             // 解析映射关系
             ObjectMapper objectMapper = new ObjectMapper();
-            JSONObject mappingMap = JSON.parseObject(mapping);
+            Map<String, String> mappingMap = objectMapper.readValue(mapping, new TypeReference<Map<String, String>>() {
+            });
 
             // 逐行解析CSV文件
             List<Map<String, String>> dataList = parseCsvFile(file);
@@ -110,51 +101,40 @@ public class GraphDataServiceImpl implements GraphDataService {
             // 更新导入结果统计
             result.setTotalCount(dataList.size());
 
-            GraphDataOperations graphDataOperations = setupNeo4jClient(connection, graph);
+            // 构建图配置信息
+            GraphConf graphConf =  GraphClientFactory.createGraphConf(connection, graph);
+
+            // 创建图客户端
+            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+            GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
 
             // 批量导入节点数据
-            List<GraphVertex> vertices = new ArrayList<>();
             int successCount = 0;
             int failureCount = 0;
 
-            for (Map<String, String> rowData : dataList) {
+            for (Map<String, String> dataRow : dataList) {
                 try {
                     GraphVertex vertex = new GraphVertex();
                     vertex.setLabel(nodeDef.getLabel());
-                    // 设置属性
-                    Map<String, Object> properties = new HashMap<>(mappingMap.size());
-                    mappingMap.forEach((prop, csvColumn) -> {
-                        String value = rowData.get(csvColumn);
-                        // 如果映射到uid，则设置为节点的uid
-                        if ("uid".equals(prop)) {
-                            // 从数据中获取唯一标识符，如果没有则生成
-                            if (StringUtils.isBlank(value)) {
-                                value = java.util.UUID.randomUUID().toString();
-                            }
-                            vertex.setUid(value);
-                        } else {
-                            properties.put(prop, value);
+
+                    // 设置节点属性
+                    Map<String, Object> properties = new HashMap<>();
+                    for (Map.Entry<String, String> entry : mappingMap.entrySet()) {
+                        String header = entry.getKey();
+                        String propertyName = entry.getValue();
+                        if (StringUtils.isNotBlank(propertyName) && dataRow.containsKey(header)) {
+                            properties.put(propertyName, dataRow.get(header));
                         }
-                    });
-                    properties.put("uid", vertex.getUid());
+                    }
                     vertex.setProperties(properties);
-                    vertices.add(vertex);
+
+                    // 添加节点
+                    graphDataOperations.addVertex(vertex);
                     successCount++;
                 } catch (Exception e) {
+                    log.error("导入节点数据失败: {}", e.getMessage(), e);
                     failureCount++;
-                    errorMessages.add("处理行数据失败: " + e.getMessage());
-                    log.error("处理行数据失败", e);
                 }
-            }
-
-            // 批量添加节点
-            try {
-                graphDataOperations.addVertices(vertices);
-            } catch (Exception e) {
-                log.error("批量添加节点失败", e);
-                errorMessages.add("批量添加节点失败: " + e.getMessage());
-                failureCount = vertices.size();
-                successCount = 0;
             }
 
             result.setSuccessCount(successCount);
@@ -163,83 +143,44 @@ public class GraphDataServiceImpl implements GraphDataService {
 
             log.info("导入节点数据完成，总数={}，成功={}，失败={}", dataList.size(), successCount, failureCount);
         } catch (Exception e) {
-            handleError(result, errorMessages, "导入节点数据失败", e);
+            log.error("导入节点数据失败", e);
+            errorMessages.add("导入节点数据失败: " + e.getMessage());
+            result.setErrorMessages(errorMessages.toArray(new String[0]));
         }
 
         return result;
     }
 
-    /**
-     * 设置Neo4j客户端
-     *
-     * @param connection 图数据库连接信息
-     * @param graph      图信息
-     * @return GraphDataOperations
-     */
-    private GraphDataOperations setupNeo4jClient(GraphDatabaseConnection connection, Graph graph) {
-        Neo4jConf neo4jConf = new Neo4jConf();
-        neo4jConf.setUri(String.format("neo4j://%s:%d", connection.getHost(), connection.getPort()));
-        neo4jConf.setUsername(connection.getUsername());
-        neo4jConf.setPassword(connection.getPassword());
-        neo4jConf.setGraphCode(graph.getCode());
-
-        GraphClient graphClient = new Neo4jClient(neo4jConf);
-        return graphClient.opsForGraphData();
-    }
 
     /**
-     * 逐行解析CSV文件
+     * 解析CSV文件
      *
      * @param file CSV文件
      * @return 解析后的数据列表
+     * @throws Exception 解析异常
      */
     private List<Map<String, String>> parseCsvFile(MultipartFile file) throws Exception {
         List<Map<String, String>> dataList = new ArrayList<>();
-
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
-            // 读取表头
             String headerLine = reader.readLine();
             if (headerLine == null) {
                 throw new IllegalArgumentException("CSV文件为空");
             }
 
             String[] headers = headerLine.split(",");
-            // 清理表头字段（去除空格和引号）
-            for (int i = 0; i < headers.length; i++) {
-                headers[i] = headers[i].trim().replaceAll("^\"|\"$", "");
-            }
-
-            // 逐行读取数据
             String line;
             while ((line = reader.readLine()) != null) {
                 String[] values = line.split(",");
-                Map<String, String> rowData = new HashMap<>();
-
-                for (int i = 0; i < headers.length && i < values.length; i++) {
-                    String value = values[i].trim().replaceAll("^\"|\"$", "");
-                    rowData.put(headers[i], value);
+                Map<String, String> dataMap = new HashMap<>();
+                for (int i = 0; i < Math.min(headers.length, values.length); i++) {
+                    dataMap.put(headers[i].trim(), values[i].trim());
                 }
-
-                dataList.add(rowData);
+                dataList.add(dataMap);
             }
         }
-
         return dataList;
     }
 
-    /**
-     * 处理错误
-     *
-     * @param result        导入结果
-     * @param errorMessages 错误消息列表
-     * @param message       错误消息
-     * @param e             异常
-     */
-    private void handleError(ImportResult result, List<String> errorMessages, String message, Exception e) {
-        log.error(message, e);
-        errorMessages.add(message + ": " + e.getMessage());
-        result.setErrorMessages(errorMessages.toArray(new String[0]));
-    }
 
     @Override
     public ImportResult importEdgeData(Long graphId, Long edgeTypeId, MultipartFile file, String headers, String mapping, String data) {
@@ -278,86 +219,51 @@ public class GraphDataServiceImpl implements GraphDataService {
                 return result;
             }
 
-            // 解析映射关系
+            // 解析映射关系和数据
             ObjectMapper objectMapper = new ObjectMapper();
-            JSONObject mappingMap = JSON.parseObject(mapping);
-
-            // 逐行解析CSV文件
-            List<Map<String, String>> dataList = parseCsvFile(file);
+            Map<String, String> mappingMap = objectMapper.readValue(mapping, new TypeReference<Map<String, String>>() {});
+            List<Map<String, String>> dataList = objectMapper.readValue(data, new TypeReference<List<Map<String, String>>>() {});
 
             // 更新导入结果统计
             result.setTotalCount(dataList.size());
 
-            // 构建Neo4j客户端
-            Neo4jConf neo4jConf = new Neo4jConf();
-            neo4jConf.setUri(String.format("neo4j://%s:%d", connection.getHost(), connection.getPort()));
-            neo4jConf.setUsername(connection.getUsername());
-            neo4jConf.setPassword(connection.getPassword());
-            neo4jConf.setGraphCode(graph.getCode());
+            // 构建图配置信息
+            GraphConf graphConf =  GraphClientFactory.createGraphConf(connection, graph);
 
-            GraphClient graphClient = new Neo4jClient(neo4jConf);
+            // 创建图客户端
+            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
             GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
 
-            // 更新导入结果统计
-            result.setTotalCount(dataList.size());
-
             // 批量导入边数据
-            List<GraphEdge> edges = new ArrayList<>();
             int successCount = 0;
             int failureCount = 0;
 
-            for (Map<String, String> rowData : dataList) {
+            for (Map<String, String> dataRow : dataList) {
                 try {
                     GraphEdge edge = new GraphEdge();
                     edge.setLabel(edgeDef.getLabel());
-                    // 设置属性
-                    Map<String, Object> properties = new HashMap<>(mappingMap.size());
-                    mappingMap.forEach((prop, csvColumn) -> {
-                        String value = rowData.get(csvColumn);
-                        // 如果映射到uid，则设置为边的uid
-                        if ("uid".equals(prop)) {
-                            // 从数据中获取唯一标识符，如果没有则生成
-                            if (StringUtils.isBlank(value)) {
-                                value = java.util.UUID.randomUUID().toString();
-                            }
-                            edge.setUid(value);
-                        } else if ("source".equals(prop)) {
-                            edge.setStartUid(value);
-                        } else if ("sourceLabel".equals(prop)) {
-                            edge.setStartLabel(value);
-                        } else if ("target".equals(prop)) {
-                            edge.setEndUid(value);
-                        } else if ("targetLabel".equals(prop)) {
-                            edge.setEndLabel(value);
-                        } else {
-                            properties.put(prop, value);
+                    edge.setStartLabel(edgeDef.getFrom());
+                    edge.setEndLabel(edgeDef.getTo());
+
+                    // 设置边属性
+                    Map<String, Object> properties = new HashMap<>();
+                    for (Map.Entry<String, String> entry : mappingMap.entrySet()) {
+                        String header = entry.getKey();
+                        String propertyName = entry.getValue();
+                        if (StringUtils.isNotBlank(propertyName) && dataRow.containsKey(header) && 
+                            !"from".equals(header) && !"to".equals(header)) {
+                            properties.put(propertyName, dataRow.get(header));
                         }
-                    });
-                    if (StringUtils.isNoneBlank(edge.getStartUid(), edge.getEndUid())) {
-                        properties.put("uid", edge.getUid());
-                        edge.setProperties(properties);
-                        edges.add(edge);
-                        successCount++;
-                    } else {
-                        failureCount++;
-                        errorMessages.add("处理行数据失败: 缺少起点或终点信息");
                     }
+                    edge.setProperties(properties);
 
+                    // 添加边
+                    graphDataOperations.addEdge(edge);
+                    successCount++;
                 } catch (Exception e) {
+                    log.error("导入边数据失败: {}", e.getMessage(), e);
                     failureCount++;
-                    errorMessages.add("处理行数据失败: " + e.getMessage());
-                    log.error("处理行数据失败", e);
                 }
-            }
-
-            // 批量添加边
-            try {
-                graphDataOperations.addEdges(edges);
-            } catch (Exception e) {
-                log.error("批量添加边失败", e);
-                errorMessages.add("批量添加边失败: " + e.getMessage());
-                failureCount = edges.size();
-                successCount = 0;
             }
 
             result.setSuccessCount(successCount);
@@ -366,7 +272,9 @@ public class GraphDataServiceImpl implements GraphDataService {
 
             log.info("导入边数据完成，总数={}，成功={}，失败={}", dataList.size(), successCount, failureCount);
         } catch (Exception e) {
-            handleError(result, errorMessages, "导入边数据失败", e);
+            log.error("导入边数据失败", e);
+            errorMessages.add("导入边数据失败: " + e.getMessage());
+            result.setErrorMessages(errorMessages.toArray(new String[0]));
         }
 
         return result;

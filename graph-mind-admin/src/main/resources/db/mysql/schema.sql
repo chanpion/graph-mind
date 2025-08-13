@@ -116,6 +116,7 @@ CREATE TABLE `graph` (
   `description` text COMMENT '图描述',
   `status` int DEFAULT '1' COMMENT '状态（0: 禁用, 1: 启用）',
   `connection_id` bigint NOT NULL COMMENT '关联的图数据库连接ID',
+  `creator` varchar(255) DEFAULT NULL COMMENT '创建人',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),

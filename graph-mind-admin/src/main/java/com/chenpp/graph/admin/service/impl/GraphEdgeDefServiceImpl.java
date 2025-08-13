@@ -3,7 +3,7 @@ package com.chenpp.graph.admin.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.chenpp.graph.admin.mapper.GraphEdgeDefDao;
-import com.chenpp.graph.admin.mapper.GraphPropertyDao;
+import com.chenpp.graph.admin.mapper.GraphPropertyDefDao;
 import com.chenpp.graph.admin.model.GraphEdgeDef;
 import com.chenpp.graph.admin.model.GraphPropertyDef;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
@@ -24,7 +24,7 @@ import java.util.List;
 public class GraphEdgeDefServiceImpl extends ServiceImpl<GraphEdgeDefDao, GraphEdgeDef> implements GraphEdgeDefService {
     
     @Autowired
-    private GraphPropertyDao propertyDao;
+    private GraphPropertyDefDao propertyDao;
     
     @Override
     public List<GraphEdgeDef> getEdgeDefsByGraphId(Long graphId) {

@@ -30,3 +30,5 @@ dependency-reduced-pom.xml
 # 日志文件
 *.log
 logs/
+*/target/generated-sources
+**/target/maven-status

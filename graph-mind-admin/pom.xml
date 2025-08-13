@@ -120,6 +120,12 @@
             <artifactId>graph-neo4j-core</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- Nebula依赖 -->
+        <dependency>
+            <groupId>com.chenpp.graph</groupId>
+            <artifactId>graph-nebula-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

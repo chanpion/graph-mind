@@ -28,6 +28,8 @@ public class LoginResponse implements Serializable {
      */
     private Long expiresIn;
 
+    private String username;
+
     public LoginResponse(String token, Long expiresIn) {
         this.token = token;
         this.expiresIn = expiresIn;

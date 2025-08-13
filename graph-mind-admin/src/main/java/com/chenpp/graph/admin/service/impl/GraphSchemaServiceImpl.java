@@ -1,8 +1,31 @@
 package com.chenpp.graph.admin.service.impl;
 
+import com.chenpp.graph.admin.model.Graph;
+import com.chenpp.graph.admin.model.GraphDatabaseConnection;
+import com.chenpp.graph.admin.model.GraphEdgeDef;
+import com.chenpp.graph.admin.model.GraphNodeDef;
+import com.chenpp.graph.admin.model.GraphPropertyDef;
+import com.chenpp.graph.admin.service.GraphDatabaseConnectionService;
+import com.chenpp.graph.admin.service.GraphEdgeDefService;
+import com.chenpp.graph.admin.service.GraphNodeDefService;
 import com.chenpp.graph.admin.service.GraphSchemaService;
+import com.chenpp.graph.admin.service.GraphService;
+import com.chenpp.graph.core.GraphClient;
+import com.chenpp.graph.admin.util.GraphClientFactory;
+import com.chenpp.graph.core.GraphOperations;
+import com.chenpp.graph.core.model.GraphConf;
+import com.chenpp.graph.core.schema.DataType;
+import com.chenpp.graph.core.schema.GraphEntity;
+import com.chenpp.graph.core.schema.GraphProperty;
+import com.chenpp.graph.core.schema.GraphRelation;
+import com.chenpp.graph.core.schema.GraphSchema;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
 
 /**
  * @author April.Chen
@@ -12,9 +35,87 @@ import org.springframework.stereotype.Service;
 @Service
 public class GraphSchemaServiceImpl implements GraphSchemaService {
 
+    @Resource
+    private GraphService graphService;
+
+    @Resource
+    private GraphDatabaseConnectionService connectionService;
+
+    @Resource
+    private GraphNodeDefService graphNodeDefService;
+
+    @Resource
+    private GraphEdgeDefService graphEdgeDefService;
+
     @Override
     public void publishSchema(Long graphId) {
         log.info("发布图Schema: {}", graphId);
         //todo
+        try {
+
+
+            // 获取图信息
+            Graph graph = graphService.getById(graphId);
+            if (graph == null) {
+                log.error("图不存在，graphId={}", graphId);
+                return;
+            }
+            // 获取图数据库连接信息
+            GraphDatabaseConnection connection = connectionService.getById(graph.getConnectionId());
+            if (connection == null) {
+                log.error("图数据库连接不存在，connectionId={}", graph.getConnectionId());
+                return;
+            }
+            List<GraphNodeDef> nodes = graphNodeDefService.getNodeDefsByGraphId(graphId);
+            List<GraphEdgeDef> edges = graphEdgeDefService.getEdgeDefsByGraphId(graphId);
+
+            // 构建图配置信息
+            GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
+
+            // 创建图客户端
+            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+            GraphOperations graphOperations = graphClient.opsForGraph();
+
+
+            // 构建图模式
+            GraphSchema graphSchema = new GraphSchema();
+            graphSchema.setGraphCode(graph.getCode());
+
+            List<GraphEntity> entities = nodes.stream().map(node -> {
+                GraphEntity entity = new GraphEntity();
+                entity.setLabel(node.getLabel());
+                entity.setProperties(transformGraphProperty(node.getProperties()));
+                return entity;
+            }).toList();
+
+            List<GraphRelation> relations = edges.stream().map(edge -> {
+                GraphRelation relation = new GraphRelation();
+                relation.setLabel(edge.getLabel());
+                relation.setSourceLabel(edge.getFrom());
+                relation.setTargetLabel(edge.getTo());
+                relation.setProperties(transformGraphProperty(edge.getProperties()));
+                return relation;
+            }).toList();
+            graphSchema.setEntities(entities);
+            graphSchema.setRelations(relations);
+
+            // 应用图模式
+            graphOperations.applySchema(graphConf, graphSchema);
+
+            // 更新节点定义状态为已发布
+
+        } catch (Exception e) {
+            log.error("发布图Schema失败", e);
+        }
+    }
+
+    public List<GraphProperty> transformGraphProperty(List<GraphPropertyDef> properties) {
+        return properties.stream().map(prop -> {
+            GraphProperty property = new GraphProperty();
+            property.setName(prop.getName());
+            property.setCode(prop.getCode());
+            property.setDataType(DataType.instanceOf(prop.getType()));
+            return property;
+        }).collect(Collectors.toList());
     }
 }

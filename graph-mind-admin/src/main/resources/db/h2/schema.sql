@@ -113,16 +113,18 @@ CREATE TABLE graph_database_connection (
 -- ----------------------------
 -- Table structure for graph
 -- ----------------------------
-DROP TABLE IF EXISTS graph;
-CREATE TABLE graph (
-  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '图ID',
-  name VARCHAR(255) NOT NULL COMMENT '图名称',
-  code VARCHAR(100) NOT NULL COMMENT '图编码',
-  description TEXT COMMENT '图描述',
-  status INT DEFAULT 1 COMMENT '状态（0: 禁用, 1: 启用）',
-  connection_id BIGINT NOT NULL COMMENT '关联的图数据库连接ID',
-  create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  update_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (id),
-  CONSTRAINT uniq_code UNIQUE (code)
-);
+DROP TABLE IF EXISTS `graph`;
+CREATE TABLE `graph` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '图ID',
+  `name` varchar(255) NOT NULL COMMENT '图名称',
+  `code` varchar(100) NOT NULL COMMENT '图编码',
+  `description` text COMMENT '图描述',
+  `status` int DEFAULT '1' COMMENT '状态（0: 禁用, 1: 启用）',
+  `connection_id` bigint NOT NULL COMMENT '关联的图数据库连接ID',
+  `creator` varchar(255) DEFAULT NULL COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_code` (`code`) USING BTREE,
+  KEY `idx_connection_id` (`connection_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='图信息表';

@@ -60,6 +60,7 @@ public class AuthController {
 
             // 创建登录响应
             LoginResponse loginResponse = new LoginResponse(token, 24 * 60 * 60 * 1000L);
+            loginResponse.setUsername(loginRequest.getUsername());
 
             return ResponseEntity.ok(Result.success(loginResponse));
         } catch (Exception e) {

@@ -15,6 +15,7 @@
         <module>graph-mind-core</module>
         <module>graph-mind-nebula</module>
         <module>graph-mind-neo4j</module>
+        <module>graph-mind-janus</module>
         <module>graph-mind-admin</module>
     </modules>
 

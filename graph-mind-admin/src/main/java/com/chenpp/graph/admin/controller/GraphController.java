@@ -6,6 +6,8 @@ import com.chenpp.graph.admin.model.Result;
 import com.chenpp.graph.admin.service.GraphService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -78,9 +80,14 @@ public class GraphController {
      */
     @PostMapping
     public Result<Long> createGraph(@RequestBody Graph graph) {
+        // 获取当前登录用户
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String creator = authentication != null ? authentication.getName() : "unknown";
+
+        graph.setCreator(creator);
         graph.setCreateTime(LocalDateTime.now());
         graph.setUpdateTime(LocalDateTime.now());
-        graph.setStatus(1);
+        graph.setStatus(0);
         graphService.save(graph);
         return Result.success(graph.getId());
     }

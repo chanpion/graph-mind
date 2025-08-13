@@ -19,23 +19,28 @@ public class Graph {
 
     @TableId(type = IdType.AUTO)
     private Long id;
-    
+
     private String name;
     private String code;
     private String description;
-    
+
     /**
      * 状态
-     * 0: 禁用
-     * 1: 启用
+     * 0: 未发布
+     * 1: 已发布
      */
     private Integer status;
-    
+
     /**
      * 关联的图数据库连接ID
      */
     private Long connectionId;
-    
+
+    /**
+     * 创建人
+     */
+    private String creator;
+
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

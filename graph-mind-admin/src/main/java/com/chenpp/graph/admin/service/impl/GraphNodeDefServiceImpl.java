@@ -3,11 +3,10 @@ package com.chenpp.graph.admin.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.chenpp.graph.admin.mapper.GraphNodeDefDao;
-import com.chenpp.graph.admin.mapper.GraphPropertyDao;
 import com.chenpp.graph.admin.model.GraphNodeDef;
 import com.chenpp.graph.admin.model.GraphPropertyDef;
 import com.chenpp.graph.admin.service.GraphNodeDefService;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,8 +22,9 @@ import java.util.List;
 @Service
 public class GraphNodeDefServiceImpl extends ServiceImpl<GraphNodeDefDao, GraphNodeDef> implements GraphNodeDefService {
 
-    @Autowired
-    private GraphPropertyDao propertyDao;
+
+    @Resource
+    private GraphPropertyDefServiceImpl graphPropertyDefService;
 
     @Override
     public List<GraphNodeDef> getNodeDefsByGraphId(Long graphId) {
@@ -37,7 +37,7 @@ public class GraphNodeDefServiceImpl extends ServiceImpl<GraphNodeDefDao, GraphN
             QueryWrapper<GraphPropertyDef> propertyQueryWrapper = new QueryWrapper<>();
             propertyQueryWrapper.eq("entity_id", nodeDef.getId());
             propertyQueryWrapper.eq("property_type", "node");
-            nodeDef.setProperties(propertyDao.selectList(propertyQueryWrapper));
+            nodeDef.setProperties(graphPropertyDefService.list(propertyQueryWrapper));
         }
 
         return nodeDefs;
@@ -58,7 +58,7 @@ public class GraphNodeDefServiceImpl extends ServiceImpl<GraphNodeDefDao, GraphN
             for (GraphPropertyDef property : nodeDef.getProperties()) {
                 property.setEntityId(nodeDef.getId());
                 property.setPropertyType("node");
-                propertyDao.insert(property);
+                graphPropertyDefService.saveOrUpdate(property);
             }
         }
 
@@ -79,14 +79,14 @@ public class GraphNodeDefServiceImpl extends ServiceImpl<GraphNodeDefDao, GraphN
             QueryWrapper<GraphPropertyDef> deleteWrapper = new QueryWrapper<>();
             deleteWrapper.eq("entity_id", nodeDef.getId());
             deleteWrapper.eq("property_type", "node");
-            propertyDao.delete(deleteWrapper);
+            graphPropertyDefService.remove(deleteWrapper);
 
             // 重新保存节点属性
             if (nodeDef.getProperties() != null) {
                 for (GraphPropertyDef property : nodeDef.getProperties()) {
                     property.setEntityId(nodeDef.getId());
                     property.setPropertyType("node");
-                    propertyDao.insert(property);
+                    graphPropertyDefService.saveOrUpdate(property);
                 }
             }
         }
@@ -101,7 +101,7 @@ public class GraphNodeDefServiceImpl extends ServiceImpl<GraphNodeDefDao, GraphN
         QueryWrapper<GraphPropertyDef> deleteWrapper = new QueryWrapper<>();
         deleteWrapper.eq("entity_id", id);
         deleteWrapper.eq("property_type", "node");
-        propertyDao.delete(deleteWrapper);
+        graphPropertyDefService.remove(deleteWrapper);
 
         // 删除节点定义
         return this.removeById(id);
