@@ -15,12 +15,12 @@ public class GraphRelation {
     /**
      * 关系标识
      */
-    private String name;
+    private String label;
 
     /**
      * 属性列表
      */
-    private List<GraphProperty> props;
+    private List<GraphProperty> properties;
 
     /**
      * 是否已发布

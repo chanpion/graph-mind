@@ -56,4 +56,13 @@ public enum DataType {
      * 数组
      */
     Array;
+
+    public static DataType instanceOf(String type) {
+        for (DataType value : values()) {
+            if (value.name().equalsIgnoreCase(type)) {
+                return value;
+            }
+        }
+        return null;
+    }
 }
