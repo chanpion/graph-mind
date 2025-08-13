@@ -166,6 +166,7 @@ const graphApis = {
       'description': '@csentence(10, 30)',
       'status|0-1': 1,
       'connectionId|1-3': 1,
+      'creator': '@cname',
       'createTime': '@datetime',
       'updateTime': '@datetime'
     }

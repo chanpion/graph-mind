@@ -86,29 +86,32 @@
           </template>
         </el-table-column>
         
-        <el-table-column label="操作" width="220" fixed="right">
+        <el-table-column label="操作" width="150" fixed="right" align="center">
           <template #default="{ row }">
             <el-button
               type="info"
+              :icon="Refresh"
               size="small"
+              circle
               @click="handleTest(row)"
-            >
-              测试
-            </el-button>
+              title="测试"
+            />
             <el-button
               type="primary"
+              :icon="Edit"
               size="small"
+              circle
               @click="handleEdit(row)"
-            >
-              编辑
-            </el-button>
+              title="编辑"
+            />
             <el-button
               type="danger"
+              :icon="Delete"
               size="small"
+              circle
               @click="handleDelete(row)"
-            >
-              删除
-            </el-button>
+              title="删除"
+            />
           </template>
         </el-table-column>
       </el-table>
@@ -250,7 +253,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Search, Plus, Refresh, CircleCheck, CircleClose, Loading
+  Search, Plus, Refresh, CircleCheck, CircleClose, Loading, Edit, Delete
 } from '@element-plus/icons-vue'
 import connectionApi from '@/api/connection'
 

@@ -69,13 +69,19 @@
                   </div>
                   
                   <div class="info-item">
+                    <span class="info-label">创建人:</span>
+                    <span class="info-value">{{ graph.creator }}</span>
+                  </div>
+                  
+                  <div class="info-item">
                     <span class="info-label">创建时间:</span>
                     <span class="info-value">{{ graph.createTime }}</span>
                   </div>
                   
-                  <div class="info-item description-item">
+                  <div class="info-item">
                     <span class="info-label">描述:</span>
-                    <span class="info-value description-text">{{ graph.description || '暂无描述' }}</span>
+<!--                    <span class="info-value description-text">{{ graph.description || '暂无描述' }}</span>-->
+                    <span class="info-value">{{ graph.description}}</span>
                   </div>
                 </div>
               </div>
@@ -153,15 +159,15 @@
             />
           </el-select>
         </el-form-item>
-        
-        <el-form-item label="状态" prop="status">
-          <el-radio-group v-model="form.status">
-            <el-radio :value="1">启用</el-radio>
-            <el-radio :value="0">禁用</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        
-        <el-form-item label="描述">
+
+<!--        <el-form-item label="状态" prop="status">-->
+<!--          <el-radio-group v-model="form.status">-->
+<!--            <el-radio :value="1">启用</el-radio>-->
+<!--            <el-radio :value="0">禁用</el-radio>-->
+<!--          </el-radio-group>-->
+<!--        </el-form-item>-->
+<!--        -->
+        <el-form-item label="描述" prop="description">
           <el-input
             v-model="form.description"
             type="textarea"
@@ -172,12 +178,12 @@
       </el-form>
       
       <template #footer>
-        <span class="dialog-footer">
+        <div class="dialog-footer">
           <el-button @click="dialogVisible = false">取消</el-button>
           <el-button type="primary" @click="handleSubmit" :loading="submitLoading">
             确定
           </el-button>
-        </span>
+        </div>
       </template>
     </el-dialog>
   </div>
@@ -215,7 +221,8 @@ const form = reactive({
   code: '',
   description: '',
   status: 1,
-  connectionId: null
+  connectionId: null,
+  creator: ''
 })
 
 // 表单验证规则
@@ -241,16 +248,16 @@ const dialogTitle = computed(() => {
 // 方法
 const getStatusTagType = (status) => {
   const types = {
-    1: 'success',  // 启用
-    0: 'danger'    // 禁用
+    1: 'success',  // 已发布
+    0: 'info'      // 未发布
   }
   return types[status] || 'info'
 }
 
 const getStatusLabel = (status) => {
   const labels = {
-    1: '启用',
-    0: '禁用'
+    1: '已发布',
+    0: '未发布'
   }
   return labels[status] || '未知'
 }
@@ -372,7 +379,8 @@ const resetForm = () => {
     code: '',
     description: '',
     status: 1,
-    connectionId: null
+    connectionId: null,
+    creator: ''
   })
   formRef.value?.clearValidate()
 }

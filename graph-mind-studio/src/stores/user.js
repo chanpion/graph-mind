@@ -24,6 +24,7 @@ export const useUserStore = defineStore('user', {
   actions: {
     // 设置用户信息
     setUserInfo(userInfo) {
+      console.log('等了设置用户信息:', userInfo)
       this.userInfo = userInfo
       this.isLoggedIn = true
       localStorage.setItem('userInfo', JSON.stringify(userInfo))

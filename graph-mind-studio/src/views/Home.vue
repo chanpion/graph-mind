@@ -162,10 +162,10 @@ const collapseIcon = computed(() => isCollapse.value ? Expand : Fold)
 const handleCommand = async (command) => {
   switch (command) {
     case 'profile':
-      ElMessage.info('个人中心功能开发中...')
+      router.push('/home/admin/profile')
       break
     case 'settings':
-      ElMessage.info('系统设置功能开发中...')
+      router.push('/home/admin/settings')
       break
     case 'logout':
       try {

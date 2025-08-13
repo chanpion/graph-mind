@@ -12,7 +12,12 @@
         <el-option label="力导向图" value="force" />
         <el-option label="层次布局" value="hierarchy" />
       </el-select>
+
+      <!-- 添加样式设置按钮 -->
+      <el-button type="primary" @click="styleDrawerVisible = true" style="margin-left: 12px;">样式设置</el-button>
+      
     </div>
+
     
     <!-- 右键菜单 -->
     <div v-if="contextMenuVisible" class="context-menu" :style="{ left: contextMenuPosition.x + 'px', top: contextMenuPosition.y + 'px' }">
@@ -53,12 +58,38 @@
         </div>
       </div>
     </el-drawer>
-      
-    <!-- 添加样式设置按钮 -->
-    <el-button type="primary" @click="styleDrawerVisible = true" style="margin-left: 12px;">样式设置</el-button>
+
     
     <div class="visual-area">
       <svg ref="svgRef" :width="width" :height="height"></svg>
+      
+      <!-- 缩放控制按钮，置于画布右下角 -->
+      <div class="zoom-controls">
+        <el-button 
+          circle 
+          size="small" 
+          @click="zoomIn"
+          title="放大"
+        >
+          <el-icon><Plus /></el-icon>
+        </el-button>
+        <el-button 
+          circle 
+          size="small" 
+          @click="zoomOut"
+          title="缩小"
+        >
+          <el-icon><Minus /></el-icon>
+        </el-button>
+        <el-button 
+          circle 
+          size="small" 
+          @click="resetZoom"
+          title="重置"
+        >
+          <el-icon><Refresh /></el-icon>
+        </el-button>
+      </div>
     </div>
     
     <!-- 样式设置抽屉 -->
@@ -133,6 +164,11 @@ import { ref, onMounted, computed } from 'vue'
 import * as d3 from 'd3'
 import graphApi from '@/api/graph'
 import { ElMessage } from 'element-plus'
+import { Plus, Minus, Refresh } from '@element-plus/icons-vue'
+
+// 添加缩放相关引用
+const zoom = ref(null)
+const gRef = ref(null)
 
 // 添加右键菜单相关引用
 const contextMenuVisible = ref(false)
@@ -417,9 +453,18 @@ const showContextMenu = (type, data, event) => {
     }
   }
   
+  // 按ESC键隐藏菜单
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      contextMenuVisible.value = false
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }
+  
   // 延迟添加点击监听，避免立即触发
   setTimeout(() => {
     document.addEventListener('click', handleClick)
+    document.addEventListener('keydown', handleKeyDown)
   }, 100)
 }
 
@@ -448,15 +493,47 @@ const handleFindPath = () => {
   contextMenuVisible.value = false
 }
 
+// 添加缩放功能
+const zoomIn = () => {
+  if (zoom.value && gRef.value) {
+    zoom.value.scaleBy(d3.select(svgRef.value).select('g'), 1.2)
+  }
+}
+
+const zoomOut = () => {
+  if (zoom.value && gRef.value) {
+    zoom.value.scaleBy(d3.select(svgRef.value).select('g'), 0.8)
+  }
+}
+
+const resetZoom = () => {
+  if (zoom.value && gRef.value) {
+    zoom.value.scaleTo(d3.select(svgRef.value).select('g'), 1)
+  }
+}
+
 const drawGraph = () => {
   clearSvg()
   const svg = d3.select(svgRef.value)
   if (!nodes.value.length) return
   
+  // 创建缩放行为
+  zoom.value = d3.zoom()
+    .scaleExtent([0.1, 10]) // 设置缩放范围
+    .on('zoom', (event) => {
+      gRef.value.attr('transform', event.transform)
+    })
+  
+  // 应用缩放行为到svg
+  svg.call(zoom.value)
+  
+  // 创建一个g元素用于包含所有图形元素，便于缩放
+  gRef.value = svg.append('g')
+  
   if (layoutType.value === 'force') {
-    drawForceLayout(svg)
+    drawForceLayout(gRef.value)
   } else {
-    drawHierarchyLayout(svg)
+    drawHierarchyLayout(gRef.value)
   }
 }
 
@@ -504,9 +581,14 @@ const getEdgeStyle = (edge) => {
 }
 
 // 力导向图布局
-const drawForceLayout = (svg) => {
+const drawForceLayout = (container) => {
+  // 获取SVG的实际宽度和高度
+  const svg = container.node() ? container.node().ownerSVGElement : null
+  const actualWidth = svg ? svg.clientWidth : width
+  const actualHeight = svg ? svg.clientHeight : height
+  
   // 定义箭头标记
-  const defs = svg.append("defs")
+  const defs = container.append("defs")
   
   // 为节点间连线定义箭头
   defs.append("marker")
@@ -528,7 +610,7 @@ const drawForceLayout = (svg) => {
     .force('center', d3.forceCenter(width / 2, height / 2))
 
   // 画边
-  const link = svg.append('g')
+  const link = container.append('g')
     .selectAll('line')
     .data(edges.value)
     .join('line')
@@ -539,7 +621,7 @@ const drawForceLayout = (svg) => {
     .on('click', (event, d) => showDetail('edge', d))
 
   // 画边标签
-  const linkText = svg.append('g')
+  const linkText = container.append('g')
     .selectAll('text')
     .data(edges.value)
     .join('text')
@@ -551,7 +633,7 @@ const drawForceLayout = (svg) => {
     .text(d => d.label || '') // 显示边的类型label
 
   // 画点
-  const node = svg.append('g')
+  const node = container.append('g')
     .selectAll('circle')
     .data(nodes.value)
     .join('circle')
@@ -567,7 +649,7 @@ const drawForceLayout = (svg) => {
     .on('contextmenu', (event, d) => showContextMenu('node', d, event)) // 添加右键菜单事件
 
   // 点标签
-  const text = svg.append('g')
+  const text = container.append('g')
     .selectAll('text')
     .data(nodes.value)
     .join('text')
@@ -628,12 +710,17 @@ const drawForceLayout = (svg) => {
 }
 
 // 层次布局
-const drawHierarchyLayout = (svg) => {
+const drawHierarchyLayout = (container) => {
+  // 获取SVG的实际宽度和高度
+  const svg = container.node() ? container.node().ownerSVGElement : null
+  const actualWidth = svg ? svg.clientWidth : width
+  const actualHeight = svg ? svg.clientHeight : height
+  
   // 创建层级结构（简单处理：以第一个节点为根节点）
   if (nodes.value.length === 0) return
   
   // 定义箭头标记
-  const defs = svg.append("defs")
+  const defs = container.append("defs")
   
   // 为节点间连线定义箭头
   defs.append("marker")
@@ -658,7 +745,7 @@ const drawHierarchyLayout = (svg) => {
   })
 
   // 画边
-  const link = svg.append('g')
+  const link = container.append('g')
     .selectAll('line')
     .data(edges.value)
     .join('line')
@@ -669,7 +756,7 @@ const drawHierarchyLayout = (svg) => {
     .on('click', (event, d) => showDetail('edge', d))
 
   // 画边标签
-  const linkText = svg.append('g')
+  const linkText = container.append('g')
     .selectAll('text')
     .data(edges.value)
     .join('text')
@@ -680,7 +767,7 @@ const drawHierarchyLayout = (svg) => {
     .text(d => d.label || '') // 显示边的类型label
 
   // 画点
-  const node = svg.append('g')
+  const node = container.append('g')
     .selectAll('circle')
     .data(nodes.value)
     .join('circle')
@@ -693,9 +780,10 @@ const drawHierarchyLayout = (svg) => {
     .attr('cursor', 'pointer') // 鼠标悬停时显示手型光标
     .call(dragHierarchy)
     .on('click', (event, d) => showDetail('node', d)) // 确保节点点击事件正确绑定
+    .on('contextmenu', (event, d) => showContextMenu('node', d, event)) // 添加右键菜单事件
 
   // 点标签
-  const text = svg.append('g')
+  const text = container.append('g')
     .selectAll('text')
     .data(nodes.value)
     .join('text')
@@ -810,6 +898,7 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
+  position: relative;
 }
 
 .type-style-item {
@@ -856,5 +945,20 @@ onMounted(() => {
 
 .context-menu li:hover {
   background: #f5f7fa;
+}
+
+/* 缩放控制按钮样式 */
+.zoom-controls {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 10;
+}
+
+.zoom-controls .el-button {
+  margin: 0;
 }
 </style>

@@ -47,7 +47,9 @@ const router = createRouter({
                     children: [
                         { path: 'user', name: 'User', component: User, meta: { title: '用户管理',closable: true  } },
                         { path: 'role', name: 'Role', component: Role, meta: { title: '角色管理',closable: true  } },
-                        { path: 'permission', name: 'Permission', component: Permission, meta: { title: '权限管理',closable: true  } }
+                        { path: 'permission', name: 'Permission', component: Permission, meta: { title: '权限管理',closable: true  } },
+                        { path: 'profile', name: 'Profile', component: () => import('@/views/system/Profile.vue'), meta: { title: '个人中心',closable: true  } },
+                        { path: 'settings', name: 'Settings', component: () => import('@/views/system/Settings.vue'), meta: { title: '系统设置',closable: true  } }
                     ]
                 },
                 // 图库管理子模块

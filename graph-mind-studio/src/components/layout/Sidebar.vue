@@ -20,7 +20,7 @@
     >
       <!-- 首页作为顶级菜单项 -->
       <el-menu-item 
-        :index="getIndexForHomeMenuItem()" 
+        index="/home"
         @click="handleHomeClick"
       >
         <el-icon class="menu-icon">
@@ -46,7 +46,7 @@
         <el-menu-item
             v-for="child in item.children"
             :key="child.id"
-            :index="getIndexForMenuItem(item, child)"
+            :index="child.path"
         >
           <el-icon>
             <component :is="getIcon(child.icon)"/>
@@ -82,11 +82,6 @@ const getNonHomeMenuItems = () => {
   return props.menuData.filter(item => item.id !== 100)
 }
 
-// 计算菜单项的索引路径
-const getIndexForMenuItem = (parent, child) => {
-  // 其他菜单项保持原有逻辑
-  return child.path.startsWith('/') ? child.path : (parent.path + '/' + child.path)
-}
 
 // 处理首页点击事件
 const handleHomeClick = () => {

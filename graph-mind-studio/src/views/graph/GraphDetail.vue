@@ -6,7 +6,7 @@
         <p class="page-description">图ID：{{ graphId }}，展示点定义、边定义并支持增删改查</p>
       </div>
       <div class="publish-toolbar" v-if="nodeDefs.length > 0 || edgeDefs.length > 0">
-        <el-button type="success" @click="handlePublishSchema">发布Schema</el-button>
+        <el-button type="success" @click="handlePublishSchema">发布</el-button>
       </div>
     </div>
     <el-tabs v-model="activeTab" @tab-change="handleTabChange">
@@ -25,27 +25,40 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="180">
+          <el-table-column label="操作" width="120" align="center">
             <template #default="{ row }">
-              <el-button size="small" @click="handleEditNode(row)">编辑</el-button>
-              <el-button size="small" type="danger" @click="handleDeleteNode(row)">删除</el-button>
+              <el-button 
+                type="primary" 
+                :icon="Edit" 
+                size="small" 
+                circle
+                @click="handleEditNode(row)"
+                title="编辑"
+              />
+              <el-button 
+                type="danger" 
+                :icon="Delete" 
+                size="small" 
+                circle
+                @click="handleDeleteNode(row)"
+                title="删除"
+              />
             </template>
           </el-table-column>
           <el-table-column type="expand">
             <template #default="{ row }">
               <el-table :data="row.properties" size="small" style="width: 90%; margin: 0 auto;">
-                <el-table-column prop="code" label="属性标识" />
-                <el-table-column prop="name" label="属性名称" />
-                <el-table-column prop="type" label="数据类型" />
-                <el-table-column label="索引" width="70">
-                  <template #default="{ row, $index }">
-                    <el-checkbox 
-                      v-model="row.indexed" 
-                      :disabled="row.code === 'uid'"
-                    />
+                <el-table-column prop="code" label="属性标识" min-width="120" />
+                <el-table-column prop="name" label="属性名称" min-width="120" />
+                <el-table-column prop="type" label="数据类型" min-width="120" />
+                <el-table-column prop="indexed" label="索引" width="70" align="center">
+                  <template #default="{ row }">
+                    <el-tag :type="row.indexed ? 'success' : 'info'">
+                      {{ row.indexed ? '是' : '否' }}
+                    </el-tag>
                   </template>
                 </el-table-column>
-                <el-table-column label="状态">
+                <el-table-column label="状态" width="90" align="center">
                   <template #default="{ row }">
                     <el-tag :type="row.status === 1 ? 'success' : 'info'">
                       {{ row.status === 1 ? '已发布' : '未发布' }}
@@ -57,7 +70,7 @@
           </el-table-column>
         </el-table>
         <!-- 点定义弹窗 -->
-        <el-dialog v-model="nodeDialogVisible" :title="nodeDialogTitle" width="600px">
+        <el-dialog v-model="nodeDialogVisible" :title="nodeDialogTitle" width="800px">
           <el-form :model="nodeForm" label-width="80px">
             <el-form-item label="标签">
               <el-input v-model="nodeForm.label" placeholder="请输入标签" />
@@ -75,7 +88,7 @@
             </el-form-item>
             <el-form-item label="属性">
               <el-table :data="nodeForm.properties" style="width: 100%">
-                <el-table-column label="属性标识">
+                <el-table-column label="属性标识" min-width="120">
                   <template #default="{ row, $index }">
                     <el-input 
                       v-model="row.code" 
@@ -84,7 +97,7 @@
                     />
                   </template>
                 </el-table-column>
-                <el-table-column label="属性名称">
+                <el-table-column label="属性名称" min-width="120">
                   <template #default="{ row, $index }">
                     <el-input 
                       v-model="row.name" 
@@ -93,22 +106,22 @@
                     />
                   </template>
                 </el-table-column>
-                <el-table-column label="数据类型">
+                <el-table-column label="数据类型" min-width="120">
                   <template #default="{ row, $index }">
                     <el-select 
                       v-model="row.type" 
                       placeholder="请选择" 
                       :disabled="row.code === 'uid'"
                     >
-                      <el-option label="字符串" value="string" />
-                      <el-option label="整数" value="int" />
-                      <el-option label="浮点数" value="float" />
-                      <el-option label="布尔值" value="boolean" />
-                      <el-option label="日期" value="date" />
+                      <el-option label="字符串" value="String" />
+                      <el-option label="整数" value="Int" />
+                      <el-option label="浮点数" value="Float" />
+                      <el-option label="布尔值" value="Boolean" />
+                      <el-option label="日期" value="Date" />
                     </el-select>
                   </template>
                 </el-table-column>
-                <el-table-column label="索引" width="70">
+                <el-table-column label="索引" width="70" align="center">
                   <template #default="{ row, $index }">
                     <el-checkbox 
                       v-model="row.indexed" 
@@ -116,16 +129,23 @@
                     />
                   </template>
                 </el-table-column>
-                <el-table-column label="状态">
+                <el-table-column label="状态" width="90" align="center">
                   <template #default="{ row }">
                     <el-tag :type="row.status === 1 ? 'success' : 'info'">
                       {{ row.status === 1 ? '已发布' : '未发布' }}
                     </el-tag>
                   </template>
                 </el-table-column>
-                <el-table-column label="操作" width="80">
+                <el-table-column label="操作" width="80" align="center">
                   <template #default="{ row, $index }">
-                    <el-button type="danger" size="small" @click="removeNodeProperty($index)" :disabled="row.code === 'uid'">删除</el-button>
+                    <el-button 
+                      type="danger" 
+                      size="small" 
+                      :icon="Delete" 
+                      circle
+                      @click="removeNodeProperty($index)" 
+                      :disabled="row.code === 'uid'"
+                    />
                   </template>
                 </el-table-column>
               </el-table>
@@ -167,10 +187,24 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="180">
+          <el-table-column label="操作" width="120" align="center">
             <template #default="{ row }">
-              <el-button size="small" @click="handleEditEdge(row)">编辑</el-button>
-              <el-button size="small" type="danger" @click="handleDeleteEdge(row)">删除</el-button>
+              <el-button 
+                type="primary" 
+                :icon="Edit" 
+                size="small" 
+                circle
+                @click="handleEditEdge(row)"
+                title="编辑"
+              />
+              <el-button 
+                type="danger" 
+                :icon="Delete" 
+                size="small" 
+                circle
+                @click="handleDeleteEdge(row)"
+                title="删除"
+              />
             </template>
           </el-table-column>
           <el-table-column type="expand">
@@ -179,18 +213,31 @@
                 <el-table-column prop="code" label="属性标识" />
                 <el-table-column prop="name" label="属性名称" />
                 <el-table-column prop="type" label="数据类型" />
-                <el-table-column prop="indexed" label="索引">
-                  <template #default="{ row }">
-                    <el-tag :type="row.indexed ? 'success' : 'info'">
-                      {{ row.indexed ? '是' : '否' }}
-                    </el-tag>
+                <el-table-column label="索引" width="70">
+                  <template #default="{ row, $index }">
+                    <el-checkbox 
+                      v-model="row.indexed" 
+                      :disabled="row.code === 'uid'"
+                    />
                   </template>
                 </el-table-column>
-                <el-table-column prop="status" label="状态">
+                <el-table-column label="状态" width="90">
                   <template #default="{ row }">
                     <el-tag :type="row.status === 1 ? 'success' : 'info'">
                       {{ row.status === 1 ? '已发布' : '未发布' }}
                     </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="80">
+                  <template #default="{ row, $index }">
+                    <el-button 
+                      type="danger" 
+                      size="small" 
+                      :icon="Delete" 
+                      circle
+                      @click="removeEdgeProperty($index)" 
+                      :disabled="row.code === 'uid'"
+                    />
                   </template>
                 </el-table-column>
               </el-table>
@@ -198,7 +245,7 @@
           </el-table-column>
         </el-table>
         <!-- 边定义弹窗 -->
-        <el-dialog v-model="edgeDialogVisible" :title="edgeDialogTitle" width="600px">
+        <el-dialog v-model="edgeDialogVisible" :title="edgeDialogTitle" width="800px">
           <el-form :model="edgeForm" label-width="80px">
             <el-form-item label="标签">
               <el-input v-model="edgeForm.label" placeholder="请输入标签" />
@@ -261,10 +308,10 @@
                       placeholder="请选择" 
                       :disabled="row.code === 'uid'"
                     >
-                      <el-option label="字符串" value="string" />
-                      <el-option label="整数" value="int" />
-                      <el-option label="布尔值" value="boolean" />
-                      <el-option label="日期" value="date" />
+                      <el-option label="字符串" value="String" />
+                      <el-option label="整数" value="Int" />
+                      <el-option label="布尔值" value="Boolean" />
+                      <el-option label="日期" value="Date" />
                     </el-select>
                   </template>
                 </el-table-column>
@@ -304,10 +351,10 @@
       </el-tab-pane>
     </el-tabs>
     
-    <!-- 发布Schema按钮 -->
-    <div class="publish-toolbar" v-if="nodeDefs.length > 0 || edgeDefs.length > 0">
-      <el-button type="success" @click="handlePublishSchema">发布Schema</el-button>
-    </div>
+<!--    &lt;!&ndash; 发布Schema按钮 &ndash;&gt;-->
+<!--    <div class="publish-toolbar" v-if="nodeDefs.length > 0 || edgeDefs.length > 0">-->
+<!--      <el-button type="success" @click="handlePublishSchema">发布Schema</el-button>-->
+<!--    </div>-->
     
     <!-- 发布结果对话框 -->
     <el-dialog v-model="publishResultVisible" title="发布结果" width="500px">
@@ -341,6 +388,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Delete, Edit } from '@element-plus/icons-vue'
 import graphApi from '@/api/graph'
 
 const route = useRoute()
@@ -429,7 +477,7 @@ const handleAddNode = () => {
       {
         code: 'uid',
         name: '唯一标识',
-        type: 'string',
+        type: 'String',
         desc: '节点唯一标识符',
         status: 0,
         indexed: true
@@ -471,11 +519,8 @@ const handleDeleteNode = (row) => {
 // 保存点定义
 const saveNode = async () => {
   try {
-    // 过滤掉uid属性，因为后端会自动处理
+    // 不再过滤uid属性，让后端处理
     const nodeData = { ...nodeForm.value }
-    if (nodeData.properties) {
-      nodeData.properties = nodeData.properties.filter(prop => prop.code !== 'uid')
-    }
     
     if (nodeForm.value.id) {
       // 更新
@@ -498,7 +543,7 @@ const addNodeProperty = () => {
   nodeForm.value.properties.push({
     code: '',
     name: '',
-    type: 'string',
+    type: 'String',
     status: 0
   })
 }
@@ -521,7 +566,7 @@ const handleAddEdge = () => {
       {
         code: 'uid',
         name: '唯一标识',
-        type: 'string',
+        type: 'String',
         desc: '边唯一标识符',
         status: 0, // 属性状态值保持为整型，新增默认未发布
         indexed: true
@@ -562,11 +607,8 @@ const handleDeleteEdge = (row) => {
 // 保存边定义
 const saveEdge = async () => {
   try {
-    // 过滤掉uid属性，因为后端会自动处理
+    // 不再过滤uid属性，让后端处理
     const edgeData = { ...edgeForm.value }
-    if (edgeData.properties) {
-      edgeData.properties = edgeData.properties.filter(prop => prop.code !== 'uid')
-    }
     
     if (edgeForm.value.id) {
       // 更新
@@ -589,7 +631,7 @@ const addEdgeProperty = () => {
   edgeForm.value.properties.push({
     code: '',
     name: '',
-    type: 'string',
+    type: 'String',
     status: 0
   })
 }
