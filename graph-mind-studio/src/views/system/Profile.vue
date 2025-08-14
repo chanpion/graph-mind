@@ -6,16 +6,9 @@
     </div>
 
     <div class="content-card">
-      <el-row :gutter="20">
-        <!-- 个人信息卡片 -->
-        <el-col :span="16">
-          <el-card class="info-card">
-            <template #header>
-              <div class="card-header">
-                <span>基本信息</span>
-              </div>
-            </template>
-            
+      <el-card class="profile-card">
+        <el-tabs v-model="activeTab" class="profile-tabs">
+          <el-tab-pane label="基本信息" name="info">
             <el-form
               ref="profileFormRef"
               :model="profileForm"
@@ -74,20 +67,13 @@
               </el-form-item>
               
               <div class="form-actions">
-                <el-button type="primary" @click="submitProfile">保存信息</el-button>
+                <el-button type="primary" @click="submitProfile" :loading="saveLoading">保存信息</el-button>
                 <el-button @click="resetProfileForm">重置</el-button>
               </div>
             </el-form>
-          </el-card>
+          </el-tab-pane>
           
-          <!-- 修改密码卡片 -->
-          <el-card class="password-card" style="margin-top: 20px">
-            <template #header>
-              <div class="card-header">
-                <span>修改密码</span>
-              </div>
-            </template>
-            
+          <el-tab-pane label="修改密码" name="password">
             <el-form
               ref="passwordFormRef"
               :model="passwordForm"
@@ -122,84 +108,13 @@
               </el-form-item>
               
               <div class="form-actions">
-                <el-button type="primary" @click="submitPassword">修改密码</el-button>
+                <el-button type="primary" @click="submitPassword" :loading="passwordLoading">修改密码</el-button>
                 <el-button @click="resetPasswordForm">重置</el-button>
               </div>
             </el-form>
-          </el-card>
-        </el-col>
-        
-        <!-- 头像卡片 -->
-        <el-col :span="8">
-          <el-card class="avatar-card">
-            <template #header>
-              <div class="card-header">
-                <span>头像</span>
-              </div>
-            </template>
-            
-            <div class="avatar-container">
-              <el-avatar
-                :size="100"
-                :src="profileForm.avatar"
-                class="user-avatar"
-              >
-                {{ profileForm.nickname?.charAt(0) || profileForm.username?.charAt(0) || 'U' }}
-              </el-avatar>
-              
-              <div class="avatar-actions">
-                <el-button type="primary" @click="handleAvatarUpload">
-                  上传头像
-                </el-button>
-                <input
-                  ref="avatarInputRef"
-                  type="file"
-                  accept="image/*"
-                  style="display: none"
-                  @change="handleAvatarChange"
-                />
-              </div>
-              
-              <div class="avatar-info">
-                <p>支持 JPG、PNG 格式，文件小于 2MB</p>
-              </div>
-            </div>
-          </el-card>
-          
-          <!-- 账户安全卡片 -->
-          <el-card class="security-card" style="margin-top: 20px">
-            <template #header>
-              <div class="card-header">
-                <span>账户安全</span>
-              </div>
-            </template>
-            
-            <div class="security-info">
-              <div class="security-item">
-                <div class="security-label">登录状态</div>
-                <div class="security-value">
-                  <el-tag type="success">在线</el-tag>
-                </div>
-              </div>
-              
-              <div class="security-item">
-                <div class="security-label">最近登录</div>
-                <div class="security-value">{{ profileForm.loginTime }}</div>
-              </div>
-              
-              <div class="security-item">
-                <div class="security-label">登录IP</div>
-                <div class="security-value">{{ profileForm.loginIp }}</div>
-              </div>
-              
-              <div class="security-item">
-                <div class="security-label">角色</div>
-                <div class="security-value">{{ profileForm.roles?.join(', ') }}</div>
-              </div>
-            </div>
-          </el-card>
-        </el-col>
-      </el-row>
+          </el-tab-pane>
+        </el-tabs>
+      </el-card>
     </div>
   </div>
 </template>
@@ -208,11 +123,18 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
+import userApi from '@/api/user'
 
 const userStore = useUserStore()
 const profileFormRef = ref()
 const passwordFormRef = ref()
-const avatarInputRef = ref()
+
+// 激活的tab页
+const activeTab = ref('info')
+
+// 加载状态
+const saveLoading = ref(false)
+const passwordLoading = ref(false)
 
 // 个人信息表单
 const profileForm = reactive({
@@ -278,21 +200,26 @@ function validateConfirmPassword(rule, value, callback) {
   }
 }
 
-// 获取用户信息
-const getUserInfo = () => {
-  // 从用户store获取信息
-  profileForm.userId = userStore.userInfo.userId || ''
-  profileForm.username = userStore.userInfo.username || ''
-  profileForm.nickname = userStore.userInfo.nickname || ''
-  profileForm.phonenumber = userStore.userInfo.phonenumber || ''
-  profileForm.email = userStore.userInfo.email || ''
-  profileForm.sex = userStore.userInfo.sex || ''
-  profileForm.avatar = userStore.userInfo.avatar || ''
-  profileForm.remark = userStore.userInfo.remark || ''
-  profileForm.createTime = userStore.userInfo.createTime || ''
-  profileForm.loginTime = userStore.userInfo.loginTime || ''
-  profileForm.loginIp = userStore.userInfo.loginIp || ''
-  profileForm.roles = userStore.userInfo.roles || []
+// 获取当前用户信息
+const getCurrentUserInfo = () => {
+  userApi.getCurrentUser(userStore.userInfo.username).then(response => {
+    if (response.code === 200) {
+      const userInfo = response.data
+      // 更新表单数据
+      Object.keys(userInfo).forEach(key => {
+        if (key in profileForm) {
+          profileForm[key] = userInfo[key]
+        }
+      })
+      // 更新用户store中的信息
+      userStore.setUserInfo(userInfo)
+    } else {
+      ElMessage.error(response.message || '获取用户信息失败')
+    }
+  }).catch(error => {
+    console.error('获取用户信息失败:', error)
+    ElMessage.error('获取用户信息失败')
+  })
 }
 
 // 提交个人信息
@@ -301,18 +228,38 @@ const submitProfile = async () => {
   
   await profileFormRef.value.validate((valid) => {
     if (valid) {
-      ElMessage.success('个人信息保存成功')
-      // 这里应该调用API保存用户信息
-      // 更新用户store中的信息
-      const updatedInfo = { ...userStore.userInfo, ...profileForm }
-      userStore.setUserInfo(updatedInfo)
+      saveLoading.value = true
+      // 准备提交的数据，排除只读字段
+      const submitData = {
+        nickname: profileForm.nickname,
+        phonenumber: profileForm.phonenumber,
+        email: profileForm.email,
+        sex: profileForm.sex,
+        remark: profileForm.remark
+      }
+      
+      userApi.updateCurrentUser(submitData).then(response => {
+        if (response.code === 200) {
+          ElMessage.success('个人信息保存成功')
+          // 更新用户store中的信息
+          const updatedInfo = { ...userStore.userInfo, ...submitData }
+          userStore.setUserInfo(updatedInfo)
+        } else {
+          ElMessage.error(response.message || '保存失败')
+        }
+      }).catch(error => {
+        console.error('保存失败:', error)
+        ElMessage.error('保存失败')
+      }).finally(() => {
+        saveLoading.value = false
+      })
     }
   })
 }
 
 // 重置个人信息表单
 const resetProfileForm = () => {
-  getUserInfo()
+  getCurrentUserInfo()
 }
 
 // 提交密码修改
@@ -321,9 +268,26 @@ const submitPassword = async () => {
   
   await passwordFormRef.value.validate((valid) => {
     if (valid) {
-      ElMessage.success('密码修改成功，请重新登录')
-      // 这里应该调用API修改密码
-      resetPasswordForm()
+      passwordLoading.value = true
+      const passwordData = {
+        oldPassword: passwordForm.oldPassword,
+        newPassword: passwordForm.newPassword
+      }
+      
+      userApi.changePassword(passwordData).then(response => {
+        if (response.code === 200) {
+          ElMessage.success('密码修改成功，请重新登录')
+          resetPasswordForm()
+          // 可以在这里添加重新登录逻辑
+        } else {
+          ElMessage.error(response.message || '密码修改失败')
+        }
+      }).catch(error => {
+        console.error('密码修改失败:', error)
+        ElMessage.error('密码修改失败')
+      }).finally(() => {
+        passwordLoading.value = false
+      })
     }
   })
 }
@@ -368,17 +332,20 @@ const handleAvatarChange = (event) => {
 
 // 组件挂载时获取用户信息
 onMounted(() => {
-  getUserInfo()
+  getCurrentUserInfo()
 })
 </script>
 
 <style scoped>
 .profile-container {
   padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .page-header {
   margin-bottom: 20px;
+  text-align: center;
 }
 
 .page-title {
@@ -401,10 +368,16 @@ onMounted(() => {
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
 
+.profile-card {
+  border: none;
+  box-shadow: none;
+}
+
 .card-header {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   color: #303133;
+  text-align: center;
 }
 
 .form-actions {
@@ -412,47 +385,32 @@ onMounted(() => {
   margin-top: 20px;
 }
 
-.avatar-container {
-  text-align: center;
-  padding: 20px 0;
+.profile-tabs {
+  border: none;
 }
 
-.user-avatar {
-  margin-bottom: 20px;
-}
-
-.avatar-actions {
-  margin-bottom: 15px;
-}
-
-.avatar-info {
-  font-size: 12px;
-  color: #909399;
-}
-
-.security-info {
-  padding: 10px 0;
-}
-
-.security-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.security-item:last-child {
-  border-bottom: none;
-}
-
-.security-label {
-  font-size: 14px;
-  color: #606266;
-}
-
-.security-value {
-  font-size: 14px;
-  color: #303133;
+@media (max-width: 768px) {
+  .profile-container {
+    padding: 10px;
+  }
+  
+  .content-card {
+    padding: 15px;
+  }
+  
+  :deep(.el-form-item__label) {
+    width: 100%;
+    text-align: left;
+    padding-bottom: 5px;
+  }
+  
+  :deep(.el-form-item__content) {
+    margin-left: 0 !important;
+  }
+  
+  :deep(.el-col) {
+    width: 100%;
+    margin-bottom: 10px;
+  }
 }
 </style>
