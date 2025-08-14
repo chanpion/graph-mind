@@ -64,6 +64,12 @@ public class UserController {
         return Result.success(user);
     }
 
+    @DeleteMapping("/{userId}")
+    public Result<String> deleteUser(@PathVariable Long userId) {
+        userService.deleteUsers(List.of(userId));
+        return Result.success("删除用户成功");
+    }
+
     /**
      * 新增用户
      *
@@ -113,5 +119,12 @@ public class UserController {
     public Result<String> updateUserStatus(@PathVariable Long userId, @RequestParam Integer status) {
         userService.updateUserStatus(userId, status);
         return Result.success("更新用户状态成功");
+    }
+
+    @PostMapping("/{userId}/password/reset")
+    public Result<String> resetPassword(@PathVariable Long userId, @RequestBody User user) {
+        user.setUserId(userId);
+        userService.updateUser(user);
+        return Result.success("更新用户密码成功");
     }
 }
