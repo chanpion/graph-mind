@@ -1,17 +1,24 @@
 package com.chenpp.graph.admin.model;
 
+import com.chenpp.graph.core.exception.ErrorCode;
 import lombok.Data;
 
+import java.io.Serializable;
+
 /**
+ * 统一响应结果封装
+ *
  * @author April.Chen
- * @date 2025/8/1 10:45
+ * @date 2025/8/1 10:30
  */
 @Data
-public class Result<T> {
+public class Result<T> implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     /**
      * 响应码
      */
-    private Integer code;
+    private int code;
 
     /**
      * 响应消息
@@ -26,40 +33,32 @@ public class Result<T> {
     public Result() {
     }
 
-    public Result(Integer code, String message) {
-        this.code = code;
-        this.message = message;
-    }
-
-    public Result(Integer code, String message, T data) {
+    public Result(int code, String message, T data) {
         this.code = code;
         this.message = message;
         this.data = data;
     }
 
     /**
-     * 成功响应（无数据）
-     *
-     * @param message 响应消息
-     * @return Result
+     * 成功响应
      */
-    public static <T> Result<T> success(String message) {
-        return new Result<>(200, message);
+    public static <T> Result<T> success() {
+        return success(null);
     }
 
     /**
-     * 成功响应（有数据）
+     * 成功响应
      *
      * @param data 响应数据
      * @param <T>  数据类型
      * @return Result
      */
     public static <T> Result<T> success(T data) {
-        return new Result<>(200, "操作成功", data);
+        return new Result<>(ErrorCode.SUCCESS.getCode(), ErrorCode.SUCCESS.getMessage(), data);
     }
 
     /**
-     * 成功响应（有数据和消息）
+     * 成功响应
      *
      * @param message 响应消息
      * @param data    响应数据
@@ -67,39 +66,65 @@ public class Result<T> {
      * @return Result
      */
     public static <T> Result<T> success(String message, T data) {
-        return new Result<>(200, message, data);
+        return new Result<>(ErrorCode.SUCCESS.getCode(), message, data);
     }
 
     /**
-     * 失败响应
+     * 错误响应
      *
-     * @param message 响应消息
-     * @return Result
-     */
-    public static <T> Result<T> error(String message) {
-        return new Result<>(500, message);
-    }
-
-    /**
-     * 失败响应
-     *
-     * @param code    响应码
-     * @param message 响应消息
-     * @return Result
-     */
-    public static Result<Void> error(Integer code, String message) {
-        return new Result<>(code, message);
-    }
-
-    /**
-     * 失败响应（带数据）
-     *
-     * @param code    响应码
-     * @param message 响应消息
+     * @param message 错误消息
      * @param <T>     数据类型
      * @return Result
      */
-    public static <T> Result<T> error(Integer code, String message, T data) {
+    public static <T> Result<T> error(String message) {
+        return new Result<>(ErrorCode.INTERNAL_SERVER_ERROR.getCode(), message, null);
+    }
+
+    /**
+     * 错误响应
+     *
+     * @param code    错误码
+     * @param message 错误消息
+     * @param <T>     数据类型
+     * @return Result
+     */
+    public static <T> Result<T> error(int code, String message) {
+        return new Result<>(code, message, null);
+    }
+
+    /**
+     * 错误响应
+     *
+     * @param code    错误码
+     * @param message 错误消息
+     * @param data    响应数据
+     * @param <T>     数据类型
+     * @return Result
+     */
+    public static <T> Result<T> error(int code, String message, T data) {
         return new Result<>(code, message, data);
+    }
+
+    /**
+     * 错误响应
+     *
+     * @param errorCode 错误码枚举
+     * @param <T>       数据类型
+     * @return Result
+     */
+    public static <T> Result<T> error(ErrorCode errorCode) {
+        return new Result<>(errorCode.getCode(), errorCode.getMessage(), null);
+    }
+
+    /**
+     * 错误响应
+     *
+     * @param errorCode 错误码枚举
+     * @param message   错误消息
+     * @param <T>       数据类型
+     * @return Result
+     */
+    public static <T> Result<T> error(ErrorCode errorCode, String message) {
+        return new Result<>(errorCode.getCode(), message, null);
     }
 }

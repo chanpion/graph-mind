@@ -1,44 +1,41 @@
 package com.chenpp.graph.core.exception;
 
 /**
+ * 业务异常类，用于处理除图操作外的业务逻辑异常
+ *
  * @author April.Chen
- * @date 2025/4/7 17:22
+ * @date 2025/8/14 11:00
  */
-public class GraphException extends RuntimeException {
+public class BusinessException extends RuntimeException {
     private ErrorCode errorCode;
 
-    public GraphException(String message) {
+    public BusinessException(String message) {
         super(message);
         this.errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
     }
 
-    public GraphException(String message, Throwable cause) {
+    public BusinessException(String message, Throwable cause) {
         super(message, cause);
         this.errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
     }
 
-    public GraphException(Throwable cause) {
+    public BusinessException(Throwable cause) {
         super(cause);
         this.errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
     }
 
-    public GraphException(ErrorCode errorCode) {
+    public BusinessException(ErrorCode errorCode) {
         super(errorCode.getMessage());
         this.errorCode = errorCode;
     }
 
-    public GraphException(ErrorCode errorCode, String message) {
+    public BusinessException(ErrorCode errorCode, String message) {
         super(message);
         this.errorCode = errorCode;
     }
 
-    public GraphException(ErrorCode errorCode, String message, Throwable cause) {
+    public BusinessException(ErrorCode errorCode, String message, Throwable cause) {
         super(message, cause);
-        this.errorCode = errorCode;
-    }
-
-    public GraphException(ErrorCode errorCode, Throwable cause) {
-        super(errorCode.getMessage(), cause);
         this.errorCode = errorCode;
     }
 

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.chenpp.graph.admin.model.Graph;
 import com.chenpp.graph.admin.model.Result;
 import com.chenpp.graph.admin.service.GraphService;
+import com.chenpp.graph.core.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
@@ -129,7 +130,7 @@ public class GraphController {
     public Result<Graph> getGraph(@PathVariable Long id) {
         Graph graph = graphService.getById(id);
         if (graph == null) {
-            return new Result<>(500, "图不存在", null);
+            return Result.error(ErrorCode.GRAPH_NOT_FOUND);
         }
         return Result.success(graph);
     }

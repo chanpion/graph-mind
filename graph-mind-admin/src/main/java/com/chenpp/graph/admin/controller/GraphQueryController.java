@@ -39,36 +39,31 @@ public class GraphQueryController {
     public Result<GraphData> query(
             @PathVariable Long graphId,
             @RequestBody Map<String, String> request) {
-        try {
-            String cypher = request.get("cypher");
-            if (cypher == null || cypher.isEmpty()) {
-                return Result.error("Cypher查询语句不能为空");
-            }
-
-            // 获取图信息
-            Graph graph = graphService.getById(graphId);
-            if (graph == null) {
-                return Result.error("图不存在，graphId=" + graphId);
-            }
-
-            // 获取图数据库连接信息
-            GraphDatabaseConnection connection = connectionService.getById(graph.getConnectionId());
-            if (connection == null) {
-                return Result.error("图数据库连接不存在，connectionId=" + graph.getConnectionId());
-            }
-
-            // 构建图配置信息
-            GraphConf graphConf =  GraphClientFactory.createGraphConf(connection, graph);
-            // 创建图客户端
-            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
-            GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
-
-            // 执行查询
-            GraphData graphData = graphDataOperations.query(cypher);
-            return Result.success(graphData);
-        } catch (Exception e) {
-            log.error("图查询失败", e);
-            return Result.error("图查询失败: " + e.getMessage());
+        String cypher = request.get("cypher");
+        if (cypher == null || cypher.isEmpty()) {
+            return Result.error("Cypher查询语句不能为空");
         }
+
+        // 获取图信息
+        Graph graph = graphService.getById(graphId);
+        if (graph == null) {
+            return Result.error("图不存在，graphId=" + graphId);
+        }
+
+        // 获取图数据库连接信息
+        GraphDatabaseConnection connection = connectionService.getById(graph.getConnectionId());
+        if (connection == null) {
+            return Result.error("图数据库连接不存在，connectionId=" + graph.getConnectionId());
+        }
+
+        // 构建图配置信息
+        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
+        // 创建图客户端
+        GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+        GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
+
+        // 执行查询
+        GraphData graphData = graphDataOperations.query(cypher);
+        return Result.success(graphData);
     }
 }

@@ -48,13 +48,8 @@ public class GraphSchemaController {
      */
     @GetMapping("/nodes")
     public Result<List<GraphNodeDef>> getNodeDefs(@PathVariable Long graphId) {
-        try {
-            List<GraphNodeDef> nodeDefs = nodeDefService.getNodeDefsByGraphId(graphId);
-            return Result.success(nodeDefs);
-        } catch (Exception e) {
-            log.error("获取节点定义列表失败", e);
-            return Result.error("获取节点定义列表失败");
-        }
+        List<GraphNodeDef> nodeDefs = nodeDefService.getNodeDefsByGraphId(graphId);
+        return Result.success(nodeDefs);
     }
 
     /**
@@ -66,16 +61,11 @@ public class GraphSchemaController {
      */
     @PostMapping("/nodes")
     public Result<String> addNodeDef(@PathVariable Long graphId, @RequestBody GraphNodeDef nodeDef) {
-        try {
-            nodeDef.setGraphId(graphId);
-            boolean success = nodeDefService.saveNodeDefWithProperties(nodeDef);
-            if (success) {
-                return Result.success("新增节点定义成功");
-            } else {
-                return Result.error("新增节点定义失败");
-            }
-        } catch (Exception e) {
-            log.error("新增节点定义失败", e);
+        nodeDef.setGraphId(graphId);
+        boolean success = nodeDefService.saveNodeDefWithProperties(nodeDef);
+        if (success) {
+            return Result.success("新增节点定义成功");
+        } else {
             return Result.error("新增节点定义失败");
         }
     }
@@ -90,17 +80,12 @@ public class GraphSchemaController {
      */
     @PutMapping("/nodes/{nodeId}")
     public Result<String> updateNodeDef(@PathVariable Long graphId, @PathVariable Long nodeId, @RequestBody GraphNodeDef nodeDef) {
-        try {
-            nodeDef.setId(nodeId);
-            nodeDef.setGraphId(graphId);
-            boolean success = nodeDefService.updateNodeDefWithProperties(nodeDef);
-            if (success) {
-                return Result.success("更新节点定义成功");
-            } else {
-                return Result.error("更新节点定义失败");
-            }
-        } catch (Exception e) {
-            log.error("更新节点定义失败", e);
+        nodeDef.setId(nodeId);
+        nodeDef.setGraphId(graphId);
+        boolean success = nodeDefService.updateNodeDefWithProperties(nodeDef);
+        if (success) {
+            return Result.success("更新节点定义成功");
+        } else {
             return Result.error("更新节点定义失败");
         }
     }
@@ -114,15 +99,10 @@ public class GraphSchemaController {
      */
     @DeleteMapping("/nodes/{nodeId}")
     public Result<String> deleteNodeDef(@PathVariable Long graphId, @PathVariable Long nodeId) {
-        try {
-            boolean success = nodeDefService.deleteNodeDefWithProperties(nodeId);
-            if (success) {
-                return Result.success("删除节点定义成功");
-            } else {
-                return Result.error("删除节点定义失败");
-            }
-        } catch (Exception e) {
-            log.error("删除节点定义失败", e);
+        boolean success = nodeDefService.deleteNodeDefWithProperties(nodeId);
+        if (success) {
+            return Result.success("删除节点定义成功");
+        } else {
             return Result.error("删除节点定义失败");
         }
     }
@@ -135,13 +115,8 @@ public class GraphSchemaController {
      */
     @GetMapping("/edges")
     public Result<List<GraphEdgeDef>> getEdgeDefs(@PathVariable Long graphId) {
-        try {
-            List<GraphEdgeDef> edgeDefs = edgeDefService.getEdgeDefsByGraphId(graphId);
-            return Result.success(edgeDefs);
-        } catch (Exception e) {
-            log.error("获取边定义列表失败", e);
-            return Result.error("获取边定义列表失败");
-        }
+        List<GraphEdgeDef> edgeDefs = edgeDefService.getEdgeDefsByGraphId(graphId);
+        return Result.success(edgeDefs);
     }
 
     /**
@@ -153,16 +128,11 @@ public class GraphSchemaController {
      */
     @PostMapping("/edges")
     public Result<String> addEdgeDef(@PathVariable Long graphId, @RequestBody GraphEdgeDef edgeDef) {
-        try {
-            edgeDef.setGraphId(graphId);
-            boolean success = edgeDefService.saveEdgeDefWithProperties(edgeDef);
-            if (success) {
-                return Result.success("新增边定义成功");
-            } else {
-                return Result.error("新增边定义失败");
-            }
-        } catch (Exception e) {
-            log.error("新增边定义失败", e);
+        edgeDef.setGraphId(graphId);
+        boolean success = edgeDefService.saveEdgeDefWithProperties(edgeDef);
+        if (success) {
+            return Result.success("新增边定义成功");
+        } else {
             return Result.error("新增边定义失败");
         }
     }
@@ -177,17 +147,12 @@ public class GraphSchemaController {
      */
     @PutMapping("/edges/{edgeId}")
     public Result<String> updateEdgeDef(@PathVariable Long graphId, @PathVariable Long edgeId, @RequestBody GraphEdgeDef edgeDef) {
-        try {
-            edgeDef.setId(edgeId);
-            edgeDef.setGraphId(graphId);
-            boolean success = edgeDefService.updateEdgeDefWithProperties(edgeDef);
-            if (success) {
-                return Result.success("更新边定义成功");
-            } else {
-                return Result.error("更新边定义失败");
-            }
-        } catch (Exception e) {
-            log.error("更新边定义失败", e);
+        edgeDef.setId(edgeId);
+        edgeDef.setGraphId(graphId);
+        boolean success = edgeDefService.updateEdgeDefWithProperties(edgeDef);
+        if (success) {
+            return Result.success("更新边定义成功");
+        } else {
             return Result.error("更新边定义失败");
         }
     }
@@ -201,15 +166,10 @@ public class GraphSchemaController {
      */
     @DeleteMapping("/edges/{edgeId}")
     public Result<String> deleteEdgeDef(@PathVariable Long graphId, @PathVariable Long edgeId) {
-        try {
-            boolean success = edgeDefService.deleteEdgeDefWithProperties(edgeId);
-            if (success) {
-                return Result.success("删除边定义成功");
-            } else {
-                return Result.error("删除边定义失败");
-            }
-        } catch (Exception e) {
-            log.error("删除边定义失败", e);
+        boolean success = edgeDefService.deleteEdgeDefWithProperties(edgeId);
+        if (success) {
+            return Result.success("删除边定义成功");
+        } else {
             return Result.error("删除边定义失败");
         }
     }
@@ -222,12 +182,7 @@ public class GraphSchemaController {
      */
     @PostMapping("/publish")
     public Result<String> publishSchema(@PathVariable Long graphId) {
-        try {
-            graphSchemaService.publishSchema(graphId);
-            return Result.success(null);
-        } catch (Exception e) {
-            log.error("发布图Schema失败", e);
-            return Result.error("发布图Schema失败: " + e.getMessage());
-        }
+        graphSchemaService.publishSchema(graphId);
+        return Result.success(null);
     }
 }

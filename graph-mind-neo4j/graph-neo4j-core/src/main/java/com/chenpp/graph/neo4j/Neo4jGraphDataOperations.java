@@ -1,6 +1,7 @@
 package com.chenpp.graph.neo4j;
 
 import com.chenpp.graph.core.GraphDataOperations;
+import com.chenpp.graph.core.exception.ErrorCode;
 import com.chenpp.graph.core.exception.GraphException;
 import com.chenpp.graph.core.model.GraphData;
 import com.chenpp.graph.core.model.GraphEdge;
@@ -228,7 +229,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
             });
 
         } catch (Exception e) {
-            throw new GraphException("Failed to query graph data from Neo4j", e);
+            throw new GraphException(ErrorCode.GRAPH_QUERY_FAILED, e);
         }
 
     }

@@ -23,8 +23,15 @@ public class GraphDatabaseException extends RuntimeException {
         this.context = Map.copyOf(context);
     }
 
-
     public GraphDatabaseException(String message) {
         this(ErrorCode.CONNECTION_FAILED, message);
+    }
+
+    public ErrorCode getErrorCode() {
+        return errorCode;
+    }
+
+    public Map<String, Object> getContext() {
+        return context;
     }
 }

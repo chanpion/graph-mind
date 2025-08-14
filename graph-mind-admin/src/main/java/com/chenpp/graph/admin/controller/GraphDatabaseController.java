@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.chenpp.graph.admin.model.GraphDatabaseConnection;
 import com.chenpp.graph.admin.model.Result;
 import com.chenpp.graph.admin.service.GraphDatabaseConnectionService;
+import com.chenpp.graph.core.exception.ErrorCode;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -113,44 +114,7 @@ public class GraphDatabaseController {
             result.setEdges((int) (Math.random() * 50000) + 5000);
             return Result.success(result);
         } else {
-            return new Result<>(500, "连接测试失败", null);
-        }
-    }
-
-    /**
-     * 连接数据库
-     *
-     * @param id 连接ID
-     * @return 是否成功
-     */
-    @PostMapping("/{id}/connect")
-    public Result<ConnectionStatus> connectDatabase(@PathVariable Long id) {
-        boolean success = connectionService.connectDatabase(id);
-        if (success) {
-            ConnectionStatus status = new ConnectionStatus();
-            status.setStatus("connected");
-            status.setLastConnectTime(LocalDateTime.now());
-            return Result.success(status);
-        } else {
-            return new Result<>(500, "连接失败", null);
-        }
-    }
-
-    /**
-     * 断开连接
-     *
-     * @param id 连接ID
-     * @return 是否成功
-     */
-    @PostMapping("/{id}/disconnect")
-    public Result<ConnectionStatus> disconnectDatabase(@PathVariable Long id) {
-        boolean success = connectionService.disconnectDatabase(id);
-        if (success) {
-            ConnectionStatus status = new ConnectionStatus();
-            status.setStatus("disconnected");
-            return Result.success(status);
-        } else {
-            return new Result<>(500, "断开连接失败", null);
+            return Result.error(ErrorCode.CONNECTION_FAILED.getCode(), "连接测试失败", null);
         }
     }
 

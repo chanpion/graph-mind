@@ -52,8 +52,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         log.info("发布图Schema: {}", graphId);
         //todo
         try {
-
-
             // 获取图信息
             Graph graph = graphService.getById(graphId);
             if (graph == null) {

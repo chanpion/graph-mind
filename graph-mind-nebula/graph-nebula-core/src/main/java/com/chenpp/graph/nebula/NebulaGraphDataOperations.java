@@ -1,21 +1,18 @@
 package com.chenpp.graph.nebula;
 
 import com.chenpp.graph.core.GraphDataOperations;
+import com.chenpp.graph.core.exception.ErrorCode;
 import com.chenpp.graph.core.exception.GraphException;
 import com.chenpp.graph.core.model.GraphData;
 import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphVertex;
 import com.vesoft.nebula.client.graph.SessionPool;
 import com.vesoft.nebula.client.graph.data.ResultSet;
-import com.vesoft.nebula.client.graph.data.ValueWrapper;
 import com.vesoft.nebula.client.graph.exception.IOErrorException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * @author April.Chen
@@ -278,7 +275,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
         } catch (IOErrorException e) {
             throw new GraphException("Failed to execute query due to IO error", e);
         } catch (Exception e) {
-            throw new GraphException("Failed to execute query", e);
+            throw new GraphException(ErrorCode.GRAPH_QUERY_FAILED, e);
         }
     }
     
