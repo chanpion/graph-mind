@@ -5,6 +5,8 @@ import com.chenpp.graph.admin.model.Graph;
 import com.chenpp.graph.admin.model.GraphDatabaseConnection;
 import com.chenpp.graph.core.GraphClient;
 import com.chenpp.graph.core.model.GraphConf;
+import com.chenpp.graph.janus.JanusClient;
+import com.chenpp.graph.janus.JanusConf;
 import com.chenpp.graph.nebula.NebulaClient;
 import com.chenpp.graph.nebula.NebulaConf;
 import com.chenpp.graph.neo4j.Neo4jClient;
@@ -39,10 +41,13 @@ public class GraphClientFactory {
                 nebulaConf.setGraphCode(graphConf.getGraphCode());
                 nebulaConf.setHosts(graphConf.getParams().get("host").toString());
                 nebulaConf.setPort(NumberUtils.toInt(graphConf.getParams().getOrDefault("port", "").toString()));
+                nebulaConf.setSpace(graphConf.getGraphCode());
                 return new NebulaClient(nebulaConf);
             case "janus":
-                // TODO: 实现JanusGraph客户端
-                throw new UnsupportedOperationException("JanusGraph client not implemented yet");
+                JanusConf janusConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), JanusConf.class);
+                janusConf.setGraphCode(graphConf.getGraphCode());
+
+                return new JanusClient(janusConf);
 
             default:
                 throw new IllegalArgumentException("Unsupported graph database type: " + type);

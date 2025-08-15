@@ -8,11 +8,13 @@ import com.chenpp.graph.admin.model.GraphPropertyDef;
 import com.chenpp.graph.admin.service.GraphDatabaseConnectionService;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
 import com.chenpp.graph.admin.service.GraphNodeDefService;
+import com.chenpp.graph.admin.service.GraphPropertyDefService;
 import com.chenpp.graph.admin.service.GraphSchemaService;
 import com.chenpp.graph.admin.service.GraphService;
-import com.chenpp.graph.core.GraphClient;
 import com.chenpp.graph.admin.util.GraphClientFactory;
+import com.chenpp.graph.core.GraphClient;
 import com.chenpp.graph.core.GraphOperations;
+import com.chenpp.graph.core.exception.GraphException;
 import com.chenpp.graph.core.model.GraphConf;
 import com.chenpp.graph.core.schema.DataType;
 import com.chenpp.graph.core.schema.GraphEntity;
@@ -22,7 +24,9 @@ import com.chenpp.graph.core.schema.GraphSchema;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -47,6 +51,10 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
     @Resource
     private GraphEdgeDefService graphEdgeDefService;
 
+    @Resource
+    private GraphPropertyDefService graphPropertyDefService;
+
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public void publishSchema(Long graphId) {
         log.info("发布图Schema: {}", graphId);
@@ -64,8 +72,8 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
                 log.error("图数据库连接不存在，connectionId={}", graph.getConnectionId());
                 return;
             }
-            List<GraphNodeDef> nodes = graphNodeDefService.getNodeDefsByGraphId(graphId);
-            List<GraphEdgeDef> edges = graphEdgeDefService.getEdgeDefsByGraphId(graphId);
+            List<GraphNodeDef> nodes = graphNodeDefService.getNodeDefsByGraphId(graphId, 0);
+            List<GraphEdgeDef> edges = graphEdgeDefService.getEdgeDefsByGraphId(graphId, 0);
 
             // 构建图配置信息
             GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
@@ -100,10 +108,27 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             // 应用图模式
             graphOperations.applySchema(graphConf, graphSchema);
 
+            List<GraphPropertyDef> propertyList = new ArrayList<>();
             // 更新节点定义状态为已发布
-
+            nodes.forEach(node -> {
+                node.setStatus(1);
+                propertyList.addAll(node.getProperties());
+            });
+            graphNodeDefService.updateBatchById(nodes);
+            // 更新边定义状态为已发布
+            edges.forEach(edge -> {
+                edge.setStatus(1);
+                propertyList.addAll(edge.getProperties());
+            });
+            graphEdgeDefService.updateBatchById(edges);
+            // 更新属性定义状态为已发布
+            graphPropertyDefService.updateBatchById(propertyList);
+            // 更新图状态为已发布
+            graph.setStatus(1);
+            graphService.updateById(graph);
         } catch (Exception e) {
             log.error("发布图Schema失败", e);
+            throw new GraphException("发布图Schema失败");
         }
     }
 

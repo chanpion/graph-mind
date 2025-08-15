@@ -27,9 +27,12 @@ public class GraphNodeDefServiceImpl extends ServiceImpl<GraphNodeDefDao, GraphN
     private GraphPropertyDefServiceImpl graphPropertyDefService;
 
     @Override
-    public List<GraphNodeDef> getNodeDefsByGraphId(Long graphId) {
+    public List<GraphNodeDef> getNodeDefsByGraphId(Long graphId, Integer status) {
         QueryWrapper<GraphNodeDef> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("graph_id", graphId);
+        if (status != null) {
+            queryWrapper.eq("status", status);
+        }
         List<GraphNodeDef> nodeDefs = this.list(queryWrapper);
 
         // 查询并设置每个节点定义的属性列表
@@ -37,6 +40,9 @@ public class GraphNodeDefServiceImpl extends ServiceImpl<GraphNodeDefDao, GraphN
             QueryWrapper<GraphPropertyDef> propertyQueryWrapper = new QueryWrapper<>();
             propertyQueryWrapper.eq("entity_id", nodeDef.getId());
             propertyQueryWrapper.eq("property_type", "node");
+            if (status != null) {
+                propertyQueryWrapper.eq("status", status);
+            }
             nodeDef.setProperties(graphPropertyDefService.list(propertyQueryWrapper));
         }
 

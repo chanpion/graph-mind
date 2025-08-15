@@ -14,12 +14,22 @@ public class NebulaClient implements GraphClient {
     private NebulaConf nebulaConf;
 
     public NebulaClient(NebulaConf nebulaConf) {
+        if (nebulaConf.getPartitionNum() <= 0) {
+            nebulaConf.setPartitionNum(3);
+        }
+        if (nebulaConf.getReplicaFactor() <= 0) {
+            nebulaConf.setReplicaFactor(1);
+        }
+        if (nebulaConf.getVidFixedStrLength() <= 0) {
+            nebulaConf.setVidFixedStrLength(32);
+        }
+
         this.nebulaConf = nebulaConf;
     }
 
     @Override
     public GraphOperations opsForGraph() {
-        return new NebulaGraphOperations();
+        return new NebulaGraphOperations(nebulaConf);
     }
 
     @Override

@@ -12,30 +12,35 @@ import java.util.List;
  * @date 2025/8/4 15:45
  */
 public interface GraphNodeDefService extends IService<GraphNodeDef> {
-    
+
     /**
      * 根据图ID获取节点定义列表
+     *
      * @param graphId 图ID
+     * @param status  节点状态
      * @return 节点定义列表
      */
-    List<GraphNodeDef> getNodeDefsByGraphId(Long graphId);
-    
+    List<GraphNodeDef> getNodeDefsByGraphId(Long graphId, Integer status);
+
     /**
      * 保存节点定义及其属性
+     *
      * @param nodeDef 节点定义
      * @return 是否保存成功
      */
     boolean saveNodeDefWithProperties(GraphNodeDef nodeDef);
-    
+
     /**
      * 更新节点定义及其属性
+     *
      * @param nodeDef 节点定义
      * @return 是否更新成功
      */
     boolean updateNodeDefWithProperties(GraphNodeDef nodeDef);
-    
+
     /**
      * 删除节点定义及其属性
+     *
      * @param id 节点定义ID
      * @return 是否删除成功
      */

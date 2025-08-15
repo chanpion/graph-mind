@@ -21,23 +21,23 @@ public class NebulaUtil {
         return "DROP SPACE IF EXISTS " + spaceName;
     }
 
-    private void createUniqueIndex(NebulaConf nebulaConf, GraphIndex index) {
+    public static void createUniqueIndex(NebulaConf nebulaConf, GraphIndex index) {
         String vertexIndex = "CREATE UNIQUE INDEX <index_name> ON <tag_name> (<property_name> [, <property_name> ...]);";
         String edgeIndex = "CREATE UNIQUE INDEX <index_name> ON <edge_type> (<property_name> [, <property_name> ...]);";
         String idx = "CREATE INDEX person_name_age_index ON person (name, age);";
         String dropIndex = "DROP INDEX person_name_index;";
     }
 
-    private String buildCreateTag(GraphEntity entity) {
+    public static String buildCreateTag(GraphEntity entity) {
         StringBuilder tagBuilder = new StringBuilder();
-        String properties = entity.getProperties().stream().map(prop -> prop.getName() + " " + prop.getDataType().name())
+        String properties = entity.getProperties().stream().map(prop -> prop.getCode() + " " + prop.getDataType().name())
                 .collect(Collectors.joining(", "));
         tagBuilder.append("CREATE TAG IF NOT EXISTS ").append(entity.getLabel()).append(" (").append(properties).append(")");
 
         return tagBuilder.toString();
     }
 
-    private String buildCreateEdge(GraphRelation relation) {
+    public static String buildCreateEdge(GraphRelation relation) {
         StringBuilder edgeBuilder = new StringBuilder();
         String properties = relation.getProperties().stream().map(prop -> prop.getName() + " " + prop.getDataType().name())
                 .collect(Collectors.joining(", "));

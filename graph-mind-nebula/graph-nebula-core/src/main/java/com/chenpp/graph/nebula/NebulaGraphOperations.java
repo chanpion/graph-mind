@@ -42,6 +42,10 @@ public class NebulaGraphOperations implements GraphOperations {
     private NGQLBuilder ngqlBuilder = new NGQLBuilder(ZoneOffset.of("+8"));
     private NebulaConf nebulaConf;
 
+    public NebulaGraphOperations(NebulaConf nebulaConf) {
+        this.nebulaConf = nebulaConf;
+    }
+
     public NebulaPool getConnection(GraphConf graphConf) {
         NebulaConf nebulaConf = (NebulaConf) graphConf;
         return NebulaClientFactory.getNebulaPool(nebulaConf);
@@ -49,12 +53,13 @@ public class NebulaGraphOperations implements GraphOperations {
 
     @Override
     public void createGraph(GraphConf graphConf) {
-        NebulaConf nebulaConf = (NebulaConf) graphConf;
+//        NebulaConf nebulaConf = (NebulaConf) graphConf;
         String nql = NebulaUtil.buildCreateSpace(nebulaConf);
         ResultSet resultSet = execute(nebulaConf, nql);
         if (!resultSet.isSucceeded()) {
             throw new GraphException("create graph failed, errorCode: " + resultSet.getErrorCode() + ", errorMessage: " + resultSet.getErrorMessage());
         }
+        log.info("create graph {} success", nebulaConf.getGraphCode());
     }
 
     @Override
@@ -69,7 +74,7 @@ public class NebulaGraphOperations implements GraphOperations {
 
     @Override
     public List<Graph> listGraphs(GraphConf graphConf) {
-        NebulaConf nebulaConf = (NebulaConf) graphConf;
+//        NebulaConf nebulaConf = (NebulaConf) graphConf;
         String nql = "SHOW SPACES";
         ResultSet resultSet = execute(nebulaConf, nql);
         if (!resultSet.isSucceeded()) {
@@ -86,18 +91,34 @@ public class NebulaGraphOperations implements GraphOperations {
     @Override
     public void applySchema(GraphConf graphConf, GraphSchema graphSchema) {
         log.info("begin apply graph schema");
-        NebulaConf nebulaConf = (NebulaConf) graphConf;
+//        NebulaConf nebulaConf = (NebulaConf) graphConf;
         NebulaPool nebulaPool = NebulaClientFactory.getNebulaPool(nebulaConf);
 
+        List<Graph> graphs = listGraphs(graphConf);
+        if (graphs.stream().noneMatch(graph -> Objects.equals(graph.getCode(), nebulaConf.getGraphCode()))) {
+            createGraph(graphConf);
+        }
+
         String useSpace = ngqlBuilder.buildUseSpace(nebulaConf.getSpace());
+
+        try (Session session = nebulaPool.getSession(nebulaConf.getUsername(), nebulaConf.getPassword(), false)) {
+            ResultSet rs = session.execute(useSpace);
+            if (!rs.isSucceeded()) {
+                throw new GraphException(String.format("Failed to use space, error code: %s ,error message %s", rs.getErrorCode(), rs.getErrorMessage()));
+            }
+            createTags(graphSchema.getEntities(), session);
+            createEdges(graphSchema.getRelations(), session);
+            createIndices(graphSchema.getIndexes(), session);
+        } catch (Exception e) {
+            log.error("nebula create schema error", e);
+            throw new GraphException("nebula create schema error", e);
+        }
 
         ResultSet rs = execute(nebulaConf, useSpace);
         if (!rs.isSucceeded()) {
             return;
         }
-        createTags(graphSchema.getEntities());
-        createEdges(graphSchema.getRelations());
-        createIndices(graphSchema.getIndexes());
+
     }
 
 
@@ -113,42 +134,18 @@ public class NebulaGraphOperations implements GraphOperations {
     }
 
 
-    public void createTags(List<GraphEntity> entities) {
+    public void createTags(List<GraphEntity> entities, Session session) {
         if (entities == null || entities.isEmpty()) {
             return;
         }
-        
+
         entities.forEach(entity -> {
             try {
-                // 构建创建Tag的NGQL语句
-                StringBuilder builder = new StringBuilder();
-                builder.append("CREATE TAG IF NOT EXISTS ").append(entity.getLabel()).append(" (");
-                
-                // 添加属性定义
-                if (entity.getProperties() != null && !entity.getProperties().isEmpty()) {
-                    List<String> propDefs = new ArrayList<>();
-                    for (com.chenpp.graph.core.schema.GraphProperty prop : entity.getProperties()) {
-                        StringBuilder propBuilder = new StringBuilder();
-                        propBuilder.append(prop.getCode()).append(" ")
-                                .append(convertToNebulaDataType(prop.getDataType()));
-                        
-                        // 处理字符串类型长度
-                        if (prop.getDataType() == com.chenpp.graph.core.schema.DataType.String) {
-                            propBuilder.append("(").append(NebulaProperty.FIXED_STRING_SIZE).append(")");
-                        }
-                        
-                        propDefs.add(propBuilder.toString());
-                    }
-                    builder.append(String.join(", ", propDefs));
-                }
-                
-                builder.append(")");
-                
                 // 执行创建Tag的语句
-                String nql = builder.toString();
-                ResultSet resultSet = execute(nebulaConf, nql);
+                String nql = NebulaUtil.buildCreateTag(entity);
+                ResultSet resultSet =  session.execute(nql);
                 if (!resultSet.isSucceeded()) {
-                    log.warn("Failed to create tag: {}, errorCode: {}, errorMessage: {}", 
+                    log.warn("Failed to create tag: {}, errorCode: {}, errorMessage: {}",
                             entity.getLabel(), resultSet.getErrorCode(), resultSet.getErrorMessage());
                 } else {
                     log.info("Successfully created tag: {}", entity.getLabel());
@@ -159,42 +156,18 @@ public class NebulaGraphOperations implements GraphOperations {
         });
     }
 
-    public void createEdges(List<GraphRelation> edges) {
+    public void createEdges(List<GraphRelation> edges, Session session) {
         if (edges == null || edges.isEmpty()) {
             return;
         }
-        
+
         edges.forEach(edge -> {
             try {
-                // 构建创建Edge的NGQL语句
-                StringBuilder builder = new StringBuilder();
-                builder.append("CREATE EDGE IF NOT EXISTS ").append(edge.getLabel()).append(" (");
-                
-                // 添加属性定义
-                if (edge.getProperties() != null && !edge.getProperties().isEmpty()) {
-                    List<String> propDefs = new ArrayList<>();
-                    for (com.chenpp.graph.core.schema.GraphProperty prop : edge.getProperties()) {
-                        StringBuilder propBuilder = new StringBuilder();
-                        propBuilder.append(prop.getCode()).append(" ")
-                                .append(convertToNebulaDataType(prop.getDataType()));
-                        
-                        // 处理字符串类型长度
-                        if (prop.getDataType() == com.chenpp.graph.core.schema.DataType.String) {
-                            propBuilder.append("(").append(NebulaProperty.FIXED_STRING_SIZE).append(")");
-                        }
-                        
-                        propDefs.add(propBuilder.toString());
-                    }
-                    builder.append(String.join(", ", propDefs));
-                }
-                
-                builder.append(")");
-                
                 // 执行创建Edge的语句
-                String nql = builder.toString();
-                ResultSet resultSet = execute(nebulaConf, nql);
+                String nql = NebulaUtil.buildCreateEdge(edge);
+                ResultSet resultSet = session.execute(nql);
                 if (!resultSet.isSucceeded()) {
-                    log.warn("Failed to create edge: {}, errorCode: {}, errorMessage: {}", 
+                    log.warn("Failed to create edge: {}, errorCode: {}, errorMessage: {}",
                             edge.getLabel(), resultSet.getErrorCode(), resultSet.getErrorMessage());
                 } else {
                     log.info("Successfully created edge: {}", edge.getLabel());
@@ -205,30 +178,30 @@ public class NebulaGraphOperations implements GraphOperations {
         });
     }
 
-    public void createIndices(List<GraphIndex> indices) {
+    public void createIndices(List<GraphIndex> indices, Session session) {
         if (indices == null || indices.isEmpty()) {
             return;
         }
-        
+
         indices.forEach(index -> {
             try {
                 // 构建创建索引的NGQL语句
                 StringBuilder builder = new StringBuilder();
                 builder.append("CREATE INDEX IF NOT EXISTS ").append(index.getName())
                         .append(" ON ").append(index.getLabel()).append(" (");
-                
+
                 // 添加索引属性
                 if (index.getPropertyNames() != null && !index.getPropertyNames().isEmpty()) {
                     builder.append(String.join(", ", index.getPropertyNames()));
                 }
-                
+
                 builder.append(")");
-                
+
                 // 执行创建索引的语句
                 String nql = builder.toString();
-                ResultSet resultSet = execute(nebulaConf, nql);
+                ResultSet resultSet = session.execute(nql);
                 if (!resultSet.isSucceeded()) {
-                    log.warn("Failed to create index: {}, errorCode: {}, errorMessage: {}", 
+                    log.warn("Failed to create index: {}, errorCode: {}, errorMessage: {}",
                             index.getName(), resultSet.getErrorCode(), resultSet.getErrorMessage());
                 } else {
                     log.info("Successfully created index: {}", index.getName());
@@ -272,7 +245,7 @@ public class NebulaGraphOperations implements GraphOperations {
 
     /**
      * 将通用数据类型转换为Nebula数据类型
-     * 
+     *
      * @param dataType 通用数据类型
      * @return Nebula数据类型字符串
      */

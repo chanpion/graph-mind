@@ -15,10 +15,12 @@ public interface GraphEdgeDefService extends IService<GraphEdgeDef> {
     
     /**
      * 根据图ID获取边定义列表
+     *
      * @param graphId 图ID
+     * @param status 状态
      * @return 边定义列表
      */
-    List<GraphEdgeDef> getEdgeDefsByGraphId(Long graphId);
+    List<GraphEdgeDef> getEdgeDefsByGraphId(Long graphId, Integer status);
     
     /**
      * 保存边定义及其属性

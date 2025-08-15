@@ -126,6 +126,12 @@
             <artifactId>graph-nebula-core</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- Janus依赖 -->
+        <dependency>
+            <groupId>com.chenpp.graph</groupId>
+            <artifactId>graph-janus-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

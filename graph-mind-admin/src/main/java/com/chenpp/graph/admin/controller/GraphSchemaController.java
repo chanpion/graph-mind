@@ -2,7 +2,6 @@ package com.chenpp.graph.admin.controller;
 
 import com.chenpp.graph.admin.model.GraphEdgeDef;
 import com.chenpp.graph.admin.model.GraphNodeDef;
-import com.chenpp.graph.admin.model.ImportResult;
 import com.chenpp.graph.admin.model.Result;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
 import com.chenpp.graph.admin.service.GraphNodeDefService;
@@ -44,11 +43,12 @@ public class GraphSchemaController {
      * 获取节点定义列表
      *
      * @param graphId 图ID
+     * @param status  节点状态
      * @return 节点定义列表
      */
     @GetMapping("/nodes")
-    public Result<List<GraphNodeDef>> getNodeDefs(@PathVariable Long graphId) {
-        List<GraphNodeDef> nodeDefs = nodeDefService.getNodeDefsByGraphId(graphId);
+    public Result<List<GraphNodeDef>> getNodeDefs(@PathVariable Long graphId, Integer status) {
+        List<GraphNodeDef> nodeDefs = nodeDefService.getNodeDefsByGraphId(graphId, status);
         return Result.success(nodeDefs);
     }
 
@@ -111,11 +111,12 @@ public class GraphSchemaController {
      * 获取边定义列表
      *
      * @param graphId 图ID
+     * @param status  边状态
      * @return 边定义列表
      */
     @GetMapping("/edges")
-    public Result<List<GraphEdgeDef>> getEdgeDefs(@PathVariable Long graphId) {
-        List<GraphEdgeDef> edgeDefs = edgeDefService.getEdgeDefsByGraphId(graphId);
+    public Result<List<GraphEdgeDef>> getEdgeDefs(@PathVariable Long graphId, Integer status) {
+        List<GraphEdgeDef> edgeDefs = edgeDefService.getEdgeDefsByGraphId(graphId, status);
         return Result.success(edgeDefs);
     }
 

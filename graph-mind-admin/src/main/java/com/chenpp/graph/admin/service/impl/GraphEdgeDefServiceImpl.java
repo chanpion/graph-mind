@@ -27,9 +27,12 @@ public class GraphEdgeDefServiceImpl extends ServiceImpl<GraphEdgeDefDao, GraphE
     private GraphPropertyDefDao propertyDao;
     
     @Override
-    public List<GraphEdgeDef> getEdgeDefsByGraphId(Long graphId) {
+    public List<GraphEdgeDef> getEdgeDefsByGraphId(Long graphId, Integer status) {
         QueryWrapper<GraphEdgeDef> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("graph_id", graphId);
+        if (status != null){
+            queryWrapper.eq("status", status);
+        }
         List<GraphEdgeDef> edgeDefs = this.list(queryWrapper);
         
         // 查询并设置每个边定义的属性列表
@@ -37,6 +40,9 @@ public class GraphEdgeDefServiceImpl extends ServiceImpl<GraphEdgeDefDao, GraphE
             QueryWrapper<GraphPropertyDef> propertyQueryWrapper = new QueryWrapper<>();
             propertyQueryWrapper.eq("entity_id", edgeDef.getId());
             propertyQueryWrapper.eq("property_type", "edge");
+            if (status != null){
+                propertyQueryWrapper.eq("status", status);
+            }
             edgeDef.setProperties(propertyDao.selectList(propertyQueryWrapper));
         }
         
