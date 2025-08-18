@@ -11,8 +11,12 @@ import org.janusgraph.core.JanusGraph;
 import org.janusgraph.core.JanusGraphVertex;
 import org.janusgraph.core.JanusGraphEdge;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 /**
  * JanusGraph数据操作实现类
@@ -265,5 +269,149 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         // JanusGraph主要使用Gremlin查询语言而不是Cypher
         // 这里可以实现Gremlin查询或者其他自定义查询逻辑
         throw new UnsupportedOperationException("Cypher query is not supported in JanusGraph. Use Gremlin instead.");
+    }
+    
+    /**
+     * 根据顶点ID列表查询顶点
+     *
+     * @param vertexIds 顶点ID列表
+     * @return 顶点列表
+     * @throws GraphException 查询异常
+     */
+    public List<GraphVertex> getVerticesByIds(List<String> vertexIds) throws GraphException {
+        if (CollectionUtils.isEmpty(vertexIds)) {
+            return new ArrayList<>();
+        }
+        
+        try {
+            List<GraphVertex> result = new ArrayList<>();
+            // 开启事务
+            org.janusgraph.core.JanusGraphTransaction tx = graph.newTransaction();
+            try {
+                // 查询顶点
+                Iterator<JanusGraphVertex> vertices = tx.query().has("uid", org.janusgraph.core.attribute.Contain.IN, vertexIds).vertices().iterator();
+                while (vertices.hasNext()) {
+                    JanusGraphVertex vertex = vertices.next();
+                    GraphVertex graphVertex = parseVertex(vertex);
+                    result.add(graphVertex);
+                }
+                
+                // 提交事务
+                tx.commit();
+                return result;
+            } catch (Exception e) {
+                tx.rollback();
+                throw e;
+            }
+        } catch (Exception e) {
+            throw new GraphException("Failed to get vertices by ids", e);
+        }
+    }
+    
+    /**
+     * 根据边ID列表查询边
+     *
+     * @param edgeIds 边ID列表
+     * @return 边列表
+     * @throws GraphException 查询异常
+     */
+    public List<GraphEdge> getEdgesByIds(List<String> edgeIds) throws GraphException {
+        if (CollectionUtils.isEmpty(edgeIds)) {
+            return new ArrayList<>();
+        }
+        
+        try {
+            List<GraphEdge> result = new ArrayList<>();
+            // 开启事务
+            org.janusgraph.core.JanusGraphTransaction tx = graph.newTransaction();
+            try {
+                // 查询边
+                Iterator<JanusGraphEdge> edges = tx.query().has("uid", org.janusgraph.core.attribute.Contain.IN, edgeIds).edges().iterator();
+                while (edges.hasNext()) {
+                    JanusGraphEdge edge = edges.next();
+                    GraphEdge graphEdge = parseEdge(edge);
+                    result.add(graphEdge);
+                }
+                
+                // 提交事务
+                tx.commit();
+                return result;
+            } catch (Exception e) {
+                tx.rollback();
+                throw e;
+            }
+        } catch (Exception e) {
+            throw new GraphException("Failed to get edges by ids", e);
+        }
+    }
+    
+    /**
+     * 解析JanusGraphVertex为GraphVertex
+     *
+     * @param vertex JanusGraphVertex对象
+     * @return GraphVertex对象
+     */
+    private GraphVertex parseVertex(JanusGraphVertex vertex) {
+        GraphVertex graphVertex = new GraphVertex();
+        
+        // 获取UID
+        if (vertex.property("uid").isPresent()) {
+            graphVertex.setUid((String) vertex.property("uid").value());
+        }
+        
+        // 获取标签
+        graphVertex.setLabel(vertex.label());
+        
+        // 获取其他属性
+        Map<String, Object> properties = new HashMap<>();
+        vertex.keys().forEach(key -> {
+            if (vertex.property(key).isPresent() && !"uid".equals(key)) {
+                properties.put(key, vertex.property(key).value());
+            }
+        });
+        graphVertex.setProperties(properties);
+        
+        return graphVertex;
+    }
+    
+    /**
+     * 解析JanusGraphEdge为GraphEdge
+     *
+     * @param edge JanusGraphEdge对象
+     * @return GraphEdge对象
+     */
+    private GraphEdge parseEdge(JanusGraphEdge edge) {
+        GraphEdge graphEdge = new GraphEdge();
+        
+        // 获取UID
+        if (edge.property("uid").isPresent()) {
+            graphEdge.setUid((String) edge.property("uid").value());
+        }
+        
+        // 获取标签
+        graphEdge.setLabel(edge.label());
+        
+        // 获取起始和结束顶点的UID
+        JanusGraphVertex outVertex = edge.outVertex();
+        JanusGraphVertex inVertex = edge.inVertex();
+        
+        if (outVertex.property("uid").isPresent()) {
+            graphEdge.setStartUid((String) outVertex.property("uid").value());
+        }
+        
+        if (inVertex.property("uid").isPresent()) {
+            graphEdge.setEndUid((String) inVertex.property("uid").value());
+        }
+        
+        // 获取其他属性
+        Map<String, Object> properties = new HashMap<>();
+        edge.keys().forEach(key -> {
+            if (edge.property(key).isPresent() && !"uid".equals(key)) {
+                properties.put(key, edge.property(key).value());
+            }
+        });
+        graphEdge.setProperties(properties);
+        
+        return graphEdge;
     }
 }

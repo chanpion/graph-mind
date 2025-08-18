@@ -6,7 +6,13 @@
         <p class="page-description">图ID：{{ graphId }}，展示点定义、边定义并支持增删改查</p>
       </div>
       <div class="publish-toolbar" v-if="nodeDefs.length > 0 || edgeDefs.length > 0">
-        <el-button type="success" @click="handlePublishSchema">发布</el-button>
+        <el-button 
+          type="success" 
+          @click="handlePublishSchema" 
+          :disabled="isGraphPublished"
+        >
+          {{ isGraphPublished ? '已发布' : '发布' }}
+        </el-button>
       </div>
     </div>
     <el-tabs v-model="activeTab" @tab-change="handleTabChange">
@@ -385,7 +391,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit } from '@element-plus/icons-vue'
@@ -431,11 +437,33 @@ const publishResult = ref({
   details: null
 })
 
+// 图是否已发布的状态
+const isGraphPublished = ref(false)
+
+// 计算属性：检查所有节点和边是否都已发布
+const checkIfGraphPublished = computed(() => {
+  // 如果没有节点和边定义，则认为未发布
+  if (nodeDefs.value.length === 0 && edgeDefs.value.length === 0) {
+    return false
+  }
+  
+  // 检查所有节点是否已发布
+  const allNodesPublished = nodeDefs.value.every(node => node.status === 1)
+  
+  // 检查所有边是否已发布
+  const allEdgesPublished = edgeDefs.value.every(edge => edge.status === 1)
+  
+  // 只有当所有节点和边都已发布时，才认为图已发布
+  return allNodesPublished && allEdgesPublished
+})
+
 // 获取点定义列表
 const fetchNodeDefs = async () => {
   try {
     const res = await graphApi.getNodeDefs(graphId)
     nodeDefs.value = res.data
+    // 更新图发布状态
+    isGraphPublished.value = checkIfGraphPublished.value
   } catch (e) {
     ElMessage.error('获取点定义列表失败')
   }
@@ -446,6 +474,8 @@ const fetchEdgeDefs = async () => {
   try {
     const res = await graphApi.getEdgeDefs(graphId)
     edgeDefs.value = res.data
+    // 更新图发布状态
+    isGraphPublished.value = checkIfGraphPublished.value
   } catch (e) {
     ElMessage.error('获取边定义列表失败')
   }
@@ -651,6 +681,14 @@ const handlePublishSchema = async () => {
       details: res.data
     }
     publishResultVisible.value = true
+    
+    // 发布成功后更新状态
+    if (res.code === 200) {
+      isGraphPublished.value = true
+      // 重新获取数据以更新状态显示
+      fetchNodeDefs()
+      fetchEdgeDefs()
+    }
   } catch (e) {
     ElMessage.error('发布失败: ' + (e.message || '未知错误'))
   }

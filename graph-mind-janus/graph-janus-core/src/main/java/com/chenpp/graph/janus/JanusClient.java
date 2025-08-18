@@ -15,49 +15,20 @@ import org.janusgraph.core.JanusGraphFactory;
  * @date 2025/8/13 15:40
  */
 public class JanusClient implements GraphClient {
-    private JanusConf janusConf;
+    private final JanusConf janusConf;
     private JanusGraph graph;
 
     public JanusClient(JanusConf janusConf) {
         this.janusConf = janusConf;
-        this.graph = createGraphInstance();
-    }
-
-    /**
-     * 根据配置创建JanusGraph实例
-     *
-     * @return JanusGraph实例
-     */
-    private JanusGraph createGraphInstance() {
-        // 构建配置
-        Configuration config = new BaseConfiguration();
-        
-        // 存储后端配置
-        config.setProperty("storage.backend", janusConf.getStorageBackend());
-        config.setProperty("storage.hostname", janusConf.getStorageHostname());
-        config.setProperty("storage.port", janusConf.getStoragePort());
-        
-        if (janusConf.getStorageUsername() != null && !janusConf.getStorageUsername().isEmpty()) {
-            config.setProperty("storage.username", janusConf.getStorageUsername());
+        if (janusConf.getGraphCode() == null) {
+            janusConf.setGraphCode("default");
         }
-        
-        if (janusConf.getStoragePassword() != null && !janusConf.getStoragePassword().isEmpty()) {
-            config.setProperty("storage.password", janusConf.getStoragePassword());
-        }
-        
-        // 索引后端配置
-        if (janusConf.isEnableIndexBackend()) {
-            config.setProperty("index.search.backend", janusConf.getIndexBackendType());
-            config.setProperty("index.search.hostname", janusConf.getIndexBackendHostname());
-            config.setProperty("index.search.port", janusConf.getIndexBackendPort());
-        }
-        
-        return JanusGraphFactory.open(config);
+        this.graph = JanusClientFactory.getOrCreateJanusGrapht(janusConf);
     }
 
     @Override
     public GraphOperations opsForGraph() {
-        return new JanusGraphOperations(graph);
+        return new JanusGraphOperations(graph, janusConf);
     }
 
     @Override
@@ -67,7 +38,7 @@ public class JanusClient implements GraphClient {
 
     @Override
     public boolean checkConnection() {
-        return false;
+        return graph.isOpen();
     }
 
     /**
@@ -77,5 +48,9 @@ public class JanusClient implements GraphClient {
         if (graph != null && !graph.isClosed()) {
             graph.close();
         }
+    }
+
+    public JanusGraph getGraph() {
+        return graph;
     }
 }

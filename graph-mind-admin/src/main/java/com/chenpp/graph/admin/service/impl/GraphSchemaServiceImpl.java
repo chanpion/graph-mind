@@ -100,6 +100,7 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
                 relation.setSourceLabel(edge.getFrom());
                 relation.setTargetLabel(edge.getTo());
                 relation.setProperties(transformGraphProperty(edge.getProperties()));
+                relation.setMultiple(edge.getMultiple());
                 return relation;
             }).toList();
             graphSchema.setEntities(entities);

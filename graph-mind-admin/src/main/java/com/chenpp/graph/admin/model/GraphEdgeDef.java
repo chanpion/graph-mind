@@ -71,4 +71,6 @@ public class GraphEdgeDef {
      * 边属性列表
      */
     private List<GraphPropertyDef> properties;
+
+    private Boolean multiple;
 }

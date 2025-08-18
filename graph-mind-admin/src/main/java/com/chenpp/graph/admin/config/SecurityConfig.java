@@ -1,6 +1,7 @@
 package com.chenpp.graph.admin.config;
 
 import com.chenpp.graph.admin.security.JwtAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,12 +34,6 @@ public class SecurityConfig {
     @Value("${auth.enable:true}")
     private Boolean authEnable;
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-    }
-
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -62,7 +57,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, @Autowired(required = false) JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .exceptionHandling(exception -> {
@@ -76,13 +71,11 @@ public class SecurityConfig {
                     .requestMatchers("/api/auth/**", "/h2-console", "/h2-console/**").permitAll() // 允许所有用户访问认证接口、允许访问H2控制台
                     .requestMatchers("/api/**").hasAnyRole("admin")
                     .anyRequest().authenticated());
+            // 添加JWT认证过滤器
+            http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         } else {
             http.authorizeHttpRequests(authz -> authz.anyRequest().permitAll());
         }
-
-
-        // 添加JWT认证过滤器
-        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

@@ -38,4 +38,8 @@ public class GraphDatabaseConnection {
     private String description;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
+    /**
+     * json参数
+     */
+    private String params;
 }

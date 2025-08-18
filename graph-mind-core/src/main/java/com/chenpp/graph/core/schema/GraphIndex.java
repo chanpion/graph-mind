@@ -12,7 +12,20 @@ import java.util.List;
 public class GraphIndex {
 
     private String name;
+    /**
+     * 索引类型, 可以是vertex, edge
+     */
+    private String schemaType;
+
+    /**
+     * 索引类型
+     * @see com.chenpp.graph.core.schema.IndexType
+     */
     private String type;
+    /**
+     * 是否唯一索引
+     */
+    private boolean unique;
     private String label;
     private String property;
     /**

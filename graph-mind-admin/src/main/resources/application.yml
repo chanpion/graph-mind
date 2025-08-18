@@ -17,7 +17,7 @@ logging:
 
 # 权限认证开关配置
 auth:
-  enabled: false
+  enable: false
 
 ---
 spring:

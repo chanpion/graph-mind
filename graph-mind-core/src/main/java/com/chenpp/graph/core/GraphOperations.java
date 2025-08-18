@@ -44,4 +44,13 @@ public interface GraphOperations {
      * @param graphSchema 图谱schema
      */
     void applySchema(GraphConf graphConf, GraphSchema graphSchema);
+    
+    /**
+     * 查询已发布的图谱schema
+     *
+     * @param graphConf 图配置信息
+     * @return 图谱schema
+     * @throws GraphException
+     */
+    GraphSchema getPublishedSchema(GraphConf graphConf) throws GraphException;
 }

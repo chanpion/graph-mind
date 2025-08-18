@@ -58,7 +58,12 @@ public class GraphClientFactory {
         GraphConf graphConf = new GraphConf();
         graphConf.setGraphCode(graph.getCode());
         graphConf.setType(connection.getType());
-        graphConf.setParams(JSON.parseObject(JSON.toJSONString(connection)));
+        if (connection.getParams() != null) {
+            graphConf.setParams(JSON.parseObject(connection.getParams()));
+        } else {
+            graphConf.setParams(JSON.parseObject(JSON.toJSONString(connection)));
+        }
+
         return graphConf;
     }
 

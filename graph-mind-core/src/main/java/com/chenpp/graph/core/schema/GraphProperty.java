@@ -2,6 +2,8 @@ package com.chenpp.graph.core.schema;
 
 import lombok.Data;
 
+import java.util.Objects;
+
 /**
  * 属性定义
  *
@@ -45,4 +47,20 @@ public class GraphProperty {
      */
     private Boolean nullable;
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        GraphProperty that = (GraphProperty) o;
+        return Objects.equals(this.code, that.getCode());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.code);
+    }
 }

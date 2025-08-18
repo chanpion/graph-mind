@@ -121,6 +121,26 @@ public class NebulaGraphOperations implements GraphOperations {
 
     }
 
+    @Override
+    public GraphSchema getPublishedSchema(GraphConf graphConf) throws GraphException {
+        NebulaConf nebulaConf = (NebulaConf) graphConf;
+        GraphSchema schema = new GraphSchema();
+        
+        // 获取标签信息
+        List<GraphEntity> entities = getTags(nebulaConf);
+        schema.setEntities(entities);
+        
+        // 获取边类型信息
+        List<GraphRelation> relations = getEdges(nebulaConf);
+        schema.setRelations(relations);
+        
+        // 获取索引信息
+        List<GraphIndex> indexes = getIndexes(nebulaConf);
+        schema.setIndexes(indexes);
+        
+        return schema;
+    }
+
 
     private ResultSet execute(NebulaConf nebulaConf, String nql) {
         log.info("execute ngql: {}", nql);
@@ -155,6 +175,37 @@ public class NebulaGraphOperations implements GraphOperations {
             }
         });
     }
+    
+    public List<GraphEntity> getTags(NebulaConf nebulaConf) throws GraphException {
+        String useSpace = ngqlBuilder.buildUseSpace(nebulaConf.getSpace());
+        String nql = "SHOW TAGS";
+        
+        execute(nebulaConf, useSpace);
+        ResultSet resultSet = execute(nebulaConf, nql);
+        
+        if (!resultSet.isSucceeded()) {
+            throw new GraphException("Failed to get tags, errorCode: " + resultSet.getErrorCode() + ", errorMessage: " + resultSet.getErrorMessage());
+        }
+        
+        List<GraphEntity> entities = new ArrayList<>();
+        for (int i = 0; i < resultSet.rowsSize(); i++) {
+            ResultSet.Record record = resultSet.rowValues(i);
+            ValueWrapper tagValue = record.get(0);
+            String tagName;
+            try {
+                tagName = tagValue.asString();
+            } catch (UnsupportedEncodingException e) {
+                throw new GraphException("Failed to parse tag name", e);
+            }
+            
+            // 获取标签的详细信息
+            GraphEntity entity = new GraphEntity();
+            entity.setLabel(tagName);
+            entities.add(entity);
+        }
+        
+        return entities;
+    }
 
     public void createEdges(List<GraphRelation> edges, Session session) {
         if (edges == null || edges.isEmpty()) {
@@ -176,6 +227,37 @@ public class NebulaGraphOperations implements GraphOperations {
                 log.error("Error creating edge: " + edge.getLabel(), e);
             }
         });
+    }
+    
+    public List<GraphRelation> getEdges(NebulaConf nebulaConf) throws GraphException {
+        String useSpace = ngqlBuilder.buildUseSpace(nebulaConf.getSpace());
+        String nql = "SHOW EDGES";
+        
+        execute(nebulaConf, useSpace);
+        ResultSet resultSet = execute(nebulaConf, nql);
+        
+        if (!resultSet.isSucceeded()) {
+            throw new GraphException("Failed to get edges, errorCode: " + resultSet.getErrorCode() + ", errorMessage: " + resultSet.getErrorMessage());
+        }
+        
+        List<GraphRelation> relations = new ArrayList<>();
+        for (int i = 0; i < resultSet.rowsSize(); i++) {
+            ResultSet.Record record = resultSet.rowValues(i);
+            ValueWrapper edgeValue = record.get(0);
+            String edgeName;
+            try {
+                edgeName = edgeValue.asString();
+            } catch (UnsupportedEncodingException e) {
+                throw new GraphException("Failed to parse edge name", e);
+            }
+            
+            // 获取边类型的详细信息
+            GraphRelation relation = new GraphRelation();
+            relation.setLabel(edgeName);
+            relations.add(relation);
+        }
+        
+        return relations;
     }
 
     public void createIndices(List<GraphIndex> indices, Session session) {
@@ -210,6 +292,37 @@ public class NebulaGraphOperations implements GraphOperations {
                 log.error("Error creating index: " + index.getName(), e);
             }
         });
+    }
+    
+    public List<GraphIndex> getIndexes(NebulaConf nebulaConf) throws GraphException {
+        String useSpace = ngqlBuilder.buildUseSpace(nebulaConf.getSpace());
+        String nql = "SHOW TAG INDEXES";
+        
+        execute(nebulaConf, useSpace);
+        ResultSet resultSet = execute(nebulaConf, nql);
+        
+        if (!resultSet.isSucceeded()) {
+            throw new GraphException("Failed to get indexes, errorCode: " + resultSet.getErrorCode() + ", errorMessage: " + resultSet.getErrorMessage());
+        }
+        
+        List<GraphIndex> indexes = new ArrayList<>();
+        for (int i = 0; i < resultSet.rowsSize(); i++) {
+            ResultSet.Record record = resultSet.rowValues(i);
+            ValueWrapper indexValue = record.get(0);
+            String indexName;
+            try {
+                indexName = indexValue.asString();
+            } catch (UnsupportedEncodingException e) {
+                throw new GraphException("Failed to parse index name", e);
+            }
+            
+            // 获取索引的详细信息
+            GraphIndex index = new GraphIndex();
+            index.setName(indexName);
+            indexes.add(index);
+        }
+        
+        return indexes;
     }
 
     public void showTags() {
