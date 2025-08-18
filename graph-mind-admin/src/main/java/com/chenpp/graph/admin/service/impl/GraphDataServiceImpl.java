@@ -1,21 +1,23 @@
 package com.chenpp.graph.admin.service.impl;
 
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import com.chenpp.graph.admin.model.Graph;
 import com.chenpp.graph.admin.model.GraphDatabaseConnection;
 import com.chenpp.graph.admin.model.GraphEdgeDef;
 import com.chenpp.graph.admin.model.GraphNodeDef;
 import com.chenpp.graph.admin.model.ImportResult;
 import com.chenpp.graph.admin.service.GraphDataService;
+import com.chenpp.graph.admin.service.GraphDatabaseConnectionService;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
 import com.chenpp.graph.admin.service.GraphNodeDefService;
 import com.chenpp.graph.admin.service.GraphService;
-import com.chenpp.graph.admin.service.GraphDatabaseConnectionService;
+import com.chenpp.graph.admin.util.GraphClientFactory;
 import com.chenpp.graph.core.GraphClient;
 import com.chenpp.graph.core.GraphDataOperations;
+import com.chenpp.graph.core.model.GraphConf;
 import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphVertex;
-import com.chenpp.graph.admin.util.GraphClientFactory;
-import com.chenpp.graph.core.model.GraphConf;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -102,7 +104,7 @@ public class GraphDataServiceImpl implements GraphDataService {
             result.setTotalCount(dataList.size());
 
             // 构建图配置信息
-            GraphConf graphConf =  GraphClientFactory.createGraphConf(connection, graph);
+            GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
 
             // 创建图客户端
             GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
@@ -127,7 +129,7 @@ public class GraphDataServiceImpl implements GraphDataService {
                         }
                     }
                     vertex.setProperties(properties);
-
+                    vertex.setUid(properties.get("uid").toString());
                     // 添加节点
                     graphDataOperations.addVertex(vertex);
                     successCount++;
@@ -220,15 +222,14 @@ public class GraphDataServiceImpl implements GraphDataService {
             }
 
             // 解析映射关系和数据
-            ObjectMapper objectMapper = new ObjectMapper();
-            Map<String, String> mappingMap = objectMapper.readValue(mapping, new TypeReference<Map<String, String>>() {});
-            List<Map<String, String>> dataList = objectMapper.readValue(data, new TypeReference<List<Map<String, String>>>() {});
+            JSONObject mappingMap = JSON.parseObject(mapping);
+            List<Map<String, String>> dataList = parseCsvFile(file);
 
             // 更新导入结果统计
             result.setTotalCount(dataList.size());
 
             // 构建图配置信息
-            GraphConf graphConf =  GraphClientFactory.createGraphConf(connection, graph);
+            GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
 
             // 创建图客户端
             GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
@@ -241,20 +242,21 @@ public class GraphDataServiceImpl implements GraphDataService {
             for (Map<String, String> dataRow : dataList) {
                 try {
                     GraphEdge edge = new GraphEdge();
+                    edge.setUid(dataRow.get(mappingMap.getString("uid")));
                     edge.setLabel(edgeDef.getLabel());
-                    edge.setStartLabel(edgeDef.getFrom());
-                    edge.setEndLabel(edgeDef.getTo());
+                    edge.setStartLabel(dataRow.get(mappingMap.getString("sourceLabel")));
+                    edge.setEndLabel(dataRow.get(mappingMap.getString("targetLabel")));
+                    edge.setStartUid(dataRow.get(mappingMap.getString("source")));
+                    edge.setEndUid(dataRow.get(mappingMap.getString("target")));
 
                     // 设置边属性
                     Map<String, Object> properties = new HashMap<>();
-                    for (Map.Entry<String, String> entry : mappingMap.entrySet()) {
-                        String header = entry.getKey();
-                        String propertyName = entry.getValue();
-                        if (StringUtils.isNotBlank(propertyName) && dataRow.containsKey(header) && 
-                            !"from".equals(header) && !"to".equals(header)) {
-                            properties.put(propertyName, dataRow.get(header));
+
+                    mappingMap.forEach((col, filed) -> {
+                        if (!StringUtils.equalsAny(col, "sourceLabel", "targetLabel", "source", "target")) {
+                            properties.put(col, dataRow.get(filed));
                         }
-                    }
+                    });
                     edge.setProperties(properties);
 
                     // 添加边

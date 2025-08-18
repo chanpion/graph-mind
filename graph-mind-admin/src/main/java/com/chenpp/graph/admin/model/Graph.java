@@ -37,6 +37,11 @@ public class Graph {
     private Long connectionId;
 
     /**
+     * 图类型,
+     * @see com.chenpp.graph.admin.enums.GraphTypeEnum
+     */
+    private String graphType;
+    /**
      * 创建人
      */
     private String creator;

@@ -193,6 +193,18 @@ const query = ref('MATCH (n)-[r]->(m) RETURN n,r,m')
 const nodes = ref([])
 const edges = ref([])
 
+// 添加图类型到查询语句的映射
+const graphTypeQueryMap = {
+  'neo4j': 'MATCH (n)-[r]->(m) RETURN n,r,m LIMIT 25',
+  'nebula': 'MATCH ()-[e]->() RETURN e LIMIT 25',
+  'janus': 'g.V().outE().inV().path()'
+}
+
+// 存储当前选中图的信息
+const selectedGraph = ref(null)
+// 存储连接信息
+const graphConnections = ref(new Map())
+
 // 添加布局类型控制
 const layoutType = ref('force') // force 或 hierarchy
 
@@ -255,7 +267,18 @@ const fetchGraphList = async () => {
   }
 }
 
-const handleGraphChange = () => {
+const handleGraphChange = async (graphId) => {
+  // 查找选中的图信息
+  selectedGraph.value = graphList.value.find(graph => graph.id === graphId) || null
+  // 根据图的数据库类型设置示例查询语句
+  if (selectedGraph.value && selectedGraph.value.connectionId) {
+    const graphType = selectedGraph.value.graphType
+    query.value = graphTypeQueryMap[selectedGraph.value.graphType] || graphTypeQueryMap.neo4j
+  } else {
+    // 如果没有选中图，使用默认查询语句
+    query.value = 'MATCH (n)-[r]->(m) RETURN n,r,m LIMIT 25'
+  }
+  
   nodes.value = []
   edges.value = []
   clearSvg()
