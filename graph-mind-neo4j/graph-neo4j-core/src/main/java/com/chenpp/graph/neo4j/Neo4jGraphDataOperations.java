@@ -14,6 +14,11 @@ import org.neo4j.driver.Record;
 import org.neo4j.driver.Result;
 import org.neo4j.driver.Session;
 import org.neo4j.driver.SessionConfig;
+import org.neo4j.driver.TransactionWork;
+import org.neo4j.driver.Value;
+import org.neo4j.driver.Values;
+import org.neo4j.driver.internal.InternalPath;
+import org.neo4j.driver.internal.types.InternalTypeSystem;
 import org.neo4j.driver.internal.value.NodeValue;
 import org.neo4j.driver.internal.value.PathValue;
 import org.neo4j.driver.internal.value.RelationshipValue;
@@ -21,6 +26,7 @@ import org.neo4j.driver.types.Node;
 import org.neo4j.driver.types.Path;
 import org.neo4j.driver.types.Relationship;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -99,7 +105,11 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
     public void deleteVertex(GraphVertex vertex) throws GraphException {
         String cypher = String.format("MATCH (n:%s {uid: $uid}) DETACH DELETE n", vertex.getLabel());
         try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
-            session.executeWrite(tx -> tx.run(cypher, Map.of("uid", vertex.getUid())));
+            session.executeWrite(tx -> {
+                Result result = tx.run(cypher, Map.of("uid", vertex.getUid()));
+                result.consume(); // 消费结果以避免ClientException
+                return null;
+            });
         } catch (Exception e) {
             throw new GraphException("Failed to delete vertex", e);
         }
@@ -232,5 +242,102 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
             throw new GraphException(ErrorCode.GRAPH_QUERY_FAILED, e);
         }
 
+    }
+
+    @Override
+    public GraphData expand(String nodeId, int depth) throws GraphException {
+        String cypher = "MATCH (n {uid: $nodeId})-[*1..$depth]-(m) " +
+                "RETURN n, m, relationships(path) AS rels";
+        try (Session session = driver.session()) {
+            TransactionWork<GraphData> txWork = tx -> {
+                Result result = tx.run(cypher, Values.parameters("nodeId", nodeId, "depth", depth));
+                return parseResult(result);
+            };
+            return session.readTransaction(txWork);
+        } catch (Exception e) {
+            log.error("Failed to expand node: {}", nodeId, e);
+            throw new GraphException("Failed to expand node: " + nodeId, e);
+        }
+    }
+
+    @Override
+    public GraphData findPath(String startNodeId, String endNodeId, int maxDepth) throws GraphException {
+        String cypher = "MATCH p = shortestPath((a {uid: $startNodeId})-[*..$maxDepth]-(b {uid: $endNodeId})) " +
+                "RETURN p";
+        try (Session session = driver.session()) {
+            TransactionWork<GraphData> txWork = tx -> {
+                Result result = tx.run(cypher, Values.parameters("startNodeId", startNodeId, "endNodeId", endNodeId, "maxDepth", maxDepth));
+                return parseResult(result);
+            };
+            return session.readTransaction(txWork);
+        } catch (Exception e) {
+            log.error("Failed to find path from {} to {}", startNodeId, endNodeId, e);
+            throw new GraphException("Failed to find path from " + startNodeId + " to " + endNodeId, e);
+        }
+    }
+
+    private GraphData parseResult(Result result) {
+        GraphData graphData = new GraphData();
+        Set<GraphVertex> vertices = new HashSet<>();
+        Set<GraphEdge> edges = new HashSet<>();
+
+        while (result.hasNext()) {
+            Record record = result.next();
+            List<Value> values = record.values();
+            for (Value value : values) {
+                // 解析节点
+                if (value.hasType(InternalTypeSystem.TYPE_SYSTEM.NODE())) {
+                    Node node = value.asNode();
+                    GraphVertex vertex = convertNodeToVertex(node);
+                    vertices.add(vertex);
+                }
+                // 解析关系
+                else if (value.hasType(InternalTypeSystem.TYPE_SYSTEM.RELATIONSHIP())) {
+                    Relationship relationship = value.asRelationship();
+                    GraphEdge edge = convertRelationshipToEdge(relationship);
+                    edges.add(edge);
+                }
+                // 解析路径
+                else if (value.hasType(InternalTypeSystem.TYPE_SYSTEM.PATH())) {
+                    InternalPath path = (InternalPath) value.asPath();
+                    for (Node node : path.nodes()) {
+                        GraphVertex vertex = convertNodeToVertex(node);
+                        vertices.add(vertex);
+                    }
+                    for (Relationship relationship : path.relationships()) {
+                        GraphEdge edge = convertRelationshipToEdge(relationship);
+                        edges.add(edge);
+                    }
+                }
+            }
+        }
+
+        graphData.setVertices(new ArrayList<>(vertices));
+        graphData.setEdges(new ArrayList<>(edges));
+        return graphData;
+    }
+
+    private GraphVertex convertNodeToVertex(Node node) {
+        GraphVertex vertex = new GraphVertex();
+        vertex.setId(String.valueOf(node.id()));
+        vertex.setUid((String) node.get("uid").asObject());
+        vertex.setLabel(String.join(":", node.labels()));
+        Map<String, Object> properties = new HashMap<>();
+        node.keys().forEach(key -> properties.put(key, node.get(key).asObject()));
+        vertex.setProperties(properties);
+        return vertex;
+    }
+
+    private GraphEdge convertRelationshipToEdge(Relationship relationship) {
+        GraphEdge edge = new GraphEdge();
+        edge.setId(String.valueOf(relationship.id()));
+        edge.setUid(String.valueOf(relationship.id()));
+        edge.setLabel(relationship.type());
+        edge.setStartUid(String.valueOf(relationship.startNodeId()));
+        edge.setEndUid(String.valueOf(relationship.endNodeId()));
+        Map<String, Object> properties = new HashMap<>();
+        relationship.keys().forEach(key -> properties.put(key, relationship.get(key).asObject()));
+        edge.setProperties(properties);
+        return edge;
     }
 }

@@ -116,7 +116,10 @@ public class GraphController {
      */
     @DeleteMapping("/{id}")
     public Result<String> deleteGraph(@PathVariable Long id) {
-        graphService.removeById(id);
+        boolean result = graphService.removeGraph(id);
+        if (!result) {
+            return Result.error(ErrorCode.GRAPH_NOT_FOUND);
+        }
         return Result.success("删除成功");
     }
 

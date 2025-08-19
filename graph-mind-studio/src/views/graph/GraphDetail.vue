@@ -9,7 +9,8 @@
         <el-button 
           type="success" 
           @click="handlePublishSchema" 
-          :disabled="isGraphPublished"
+          :disabled="isGraphPublished || publishLoading"
+          :loading="publishLoading"
         >
           {{ isGraphPublished ? '已发布' : '发布' }}
         </el-button>
@@ -440,6 +441,9 @@ const publishResult = ref({
 // 图是否已发布的状态
 const isGraphPublished = ref(false)
 
+// 发布按钮加载状态
+const publishLoading = ref(false)
+
 // 计算属性：检查所有节点和边是否都已发布
 const checkIfGraphPublished = computed(() => {
   // 如果没有节点和边定义，则认为未发布
@@ -673,6 +677,8 @@ const removeEdgeProperty = (index) => {
 
 // 发布Schema到图数据库
 const handlePublishSchema = async () => {
+  // 设置加载状态
+  publishLoading.value = true
   try {
     const res = await graphApi.publishSchema(graphId)
     publishResult.value = {
@@ -691,6 +697,9 @@ const handlePublishSchema = async () => {
     }
   } catch (e) {
     ElMessage.error('发布失败: ' + (e.message || '未知错误'))
+  } finally {
+    // 无论成功或失败都取消加载状态
+    publishLoading.value = false
   }
 }
 

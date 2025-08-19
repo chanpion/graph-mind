@@ -48,4 +48,8 @@ public enum IndexType {
         }
         return CONTAINER.get(code);
     }
+
+    public String code() {
+        return code;
+    }
 }

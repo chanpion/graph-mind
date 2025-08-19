@@ -27,6 +27,10 @@ public enum DataType {
      * 整型
      */
     Integer,
+    /**
+     * 整型
+     */
+    Int,
 
     /**
      * 短浮点数

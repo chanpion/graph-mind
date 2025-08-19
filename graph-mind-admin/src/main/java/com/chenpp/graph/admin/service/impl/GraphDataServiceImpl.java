@@ -2,6 +2,7 @@ package com.chenpp.graph.admin.service.impl;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.chenpp.graph.admin.model.Graph;
 import com.chenpp.graph.admin.model.GraphDatabaseConnection;
 import com.chenpp.graph.admin.model.GraphEdgeDef;
@@ -280,5 +281,62 @@ public class GraphDataServiceImpl implements GraphDataService {
         }
 
         return result;
+    }
+
+    @Override
+    public boolean deleteNode(Long graphId, String nodeId, String label) {
+        List<String> nodeIds = new ArrayList<>();
+        nodeIds.add(nodeId);
+        return deleteNodes(graphId, nodeIds, label);
+    }
+
+    @Override
+    public boolean deleteNodes(Long graphId, List<String> nodeIds, String label) {
+        if (graphId == null || nodeIds == null || nodeIds.isEmpty()) {
+            return false;
+        }
+
+        try {
+            // 获取图信息
+            Graph graph = graphService.getById(graphId);
+            if (graph == null) {
+                log.error("图不存在，graphId={}", graphId);
+                return false;
+            }
+
+            // 获取图数据库连接信息
+            GraphDatabaseConnection connection = connectionService.getById(graph.getConnectionId());
+            if (connection == null) {
+                log.error("图数据库连接不存在，connectionId={}", graph.getConnectionId());
+                return false;
+            }
+
+            // 构建图配置信息
+            GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
+
+            // 创建图客户端
+            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+            GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
+
+            GraphNodeDef nodeDef = nodeDefService.getOne(new QueryWrapper<GraphNodeDef>().eq("graph_id", graphId).eq("label", label));
+            // 删除节点
+            for (String nodeId : nodeIds) {
+                try {
+                    GraphVertex vertex = new GraphVertex();
+                    vertex.setUid(nodeId);
+                    vertex.setLabel(nodeDef.getLabel());
+                    graphDataOperations.deleteVertex(vertex);
+                    log.info("成功删除节点，nodeId={}", nodeId);
+                } catch (Exception e) {
+                    log.error("删除节点失败，nodeId={}", nodeId, e);
+                    // 继续删除其他节点，不因单个节点失败而中断整个过程
+                }
+            }
+
+            return true;
+        } catch (Exception e) {
+            log.error("批量删除节点失败，graphId={}", graphId, e);
+            return false;
+        }
     }
 }

@@ -18,15 +18,18 @@ import com.chenpp.graph.core.exception.GraphException;
 import com.chenpp.graph.core.model.GraphConf;
 import com.chenpp.graph.core.schema.DataType;
 import com.chenpp.graph.core.schema.GraphEntity;
+import com.chenpp.graph.core.schema.GraphIndex;
 import com.chenpp.graph.core.schema.GraphProperty;
 import com.chenpp.graph.core.schema.GraphRelation;
 import com.chenpp.graph.core.schema.GraphSchema;
+import com.chenpp.graph.core.schema.IndexType;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -106,6 +109,35 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             graphSchema.setEntities(entities);
             graphSchema.setRelations(relations);
 
+
+            List<GraphIndex> indexes = new ArrayList<>();
+            nodes.forEach(node -> node.getProperties().forEach(p -> {
+                if (p.getIndexed()) {
+                    GraphIndex index = new GraphIndex();
+                    index.setLabel(node.getLabel());
+                    index.setProperty(p.getCode());
+                    index.setType(IndexType.COMPOSITE.code());
+                    index.setSchemaType("vertex");
+                    index.setPropertyNames(Collections.singletonList(p.getCode()));
+                    index.setName(String.format("idx_%s_%s_%s", graph.getCode(), node.getLabel(), p.getCode()));
+                    indexes.add(index);
+                }
+            }));
+
+            edges.forEach(edge -> edge.getProperties().forEach(p -> {
+                if (p.getIndexed()) {
+                    GraphIndex index = new GraphIndex();
+                    index.setLabel(edge.getLabel());
+                    index.setProperty(p.getCode());
+                    index.setType(IndexType.COMPOSITE.code());
+                    index.setSchemaType("edge");
+                    index.setPropertyNames(Collections.singletonList(p.getCode()));
+                    index.setName(String.format("idx_%s_%s_%s", graph.getCode(), edge.getLabel(), p.getCode()));
+                    indexes.add(index);
+                }
+            }));
+
+            graphSchema.setIndexes(indexes);
             // 应用图模式
             graphOperations.applySchema(graphConf, graphSchema);
 

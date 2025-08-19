@@ -232,7 +232,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                         + ", errorMessage: " + resultSet.getErrorMessage());
             }
 
-            return 1; // Nebula更新操作成功返回1
+            return 1;
         } catch (IOErrorException e) {
             throw new GraphException("Failed to update edge due to IO error", e);
         } catch (Exception e) {
@@ -253,7 +253,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                         + ", errorMessage: " + resultSet.getErrorMessage());
             }
 
-            return 1; // 成功删除
+            return 1;
         } catch (IOErrorException e) {
             throw new GraphException("Failed to delete edge due to IO error", e);
         } catch (Exception e) {
@@ -548,4 +548,20 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
             throw new GraphException(ErrorCode.GRAPH_QUERY_FAILED, e);
         }
     }
+
+    @Override
+    public GraphData expand(String nodeId, int depth) throws GraphException {
+        String ngql = String.format("GO %d STEPS FROM \"%s\" OVER * YIELD DISTINCT dst(edge) AS dst | " +
+                "FETCH PROP ON * $-.dst YIELD vertex AS v | " +
+                "FETCH PROP ON * \"%s\" YIELD vertex AS v", depth, nodeId, nodeId);
+        return query(ngql);
+    }
+
+    @Override
+    public GraphData findPath(String startNodeId, String endNodeId, int maxDepth) throws GraphException {
+        String ngql = String.format("FIND SHORTEST PATH FROM \"%s\" TO \"%s\" OVER * UPTO %d STEPS",
+                startNodeId, endNodeId, maxDepth);
+        return query(ngql);
+    }
+
 }

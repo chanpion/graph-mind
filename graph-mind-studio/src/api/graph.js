@@ -114,9 +114,32 @@ export const graphApi = {
   queryGraph(graphId, cypher) {
     return request.post(`/api/graphs/${graphId}/query`, { cypher })
   },
+  
+  // 展开节点（查询与指定节点相关的邻居节点和边）
+  expandNode(graphId, nodeId, depth = 1) {
+    return request.post(`/api/graphs/${graphId}/expand`, { 
+      nodeId, 
+      depth 
+    })
+  },
+  
+  // 查找两个节点之间的路径
+  findPath(graphId, startNodeId, endNodeId, maxDepth = 5) {
+    return request.post(`/api/graphs/${graphId}/path`, { 
+      startNodeId, 
+      endNodeId, 
+      maxDepth 
+    })
+  },
 
   publishSchema(graphId){
     return request.post(`/api/graphs/${graphId}/publish`)
+  },
+
+  deleteNode(graphId, nodeId, label) {
+    return request.delete(`/api/graphs/${graphId}/data/nodes/${nodeId}`, {
+      params: { label }
+    })
   }
 }
 

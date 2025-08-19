@@ -34,6 +34,12 @@ public interface GraphDataOperations {
     void addVertices(Collection<GraphVertex> vertices) throws GraphException;
 
 
+    /**
+     * 删除节点
+     *
+     * @param vertex 节点
+     * @throws GraphException 删除异常
+     */
     void deleteVertex(GraphVertex vertex) throws GraphException;
 
     /**
@@ -59,9 +65,30 @@ public interface GraphDataOperations {
     /**
      * 查询图数据
      *
-     * @param cypher Cypher查询语句
+     * @param query 查询语句
      * @return GraphData 图数据
      * @throws GraphException 查询异常
      */
-    GraphData query(String cypher) throws GraphException;
+    GraphData query(String query) throws GraphException;
+    
+    /**
+     * 展开节点，获取指定节点的邻居信息
+     *
+     * @param nodeId 节点ID
+     * @param depth  展开深度
+     * @return GraphData 包含节点及其邻居信息的图数据
+     * @throws GraphException
+     */
+    GraphData expand(String nodeId, int depth) throws GraphException;
+    
+    /**
+     * 查找两个节点之间的路径
+     *
+     * @param startNodeId 起始节点ID
+     * @param endNodeId   目标节点ID
+     * @param maxDepth    最大搜索深度
+     * @return GraphData 包含路径信息的图数据
+     * @throws GraphException
+     */
+    GraphData findPath(String startNodeId, String endNodeId, int maxDepth) throws GraphException;
 }

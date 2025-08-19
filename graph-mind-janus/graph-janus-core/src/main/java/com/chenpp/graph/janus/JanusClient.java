@@ -21,7 +21,7 @@ public class JanusClient implements GraphClient {
     public JanusClient(JanusConf janusConf) {
         this.janusConf = janusConf;
         if (janusConf.getGraphCode() == null) {
-            janusConf.setGraphCode("default");
+            janusConf.setGraphCode("\"default\"");
         }
         this.graph = JanusClientFactory.getOrCreateJanusGrapht(janusConf);
     }

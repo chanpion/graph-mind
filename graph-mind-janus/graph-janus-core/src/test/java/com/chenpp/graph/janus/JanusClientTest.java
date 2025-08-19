@@ -14,8 +14,13 @@ import com.chenpp.graph.core.schema.GraphProperty;
 import com.chenpp.graph.core.schema.GraphRelation;
 import com.chenpp.graph.core.schema.GraphSchema;
 import com.chenpp.graph.core.schema.IndexType;
+import org.apache.tinkerpop.gremlin.structure.Edge;
+import org.apache.tinkerpop.gremlin.structure.Vertex;
+import org.janusgraph.core.EdgeLabel;
 import org.janusgraph.core.JanusGraph;
 import org.janusgraph.core.JanusGraphFactory;
+import org.janusgraph.core.VertexLabel;
+import org.janusgraph.core.schema.JanusGraphManagement;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -476,5 +481,18 @@ public class JanusClientTest {
 
         // 注意：这里需要使用Gremlin查询边
         // 由于JanusGraphDataOperations中没有实现相关查询方法，暂时无法完成
+    }
+
+
+    @Test
+    public void testQueryIndex() {
+        JanusGraphManagement mgmt = graph.openManagement();
+        System.out.println("vertex: ");
+        mgmt.getVertexLabels().forEach(System.out::println);
+        System.out.println("edge: ");
+        mgmt.getRelationTypes(EdgeLabel.class).forEach(System.out::println);
+        System.out.println("Graph index: ");
+        mgmt.getGraphIndexes(VertexLabel.class).forEach(System.out::println);
+        mgmt.getGraphIndexes(EdgeLabel.class).forEach(System.out::println);
     }
 }

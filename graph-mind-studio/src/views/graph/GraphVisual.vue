@@ -5,7 +5,7 @@
         <el-option v-for="g in graphList" :key="g.id" :label="g.name" :value="g.id" />
       </el-select>
       <el-input v-model="query" placeholder="请输入查询语句" style="width: 400px; margin: 0 12px;" />
-      <el-button type="primary" @click="handleQuery">查询</el-button>
+      <el-button type="primary" @click="handleQuery" :loading="queryLoading">查询</el-button>
       
       <!-- 添加布局切换控件 -->
       <el-select v-model="layoutType" placeholder="选择布局" style="width: 120px; margin-left: 12px;" @change="handleLayoutChange">
@@ -61,7 +61,26 @@
 
     
     <div class="visual-area">
+      <!-- 添加画布loading遮罩 -->
+      <div v-if="canvasLoading" class="canvas-loading">
+        <el-icon class="is-loading" style="font-size: 36px; color: #409eff;">
+          <Loading />
+        </el-icon>
+        <p style="margin-top: 10px; color: #666;">数据加载中...</p>
+      </div>
+      
       <svg ref="svgRef" :width="width" :height="height"></svg>
+      
+      <!-- 添加居中按钮 -->
+      <el-button 
+        class="center-button"
+        circle 
+        size="small" 
+        @click="centerGraph"
+        title="居中显示"
+      >
+        <el-icon><Aim /></el-icon>
+      </el-button>
       
       <!-- 缩放控制按钮，置于画布右下角 -->
       <div class="zoom-controls">
@@ -163,8 +182,8 @@
 import { ref, onMounted, computed } from 'vue'
 import * as d3 from 'd3'
 import graphApi from '@/api/graph'
-import { ElMessage } from 'element-plus'
-import { Plus, Minus, Refresh } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus, Minus, Refresh, Loading, Aim } from '@element-plus/icons-vue'
 
 // 添加缩放相关引用
 const zoom = ref(null)
@@ -192,6 +211,10 @@ const selectedGraphId = ref()
 const query = ref('MATCH (n)-[r]->(m) RETURN n,r,m')
 const nodes = ref([])
 const edges = ref([])
+
+// 添加查询加载状态
+const queryLoading = ref(false)
+const canvasLoading = ref(false)
 
 // 添加图类型到查询语句的映射
 const graphTypeQueryMap = {
@@ -289,6 +312,11 @@ const handleQuery = async () => {
     ElMessage.warning('请选择图')
     return
   }
+  
+  // 设置加载状态
+  queryLoading.value = true
+  canvasLoading.value = true
+  
   // mock查询接口
   try {
     const res = await graphApi.queryGraph(selectedGraphId.value, query.value)
@@ -330,6 +358,10 @@ const handleQuery = async () => {
   } catch (e) {
     ElMessage.error('查询失败: ' + (e.message || '未知错误'))
     console.error('查询失败:', e)
+  } finally {
+    // 无论成功或失败都取消加载状态
+    queryLoading.value = false
+    canvasLoading.value = false
   }
 }
 
@@ -492,10 +524,80 @@ const showContextMenu = (type, data, event) => {
 }
 
 // 菜单操作处理函数
-const handleExpandNode = () => {
-  // 展开节点功能
-  ElMessage.info('展开节点功能待实现')
+const handleExpandNode = async () => {
   contextMenuVisible.value = false
+  if (!selectedGraphId.value) {
+    ElMessage.warning('请选择图')
+    return
+  }
+  
+  if (!contextMenuData.value || !contextMenuData.value.uid) {
+    ElMessage.warning('无法获取节点信息')
+    return
+  }
+  
+  try {
+    // 显示加载状态
+    canvasLoading.value = true
+    
+    // 调用展开节点API
+    const res = await graphApi.expandNode(selectedGraphId.value, contextMenuData.value.uid, 1)
+    
+    // 处理返回的数据
+    const vertices = res.data.vertices || []
+    const edgesData = res.data.edges || []
+    
+    // 合并新数据到现有数据中
+    // 添加新节点（避免重复添加）
+    const existingNodeIds = new Set(nodes.value.map(node => node.uid))
+    vertices.forEach(vertex => {
+      if (!existingNodeIds.has(vertex.uid)) {
+        nodes.value.push({
+          id: vertex.uid,
+          uid: vertex.uid,
+          label: vertex.label,
+          properties: vertex.properties,
+          x: 0,
+          y: 0
+        })
+      }
+    })
+    
+    // 添加新边（避免重复添加）
+    const existingEdgeIds = new Set(edges.value.map(edge => edge.uid))
+    edgesData.forEach(edge => {
+      if (!existingEdgeIds.has(edge.uid)) {
+        edges.value.push({
+          id: edge.uid,
+          uid: edge.uid,
+          label: edge.label,
+          source: edge.startUid,
+          target: edge.endUid,
+          startUid: edge.startUid,
+          startLabel: edge.startLabel,
+          endUid: edge.endUid,
+          endLabel: edge.endLabel,
+          properties: edge.properties
+        })
+      }
+    })
+    
+    // 处理边数据，确保source和target引用节点对象
+    processEdgesData()
+    
+    // 自动为新类型分配颜色
+    autoAssignColors()
+    
+    // 重新绘制图形
+    drawGraph()
+    
+    ElMessage.success('节点展开成功')
+  } catch (e) {
+    ElMessage.error('展开节点失败: ' + (e.message || '未知错误'))
+    console.error('展开节点失败:', e)
+  } finally {
+    canvasLoading.value = false
+  }
 }
 
 const handleCollapseNode = () => {
@@ -506,14 +608,129 @@ const handleCollapseNode = () => {
 
 const handleDeleteNode = () => {
   // 删除节点功能
-  ElMessage.info('删除节点功能待实现')
+  ElMessageBox.confirm('确认删除该节点吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    if (!selectedGraphId.value) {
+      ElMessage.warning('请选择图')
+      return
+    }
+    
+    if (!contextMenuData.value || !contextMenuData.value.uid) {
+      ElMessage.warning('无法获取节点信息')
+      return
+    }
+    
+    try {
+      // 调用删除节点API
+      await graphApi.deleteNode(selectedGraphId.value, contextMenuData.value.uid, contextMenuData.value.label)
+      
+      // 从本地数据中移除节点
+      const nodeUid = contextMenuData.value.uid
+      nodes.value = nodes.value.filter(node => node.uid !== nodeUid)
+      
+      // 同时移除与该节点相关的边
+      edges.value = edges.value.filter(edge => 
+        edge.startUid !== nodeUid && edge.endUid !== nodeUid
+      )
+      
+      // 重新绘制图形
+      drawGraph()
+      
+      ElMessage.success('删除成功')
+    } catch (e) {
+      ElMessage.error('删除失败: ' + (e.message || '未知错误'))
+      console.error('删除节点失败:', e)
+    }
+  }).catch(() => {
+    // 用户取消删除
+  })
   contextMenuVisible.value = false
 }
 
-const handleFindPath = () => {
-  // 查找路径功能
-  ElMessage.info('查找路径功能待实现')
+const handleFindPath = async () => {
   contextMenuVisible.value = false
+  if (!selectedGraphId.value) {
+    ElMessage.warning('请选择图')
+    return
+  }
+  
+  if (!contextMenuData.value || !contextMenuData.value.uid) {
+    ElMessage.warning('无法获取节点信息')
+    return
+  }
+  
+  // 这里应该弹出一个对话框让用户选择目标节点
+  // 为简化实现，我们使用一个示例目标节点
+  ElMessageBox.prompt('请输入目标节点UID', '查找路径', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    inputPattern: /\S/,
+    inputErrorMessage: '节点UID不能为空'
+  }).then(async ({ value }) => {
+    try {
+      // 显示加载状态
+      canvasLoading.value = true
+      
+      // 调用查找路径API
+      const res = await graphApi.findPath(selectedGraphId.value, contextMenuData.value.uid, value, 5)
+      
+      // 处理返回的数据
+      const vertices = res.data.vertices || []
+      const edgesData = res.data.edges || []
+      
+      // 清空现有数据
+      nodes.value = []
+      edges.value = []
+      
+      // 添加路径数据
+      vertices.forEach(vertex => {
+        nodes.value.push({
+          id: vertex.uid,
+          uid: vertex.uid,
+          label: vertex.label,
+          properties: vertex.properties,
+          x: 0,
+          y: 0
+        })
+      })
+      
+      edgesData.forEach(edge => {
+        edges.value.push({
+          id: edge.uid,
+          uid: edge.uid,
+          label: edge.label,
+          source: edge.startUid,
+          target: edge.endUid,
+          startUid: edge.startUid,
+          startLabel: edge.startLabel,
+          endUid: edge.endUid,
+          endLabel: edge.endLabel,
+          properties: edge.properties
+        })
+      })
+      
+      // 处理边数据，确保source和target引用节点对象
+      processEdgesData()
+      
+      // 自动为新类型分配颜色
+      autoAssignColors()
+      
+      // 重新绘制图形
+      drawGraph()
+      
+      ElMessage.success('路径查找成功')
+    } catch (e) {
+      ElMessage.error('查找路径失败: ' + (e.message || '未知错误'))
+      console.error('查找路径失败:', e)
+    } finally {
+      canvasLoading.value = false
+    }
+  }).catch(() => {
+    // 用户取消输入
+  })
 }
 
 // 添加缩放功能
@@ -534,11 +751,38 @@ const resetZoom = () => {
     zoom.value.scaleTo(d3.select(svgRef.value).select('g'), 1)
   }
 }
+  
+// 添加居中功能
+const centerGraph = () => {
+  if (zoom.value && gRef.value && nodes.value.length > 0) {
+    // 计算所有节点的中心点
+    const xExtent = d3.extent(nodes.value, d => d.x)
+    const yExtent = d3.extent(nodes.value, d => d.y)
+    const centerX = (xExtent[0] + xExtent[1]) / 2
+    const centerY = (yExtent[0] + yExtent[1]) / 2
+      
+    // 获取SVG的实际尺寸
+    const svg = d3.select(svgRef.value)
+    const actualWidth = svg.property('clientWidth')
+    const actualHeight = svg.property('clientHeight')
+      
+    // 计算缩放比例
+    const scale = Math.min(actualWidth / (xExtent[1] - xExtent[0] + 100), actualHeight / (yExtent[1] - yExtent[0] + 100))
+      
+    // 设置转换
+    zoom.value.transform(
+      d3.select(gRef.value),
+      d3.zoomIdentity
+        .translate(actualWidth / 2 - centerX * scale, actualHeight / 2 - centerY * scale)
+        .scale(scale)
+    )
+  }
+}
 
 const drawGraph = () => {
   clearSvg()
   const svg = d3.select(svgRef.value)
-  if (!nodes.value.length) return
+  if (!nodes.value.length && !edges.value.length) return
   
   // 创建缩放行为
   zoom.value = d3.zoom()
@@ -632,28 +876,33 @@ const drawForceLayout = (container) => {
     .force('charge', d3.forceManyBody().strength(-300))
     .force('center', d3.forceCenter(width / 2, height / 2))
 
-  // 画边
-  const link = container.append('g')
-    .selectAll('line')
-    .data(edges.value)
-    .join('line')
-    .attr('stroke-width', d => getEdgeStyle(d).width)
-    .attr('stroke', d => getEdgeStyle(d).color)
-    .attr('cursor', 'pointer') // 鼠标悬停时显示手型光标
-    .attr("marker-end", "url(#arrow)") // 添加箭头
-    .on('click', (event, d) => showDetail('edge', d))
+  // 画边（仅当有边时才绘制）
+  let link = null;
+  let linkText = null;
+  
+  if (edges.value.length > 0) {
+    link = container.append('g')
+      .selectAll('line')
+      .data(edges.value)
+      .join('line')
+      .attr('stroke-width', d => getEdgeStyle(d).width)
+      .attr('stroke', d => getEdgeStyle(d).color)
+      .attr('cursor', 'pointer') // 鼠标悬停时显示手型光标
+      .attr("marker-end", "url(#arrow)") // 添加箭头
+      .on('click', (event, d) => showDetail('edge', d))
 
-  // 画边标签
-  const linkText = container.append('g')
-    .selectAll('text')
-    .data(edges.value)
-    .join('text')
-    .attr('text-anchor', 'middle')
-    .attr('dy', -5)
-    .attr('font-size', 10)
-    .attr('fill', '#666')
-    .attr('cursor', 'pointer') // 鼠标悬停时显示手型光标
-    .text(d => d.label || '') // 显示边的类型label
+    // 画边标签
+    linkText = container.append('g')
+      .selectAll('text')
+      .data(edges.value)
+      .join('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', -5)
+      .attr('font-size', 10)
+      .attr('fill', '#666')
+      .attr('cursor', 'pointer') // 鼠标悬停时显示手型光标
+      .text(d => d.label || '') // 显示边的类型label
+  }
 
   // 画点
   const node = container.append('g')
@@ -689,39 +938,43 @@ const drawForceLayout = (container) => {
       event.stopPropagation()
       showDetail('node', d)
     })
-  simulation.on('tick', () => {
-    link
-      .attr('x1', d => {
-        // 处理source可能是ID字符串的情况
-        const source = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
-        return source ? source.x : 0
-      })
-      .attr('y1', d => {
-        const source = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
-        return source ? source.y : 0
-      })
-      .attr('x2', d => {
-        // 处理target可能是ID字符串的情况
-        const target = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
-        return target ? target.x : 0
-      })
-      .attr('y2', d => {
-        const target = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
-        return target ? target.y : 0
-      })
     
-    // 更新边标签位置
-    linkText
-      .attr('x', d => {
-        const source = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
-        const target = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
-        return source && target ? (source.x + target.x) / 2 : 0
-      })
-      .attr('y', d => {
-        const source = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
-        const target = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
-        return source && target ? (source.y + target.y) / 2 : 0
-      })
+  simulation.on('tick', () => {
+    // 只有当有边时才更新连线位置
+    if (link && linkText) {
+      link
+        .attr('x1', d => {
+          // 处理source可能是ID字符串的情况
+          const source = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
+          return source ? source.x : 0
+        })
+        .attr('y1', d => {
+          const source = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
+          return source ? source.y : 0
+        })
+        .attr('x2', d => {
+          // 处理target可能是ID字符串的情况
+          const target = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
+          return target ? target.x : 0
+        })
+        .attr('y2', d => {
+          const target = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
+          return target ? target.y : 0
+        })
+      
+      // 更新边标签位置
+      linkText
+        .attr('x', d => {
+          const source = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
+          const target = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
+          return source && target ? (source.x + target.x) / 2 : 0
+        })
+        .attr('y', d => {
+          const source = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
+          const target = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
+          return source && target ? (source.y + target.y) / 2 : 0
+        })
+    }
     
     node
       .attr('cx', d => d.x)
@@ -740,7 +993,7 @@ const drawHierarchyLayout = (container) => {
   const actualHeight = svg ? svg.clientHeight : height
   
   // 创建层级结构（简单处理：以第一个节点为根节点）
-  if (nodes.value.length === 0) return
+  if (nodes.value.length === 0 && edges.value.length === 0) return
   
   // 定义箭头标记
   const defs = container.append("defs")
@@ -767,27 +1020,32 @@ const drawHierarchyLayout = (container) => {
     node.y = Math.floor(index / 5) * levelSpacing + 100
   })
 
-  // 画边
-  const link = container.append('g')
-    .selectAll('line')
-    .data(edges.value)
-    .join('line')
-    .attr('stroke-width', d => getEdgeStyle(d).width)
-    .attr('stroke', d => getEdgeStyle(d).color)
-    .attr('cursor', 'pointer') // 鼠标悬停时显示手型光标
-    .attr("marker-end", "url(#arrow-hierarchy)") // 添加箭头
-    .on('click', (event, d) => showDetail('edge', d))
+  // 画边（仅当有边时才绘制）
+  let link = null;
+  let linkText = null;
+  
+  if (edges.value.length > 0) {
+    link = container.append('g')
+      .selectAll('line')
+      .data(edges.value)
+      .join('line')
+      .attr('stroke-width', d => getEdgeStyle(d).width)
+      .attr('stroke', d => getEdgeStyle(d).color)
+      .attr('cursor', 'pointer') // 鼠标悬停时显示手型光标
+      .attr("marker-end", "url(#arrow-hierarchy)") // 添加箭头
+      .on('click', (event, d) => showDetail('edge', d))
 
-  // 画边标签
-  const linkText = container.append('g')
-    .selectAll('text')
-    .data(edges.value)
-    .join('text')
-    .attr('text-anchor', 'middle')
-    .attr('dy', -5)
-    .attr('font-size', 10)
-    .attr('fill', '#666')
-    .text(d => d.label || '') // 显示边的类型label
+    // 画边标签
+    linkText = container.append('g')
+      .selectAll('text')
+      .data(edges.value)
+      .join('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', -5)
+      .attr('font-size', 10)
+      .attr('fill', '#666')
+      .text(d => d.label || '') // 显示边的类型label
+  }
 
   // 画点
   const node = container.append('g')
@@ -823,37 +1081,40 @@ const drawHierarchyLayout = (container) => {
       showDetail('node', d)
     })
   
-  // 更新连线位置
-  link
-    .attr('x1', d => {
-      const sourceNode = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
-      return sourceNode ? sourceNode.x : 0
-    })
-    .attr('y1', d => {
-      const sourceNode = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
-      return sourceNode ? sourceNode.y : 0
-    })
-    .attr('x2', d => {
-      const targetNode = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
-      return targetNode ? targetNode.x : 0
-    })
-    .attr('y2', d => {
-      const targetNode = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
-      return targetNode ? targetNode.y : 0
-    })
-  
-  // 更新边标签位置
-  linkText
-    .attr('x', d => {
-      const sourceNode = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
-      const targetNode = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
-      return sourceNode && targetNode ? (sourceNode.x + targetNode.x) / 2 : 0
-    })
-    .attr('y', d => {
-      const sourceNode = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
-      const targetNode = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
-      return sourceNode && targetNode ? (sourceNode.y + targetNode.y) / 2 : 0
-    })
+  // 只有当有边时才更新连线位置
+  if (link && linkText) {
+    // 更新连线位置
+    link
+      .attr('x1', d => {
+        const sourceNode = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
+        return sourceNode ? sourceNode.x : 0
+      })
+      .attr('y1', d => {
+        const sourceNode = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
+        return sourceNode ? sourceNode.y : 0
+      })
+      .attr('x2', d => {
+        const targetNode = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
+        return targetNode ? targetNode.x : 0
+      })
+      .attr('y2', d => {
+        const targetNode = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
+        return targetNode ? targetNode.y : 0
+      })
+    
+    // 更新边标签位置
+    linkText
+      .attr('x', d => {
+        const sourceNode = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
+        const targetNode = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
+        return sourceNode && targetNode ? (sourceNode.x + targetNode.x) / 2 : 0
+      })
+      .attr('y', d => {
+        const sourceNode = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
+        const targetNode = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
+        return sourceNode && targetNode ? (sourceNode.y + targetNode.y) / 2 : 0
+      })
+  }
 }
 
 // 层次布局的拖拽处理
@@ -900,6 +1161,9 @@ function drag(simulation) {
 onMounted(() => {
   fetchGraphList()
 })
+
+// 添加hasInitialized响应式变量
+const hasInitialized = ref(false)
 </script>
 
 <style scoped>
@@ -983,5 +1247,30 @@ onMounted(() => {
 
 .zoom-controls .el-button {
   margin: 0;
+}
+
+/* 画布loading遮罩样式 */
+.canvas-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+  border-radius: 8px;
+}
+
+/* SVG容器样式 */
+.graph-svg-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
 }
 </style>

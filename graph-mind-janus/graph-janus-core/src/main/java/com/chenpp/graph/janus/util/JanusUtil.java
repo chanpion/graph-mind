@@ -20,6 +20,7 @@ public class JanusUtil {
             .put(DataType.Boolean, Boolean.class)
             .put(DataType.String, String.class)
             .put(DataType.Integer, Integer.class)
+            .put(DataType.Int, Integer.class)
             .put(DataType.Float, Float.class)
             .put(DataType.Double, Double.class)
             .put(DataType.Long, Long.class)

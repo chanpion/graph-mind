@@ -19,6 +19,11 @@ public class GraphPropertyDef {
     private Long id;
 
     /**
+     * 图ID
+     */
+    private Long graphId;
+
+    /**
      * 节点定义ID或边定义ID
      */
     private Long entityId;

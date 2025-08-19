@@ -253,9 +253,14 @@ public class JanusGraphOperations implements GraphOperations {
         // 创建属性键
         for (GraphProperty property : allProperties) {
             if (!management.containsPropertyKey(property.getCode())) {
+                Class<?> clazz = JanusUtil.getJanusDataType(property.getDataType());
+                if (clazz == null){
+                    log.info("property ({}) data type ({}) is not supported, skip.", property.getCode(), property.getDataType());
+                    continue;
+                }
                 // 根据数据类型创建属性键
                 PropertyKey propertyKey = management.makePropertyKey(property.getCode())
-                        .dataType(JanusUtil.getJanusDataType(property.getDataType()))
+                        .dataType(clazz)
                         .cardinality(Cardinality.SINGLE)
                         .make();
                 log.info("Created property key: {} with type: {}, propertyKey: {}", property.getCode(), property.getDataType(), propertyKey);
