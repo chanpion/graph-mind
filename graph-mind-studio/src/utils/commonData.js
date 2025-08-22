@@ -16,7 +16,8 @@ export const menuData = {
             children: [
                 { id: 101001, authName: "用户管理", path: "/home/admin/user", icon: "User", children: [] },
                 { id: 102002, authName: "角色管理", path: "/home/admin/role", icon: "Avatar", children: [] },  // 将Food改为Avatar，更适合角色管理
-                { id: 101003, authName: "权限管理", path: "/home/admin/permission", icon: "Opportunity", children: [] }
+                { id: 101003, authName: "权限管理", path: "/home/admin/permission", icon: "Opportunity", children: [] },
+                { id: 101004, authName: "系统配置", path: "/home/admin/config", icon: "Setting", children: [] }
             ]
         },
         {

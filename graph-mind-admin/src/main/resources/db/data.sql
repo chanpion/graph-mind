@@ -133,4 +133,17 @@ INSERT INTO `sys_role_permission` VALUES (1, 24);
 INSERT INTO `sys_role_permission` VALUES (1, 25);
 COMMIT;
 
+-- ----------------------------
+-- 插入系统配置初始数据
+-- ----------------------------
+BEGIN;
+-- 插入系统配置初始数据
+INSERT INTO `app_config` (`config_key`, `config_value`, `description`) VALUES
+('system.name', 'Graph Mind Platform', '系统名称'),
+('system.version', '1.0.0', '系统版本'),
+('system.description', '智能知识图谱管理系统', '系统描述'),
+('graph.default.pageSize', '20', '图数据默认分页大小'),
+('graph.query.timeout', '30000', '图查询超时时间(毫秒)');
+COMMIT;
+
 SET FOREIGN_KEY_CHECKS = 1;

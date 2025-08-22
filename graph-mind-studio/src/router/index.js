@@ -53,6 +53,12 @@ const router = createRouter({
                             meta: {title: '权限管理', closable: true}
                         },
                         {
+                            path: 'config',
+                            name: 'Config',
+                            component: () => import('@/views/system/Config.vue'),
+                            meta: {title: '系统配置', closable: true}
+                        },
+                        {
                             path: 'profile',
                             name: 'Profile',
                             component: () => import('@/views/system/Profile.vue'),

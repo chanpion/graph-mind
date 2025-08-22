@@ -531,49 +531,6 @@ const handleDelete = async (row) => {
   }
 }
 
-const handleConnect = async (row) => {
-  try {
-    loading.value = true
-    row.status = 2 // connecting
-    
-    const response = await connectionApi.connectDatabase(row.id)
-    row.status = response.data.status === 'connected' ? 1 : 0
-    row.lastConnectTime = response.data.lastConnectTime
-    ElMessage.success('连接成功')
-    fetchConnections() // 刷新列表以确保状态同步
-  } catch (error) {
-    row.status = 0 // disconnected
-    console.error('连接失败:', error)
-    ElMessage.error('连接失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-const handleDisconnect = async (row) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定要断开连接 "${row.name}" 吗？`,
-      '提示',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-      }
-    )
-    
-    await connectionApi.disconnectDatabase(row.id)
-    row.status = 0 // disconnected
-    ElMessage.success('断开连接成功')
-    fetchConnections() // 刷新列表以确保状态同步
-  } catch (error) {
-    if (error !== 'cancel') {
-      console.error('断开连接失败:', error)
-      ElMessage.error('断开连接失败')
-    }
-  }
-}
-
 const handleTest = async (row) => {
   try {
     const response = await connectionApi.testConnection(row.id)

@@ -299,3 +299,15 @@ CREATE TABLE `graph_edge_property` (
   PRIMARY KEY (`id`),
   KEY `idx_edge_def_id` (`edge_def_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='图边属性定义表';
+
+-- 创建系统配置表
+CREATE TABLE IF NOT EXISTS `app_config` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `config_key` VARCHAR(255) NOT NULL COMMENT '配置键',
+    `config_value` TEXT COMMENT '配置值',
+    `description` VARCHAR(500) COMMENT '配置描述',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_config_key` (`config_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统配置表';
