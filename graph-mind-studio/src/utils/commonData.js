@@ -9,14 +9,14 @@ export const menuData = {
             children: []
         },
         {
-            id: 102,
+            id: 101,
             authName: "系统管理",
             icon: "HomeFilled",
             path: '/home/admin',
             children: [
-                { id: 102001, authName: "用户管理", path: "/home/admin/user", icon: "User", children: [] },
-                { id: 102004, authName: "角色管理", path: "/home/admin/role", icon: "Avatar", children: [] },
-                { id: 102005, authName: "权限管理", path: "/home/admin/permission", icon: "Tools", children: [] }
+                { id: 101001, authName: "用户管理", path: "/home/admin/user", icon: "User", children: [] },
+                { id: 102002, authName: "角色管理", path: "/home/admin/role", icon: "Avatar", children: [] },
+                { id: 101003, authName: "权限管理", path: "/home/admin/permission", icon: "Tools", children: [] }
             ]
         },
         {
@@ -27,9 +27,10 @@ export const menuData = {
             children: [
                 { id: 200001, authName: "图连接管理", path: "/home/graph/connection", icon: "Connection", children: [] },
                 { id: 200002, authName: "图管理", path: "/home/graph/list", icon: "Promotion", children: [] },
-                { id: 200003, authName: "图可视化", path: "/home/graph/visual", icon: "DataAnalysis", children: [] },
-                { id: 200004, authName: "图数据", path: "/home/graph/process", icon: "Upload", children: [] },
-                { id: 200005, authName: "图分析", path: "/home/graph/analysis", icon: "DataAnalysis", children: [] }
+                { id: 200003, authName: "图设计", path: "/home/graph/detail/:id", icon: "Promotion", children: [] },
+                { id: 200004, authName: "图可视化", path: "/home/graph/visual", icon: "DataAnalysis", children: [] },
+                { id: 200005, authName: "图加工", path: "/home/graph/process", icon: "Upload", children: [] },
+                { id: 200006, authName: "图数据", path: "/home/graph/data", icon: "DataAnalysis", children: [] }
             ]
         }
     ],

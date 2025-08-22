@@ -1,7 +1,7 @@
 <template>
   <div class="data-process-container">
     <div class="page-header">
-      <h2 class="page-title">图数据加工</h2>
+      <h2 class="page-title">图数据导入</h2>
       <p class="page-description">支持从CSV文件导入点边数据，进行数据预处理和图构建</p>
     </div>
 
@@ -13,7 +13,6 @@
       </template>
 
       <el-steps :active="currentStep" finish-status="success" simple>
-        <el-step title="选择图" />
         <el-step title="选择实体" />
         <el-step title="上传文件" />
         <el-step title="数据映射" />
@@ -21,28 +20,9 @@
         <el-step title="执行导入" />
       </el-steps>
 
-      <!-- 步骤1: 选择图 -->
-      <div v-show="currentStep === 0" class="step-content">
-        <el-form :model="form" label-width="100px" style="max-width: 500px; margin: 20px auto;">
-          <el-form-item label="选择图">
-            <el-select v-model="form.graphId" placeholder="请选择图" style="width: 100%" @change="handleGraphChange">
-              <el-option
-                v-for="graph in graphList"
-                :key="graph.id"
-                :label="graph.name"
-                :value="graph.id">
-              </el-option>
-            </el-select>
-          </el-form-item>
-        </el-form>
-        
-        <div class="step-actions">
-          <el-button type="primary" @click="nextStep" :disabled="!form.graphId">下一步</el-button>
-        </div>
-      </div>
 
-      <!-- 步骤2: 选择实体（点或边） -->
-      <div v-show="currentStep === 1" class="step-content">
+      <!-- 步骤1: 选择实体（点或边） -->
+      <div v-show="currentStep === 0" class="step-content">
         <el-form :model="form" label-width="100px" style="max-width: 500px; margin: 20px auto;">
           <el-form-item label="数据类型">
             <el-radio-group v-model="form.dataType">
@@ -87,13 +67,13 @@
         </el-form>
         
         <div class="step-actions">
-          <el-button @click="prevStep">上一步</el-button>
+          <el-button @click="prevStep" v-if="currentStep > 0">上一步</el-button>
           <el-button type="primary" @click="nextStep" :disabled="!isEntityTypeSelected">下一步</el-button>
         </div>
       </div>
 
-      <!-- 步骤3: 上传文件 -->
-      <div v-show="currentStep === 2" class="step-content">
+      <!-- 步骤2: 上传文件 -->
+      <div v-show="currentStep === 1" class="step-content">
         <div class="upload-area">
           <el-upload
             class="upload-demo"
@@ -123,8 +103,8 @@
         </div>
       </div>
 
-      <!-- 步骤4: 数据映射 -->
-      <div v-show="currentStep === 3" class="step-content">
+      <!-- 步骤3: 数据映射 -->
+      <div v-show="currentStep === 2" class="step-content">
         <div class="mapping-header">
           <h3>数据映射配置</h3>
           <p>根据选中的{{ form.dataType === 'node' ? '点' : '边' }}类型设置属性映射</p>
@@ -166,8 +146,8 @@
         </div>
       </div>
 
-      <!-- 步骤5: 数据预览 -->
-      <div v-show="currentStep === 4" class="step-content">
+      <!-- 步骤4: 数据预览 -->
+      <div v-show="currentStep === 3" class="step-content">
         <div class="preview-header">
           <h3>数据预览</h3>
           <p>预览即将导入的数据</p>
@@ -188,8 +168,8 @@
         </div>
       </div>
 
-      <!-- 步骤6: 执行导入 -->
-      <div v-show="currentStep === 5" class="step-content">
+      <!-- 步骤5: 执行导入 -->
+      <div v-show="currentStep === 4" class="step-content">
         <div class="import-summary">
           <h3>导入配置确认</h3>
           <el-descriptions :column="1" border>
@@ -276,29 +256,33 @@
 </template>
 
 <script setup name="DataProcess">
-import { ref, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
-import graphApi from '@/api/graph'
-import Papa from 'papaparse'
+import { graphApi } from '@/api/graph'
+import * as Papa from 'papaparse'
 
-// 步骤控制
+// 引入图store
+import { useGraphStore } from '@/stores/graph'
+
+const graphStore = useGraphStore()
+
+// 步骤控制（减少一个步骤）
 const currentStep = ref(0)
 const importProgress = ref(0)
 const importStatus = ref('') // '' | 'importing' | 'success' | 'error'
 const importResult = ref(null) // 导入结果数据
 
-// 表单数据
-const form = ref({
-  graphId: '',
-  dataType: 'node', // node or edge
+// 表单数据（使用全局选中的图）
+const form = reactive({
+  dataType: 'node',
   nodeTypeId: '',
   edgeTypeId: ''
 })
 
-// 图列表
-const graphList = ref([])
-const selectedGraph = ref({})
+// 图列表相关（不再需要）
+// const graphList = ref([])
+const selectedGraph = computed(() => graphStore.currentGraph || {})
 
 // 点类型和边类型
 const nodeTypes = ref([])
@@ -334,7 +318,7 @@ const dynamicMappingFields = ref([])
 
 // 添加一个方法来更新映射字段
 const updateDynamicMappingFields = () => {
-  if (form.value.dataType === 'node' && selectedNodeType.value.properties) {
+  if (form.dataType === 'node' && selectedNodeType.value.properties) {
     // 基础字段
     const fields = [
       { value: 'uid', label: 'uid (唯一标识)', required: false, csvColumn: '' }
@@ -351,7 +335,7 @@ const updateDynamicMappingFields = () => {
     });
     
     dynamicMappingFields.value = fields;
-  } else if (form.value.dataType === 'edge' && selectedEdgeType.value.properties) {
+  } else if (form.dataType === 'edge' && selectedEdgeType.value.properties) {
     // 基础字段
     const fields = [
       { value: 'uid', label: 'uid (唯一标识)', required: false, csvColumn: '' },
@@ -374,7 +358,7 @@ const updateDynamicMappingFields = () => {
     dynamicMappingFields.value = fields;
   } else {
     // 默认字段
-    const defaultFields = form.value.dataType === 'node' 
+    const defaultFields = form.dataType === 'node' 
       ? [
           { value: 'uid', label: 'uid (唯一标识)', required: true, csvColumn: '' },
           { value: 'label', label: '标签(类型)', required: false, csvColumn: '' },
@@ -399,10 +383,10 @@ const isMappingValid = computed(() => {
 
 // 检查是否选择了实体类型
 const isEntityTypeSelected = computed(() => {
-  if (form.value.dataType === 'node') {
-    return !!form.value.nodeTypeId
+  if (form.dataType === 'node') {
+    return !!form.nodeTypeId
   } else {
-    return !!form.value.edgeTypeId
+    return !!form.edgeTypeId
   }
 })
 
@@ -421,6 +405,15 @@ const fetchGraphList = async () => {
   } catch (e) {
     console.error('获取图列表失败:', e)
     ElMessage.error('获取图列表失败: ' + (e.message || '未知错误'))
+  }
+}
+
+// 获取实体类型（点和边）
+const fetchEntityTypes = async () => {
+  console.log('current graph', selectedGraph.value, selectedGraph.value.id)
+  if (selectedGraph.value && selectedGraph.value.id) {
+    fetchNodeTypes(selectedGraph.value.id)
+    fetchEdgeTypes(selectedGraph.value.id)
   }
 }
 
@@ -443,22 +436,6 @@ const fetchEdgeTypes = async (graphId) => {
   } catch (e) {
     console.error('获取边类型列表失败:', e)
     ElMessage.error('获取边类型列表失败: ' + (e.message || '未知错误'))
-  }
-}
-
-// 处理图选择变化
-const handleGraphChange = (graphId) => {
-  selectedGraph.value = graphList.value.find(g => g.id === graphId) || {}
-  // 重置实体类型选择
-  form.value.nodeTypeId = ''
-  form.value.edgeTypeId = ''
-  selectedNodeType.value = {}
-  selectedEdgeType.value = {}
-  
-  // 获取点类型和边类型
-  if (graphId) {
-    fetchNodeTypes(graphId)
-    fetchEdgeTypes(graphId)
   }
 }
 
@@ -486,26 +463,21 @@ const prevStep = () => {
 // 下一步
 const nextStep = () => {
   // 数据验证
-  if (currentStep.value === 0 && !form.value.graphId) {
-    ElMessage.warning('请选择目标图')
-    return
-  }
-  
-  if (currentStep.value === 1 && !isEntityTypeSelected.value) {
+  if (currentStep.value === 0 && !isEntityTypeSelected.value) {
     ElMessage.warning('请选择实体类型')
     return
   }
   
-  if (currentStep.value === 2 && !csvFile.value) {
+  if (currentStep.value === 1 && !csvFile.value) {
     ElMessage.warning('请上传CSV文件')
     return
   }
   
-  if (currentStep.value < 5) {
+  if (currentStep.value < 4) { // 步骤数减少一个
     currentStep.value++
     
     // 特殊处理：在进入数据预览步骤时生成预览数据
-    if (currentStep.value === 4) {
+    if (currentStep.value === 3) {
       generatePreviewData()
     }
   }
@@ -633,18 +605,18 @@ const executeImport = async () => {
     
     // 调用后端导入接口
     let response
-    if (form.value.dataType === 'node') {
+    if (form.dataType === 'node') {
       // 导入点数据
       response = await graphApi.importNodeData(
-        form.value.graphId, 
-        form.value.nodeTypeId, 
+        selectedGraph.value.id, 
+        form.nodeTypeId, 
         formData
       )
     } else {
       // 导入边数据
       response = await graphApi.importEdgeData(
-        form.value.graphId, 
-        form.value.edgeTypeId, 
+        selectedGraph.value.id, 
+        form.edgeTypeId, 
         formData
       )
     }
@@ -701,18 +673,18 @@ const retryImport = async () => {
     
     // 调用后端导入接口
     let response
-    if (form.value.dataType === 'node') {
+    if (form.dataType === 'node') {
       // 导入点数据
       response = await graphApi.importNodeData(
-        form.value.graphId, 
-        form.value.nodeTypeId, 
+        selectedGraph.value.id, 
+        form.nodeTypeId, 
         formData
       )
     } else {
       // 导入边数据
       response = await graphApi.importEdgeData(
-        form.value.graphId, 
-        form.value.edgeTypeId, 
+        selectedGraph.value.id, 
+        form.edgeTypeId, 
         formData
       )
     }
@@ -759,12 +731,10 @@ const resetImport = () => {
 // 重置整个向导
 const resetWizard = () => {
   // 重置表单
-  form.value = {
-    graphId: '',
-    dataType: 'node',
-    nodeTypeId: '',
-    edgeTypeId: ''
-  }
+  form.graphId = ''
+  form.dataType = 'node'
+  form.nodeTypeId = ''
+  form.edgeTypeId = ''
   
   // 重置文件
   csvFile.value = null
@@ -784,9 +754,20 @@ const resetWizard = () => {
   currentStep.value = 0
 }
 
+// 监听全局选中图的变化
+watch(() => graphStore.currentGraph, (newGraph) => {
+  if (newGraph) {
+    // 获取该图的实体类型
+    fetchEntityTypes()
+  }
+}, { immediate: true })
+
 // 初始化
 onMounted(() => {
-  fetchGraphList()
+  // 如果已经有选中的图，则获取其实体类型
+  if (selectedGraph.value && selectedGraph.value.id) {
+    fetchEntityTypes()
+  }
 })
 </script>
 

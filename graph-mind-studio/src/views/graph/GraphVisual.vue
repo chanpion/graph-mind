@@ -1,9 +1,6 @@
 <template>
   <div class="graph-visual-container">
     <div class="visual-toolbar">
-      <el-select v-model="selectedGraphId" placeholder="请选择图" style="width: 200px" @change="handleGraphChange">
-        <el-option v-for="g in graphList" :key="g.id" :label="g.name" :value="g.id" />
-      </el-select>
       <el-input v-model="query" placeholder="请输入查询语句" style="width: 400px; margin: 0 12px;" />
       <el-button type="primary" @click="handleQuery" :loading="queryLoading">查询</el-button>
       
@@ -179,35 +176,28 @@
 </template>
 
 <script setup name="GraphVisual">
-import { ref, onMounted, computed } from 'vue'
-import * as d3 from 'd3'
-import graphApi from '@/api/graph'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Minus, Refresh, Loading, Aim } from '@element-plus/icons-vue'
+import { Aim, Loading, Plus, Minus, Refresh } from '@element-plus/icons-vue'
+import * as d3 from 'd3'
+import { graphApi } from '@/api/graph'
 
-// 添加缩放相关引用
-const zoom = ref(null)
-const gRef = ref(null)
+// 引入图store
+import { useGraphStore } from '@/stores/graph'
 
-// 添加右键菜单相关引用
-const contextMenuVisible = ref(false)
-const contextMenuPosition = ref({ x: 0, y: 0 })
-const contextMenuData = ref(null)
-const contextMenuType = ref('node') // node or edge
-
-// 预定义颜色列表，用于不同类型节点和边的颜色区分
-const predefinedColors = [
-  '#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399',
-  '#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399',
-  '#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399'
-]
+const graphStore = useGraphStore()
 
 const width = 800
 const height = 500
 const svgRef = ref(null)
 
-const graphList = ref([])
-const selectedGraphId = ref()
+// 添加缩放和g元素引用
+const zoom = ref(null)
+const gRef = ref(null)
+
+// 添加预定义颜色数组
+const predefinedColors = ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399', '#00C1D4', '#E91E63', '#9C27B0', '#607D8B', '#795548']
+
 const query = ref('MATCH (n)-[r]->(m) RETURN n,r,m')
 const nodes = ref([])
 const edges = ref([])
@@ -224,7 +214,7 @@ const graphTypeQueryMap = {
 }
 
 // 存储当前选中图的信息
-const selectedGraph = ref(null)
+const selectedGraph = computed(() => graphStore.currentGraph || {})
 // 存储连接信息
 const graphConnections = ref(new Map())
 
@@ -274,6 +264,13 @@ const detailDrawerVisible = ref(false)
 const detailType = ref('node') // node or edge
 const detailData = ref({})
 
+// 右键菜单相关变量
+const contextMenuVisible = ref(false)
+const contextMenuType = ref('')
+const contextMenuData = ref(null)
+const contextMenuPosition = ref({ x: 0, y: 0 })
+
+
 const fetchGraphList = async () => {
   try {
     const res = await graphApi.getGraphs()
@@ -290,25 +287,19 @@ const fetchGraphList = async () => {
   }
 }
 
-const handleGraphChange = async (graphId) => {
-  // 查找选中的图信息
-  selectedGraph.value = graphList.value.find(graph => graph.id === graphId) || null
-  // 根据图的数据库类型设置示例查询语句
-  if (selectedGraph.value && selectedGraph.value.connectionId) {
+// 当全局选中的图发生变化时，更新查询语句
+const updateQueryByGraphType = () => {
+  if (selectedGraph.value && selectedGraph.value.id) {
     const graphType = selectedGraph.value.graphType
-    query.value = graphTypeQueryMap[selectedGraph.value.graphType] || graphTypeQueryMap.neo4j
+    query.value = graphTypeQueryMap[graphType] || graphTypeQueryMap.neo4j
   } else {
     // 如果没有选中图，使用默认查询语句
     query.value = 'MATCH (n)-[r]->(m) RETURN n,r,m LIMIT 25'
   }
-  
-  nodes.value = []
-  edges.value = []
-  clearSvg()
 }
 
 const handleQuery = async () => {
-  if (!selectedGraphId.value) {
+  if (!selectedGraph.value || !selectedGraph.value.id) {
     ElMessage.warning('请选择图')
     return
   }
@@ -319,7 +310,7 @@ const handleQuery = async () => {
   
   // mock查询接口
   try {
-    const res = await graphApi.queryGraph(selectedGraphId.value, query.value)
+    const res = await graphApi.queryGraph(selectedGraph.value.id, query.value)
     // 处理返回的数据，确保边的source和target指向节点对象而不是ID
     const vertices = res.data.vertices || []
     const edgesData = res.data.edges || []
@@ -526,7 +517,7 @@ const showContextMenu = (type, data, event) => {
 // 菜单操作处理函数
 const handleExpandNode = async () => {
   contextMenuVisible.value = false
-  if (!selectedGraphId.value) {
+  if (!selectedGraph.value || !selectedGraph.value.id) {
     ElMessage.warning('请选择图')
     return
   }
@@ -541,7 +532,7 @@ const handleExpandNode = async () => {
     canvasLoading.value = true
     
     // 调用展开节点API
-    const res = await graphApi.expandNode(selectedGraphId.value, contextMenuData.value.uid, 1)
+    const res = await graphApi.expandNode(selectedGraph.value.id, contextMenuData.value.uid, 1)
     
     // 处理返回的数据
     const vertices = res.data.vertices || []
@@ -613,7 +604,7 @@ const handleDeleteNode = () => {
     cancelButtonText: '取消',
     type: 'warning'
   }).then(async () => {
-    if (!selectedGraphId.value) {
+    if (!selectedGraph.value || !selectedGraph.value.id) {
       ElMessage.warning('请选择图')
       return
     }
@@ -625,7 +616,7 @@ const handleDeleteNode = () => {
     
     try {
       // 调用删除节点API
-      await graphApi.deleteNode(selectedGraphId.value, contextMenuData.value.uid, contextMenuData.value.label)
+      await graphApi.deleteNode(selectedGraph.value.id, contextMenuData.value.uid, contextMenuData.value.label)
       
       // 从本地数据中移除节点
       const nodeUid = contextMenuData.value.uid
@@ -652,7 +643,7 @@ const handleDeleteNode = () => {
 
 const handleFindPath = async () => {
   contextMenuVisible.value = false
-  if (!selectedGraphId.value) {
+  if (!selectedGraph.value || !selectedGraph.value.id) {
     ElMessage.warning('请选择图')
     return
   }
@@ -675,7 +666,7 @@ const handleFindPath = async () => {
       canvasLoading.value = true
       
       // 调用查找路径API
-      const res = await graphApi.findPath(selectedGraphId.value, contextMenuData.value.uid, value, 5)
+      const res = await graphApi.findPath(selectedGraph.value.id, contextMenuData.value.uid, value, 5)
       
       // 处理返回的数据
       const vertices = res.data.vertices || []
@@ -1159,11 +1150,21 @@ function drag(simulation) {
 }
 
 onMounted(() => {
-  fetchGraphList()
 })
+
+// 监听全局选中图的变化
+watch(() => graphStore.currentGraph, (newGraph) => {
+  console.log('graphStore.currentGraph', newGraph)
+  if (newGraph && newGraph.id) {
+    // 更新查询语句
+    updateQueryByGraphType()
+  }
+}, { immediate: true })
 
 // 添加hasInitialized响应式变量
 const hasInitialized = ref(false)
+
+
 </script>
 
 <style scoped>

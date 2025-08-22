@@ -4,6 +4,7 @@ import com.chenpp.graph.admin.model.ImportResult;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 图数据服务接口
@@ -39,6 +40,86 @@ public interface GraphDataService {
      * @return 导入结果
      */
     ImportResult importEdgeData(Long graphId, Long edgeTypeId, MultipartFile file, String headers, String mapping, String data);
+
+    /**
+     * 查询节点数据列表
+     *
+     * @param graphId    图ID
+     * @param nodeTypeId 节点类型ID
+     * @param page       页码
+     * @param size       每页大小
+     * @return 节点数据列表
+     */
+    List<Map<String, Object>> getNodeDataList(Long graphId, Long nodeTypeId, Integer page, Integer size);
+
+    /**
+     * 查询边数据列表
+     *
+     * @param graphId    图ID
+     * @param edgeTypeId 边类型ID
+     * @param page       页码
+     * @param size       每页大小
+     * @return 边数据列表
+     */
+    List<Map<String, Object>> getEdgeDataList(Long graphId, Long edgeTypeId, Integer page, Integer size);
+
+    /**
+     * 获取节点数据详情
+     *
+     * @param graphId 图ID
+     * @param nodeId  节点ID
+     * @return 节点数据详情
+     */
+    Map<String, Object> getNodeData(Long graphId, String nodeId);
+
+    /**
+     * 获取边数据详情
+     *
+     * @param graphId 图ID
+     * @param edgeId  边ID
+     * @return 边数据详情
+     */
+    Map<String, Object> getEdgeData(Long graphId, String edgeId);
+
+    /**
+     * 新增节点数据
+     *
+     * @param graphId    图ID
+     * @param nodeTypeId 节点类型ID
+     * @param data       节点数据
+     * @return 是否成功
+     */
+    boolean addNodeData(Long graphId, Long nodeTypeId, Map<String, Object> data);
+
+    /**
+     * 新增边数据
+     *
+     * @param graphId    图ID
+     * @param edgeTypeId 边类型ID
+     * @param data       边数据
+     * @return 是否成功
+     */
+    boolean addEdgeData(Long graphId, Long edgeTypeId, Map<String, Object> data);
+
+    /**
+     * 更新节点数据
+     *
+     * @param graphId 图ID
+     * @param nodeId  节点ID
+     * @param data    节点数据
+     * @return 是否成功
+     */
+    boolean updateNodeData(Long graphId, String nodeId, Map<String, Object> data);
+
+    /**
+     * 更新边数据
+     *
+     * @param graphId 图ID
+     * @param edgeId  边ID
+     * @param data    边数据
+     * @return 是否成功
+     */
+    boolean updateEdgeData(Long graphId, String edgeId, Map<String, Object> data);
 
     /**
      * 删除图数据库中的节点

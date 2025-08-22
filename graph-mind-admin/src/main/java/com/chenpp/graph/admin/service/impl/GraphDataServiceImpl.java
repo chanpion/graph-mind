@@ -284,6 +284,54 @@ public class GraphDataServiceImpl implements GraphDataService {
     }
 
     @Override
+    public List<Map<String, Object>> getNodeDataList(Long graphId, Long nodeTypeId, Integer page, Integer size) {
+        // TODO: 实现查询节点数据列表逻辑
+        return new ArrayList<>();
+    }
+
+    @Override
+    public List<Map<String, Object>> getEdgeDataList(Long graphId, Long edgeTypeId, Integer page, Integer size) {
+        // TODO: 实现查询边数据列表逻辑
+        return new ArrayList<>();
+    }
+
+    @Override
+    public Map<String, Object> getNodeData(Long graphId, String nodeId) {
+        // TODO: 实现获取节点数据详情逻辑
+        return new HashMap<>();
+    }
+
+    @Override
+    public Map<String, Object> getEdgeData(Long graphId, String edgeId) {
+        // TODO: 实现获取边数据详情逻辑
+        return new HashMap<>();
+    }
+
+    @Override
+    public boolean addNodeData(Long graphId, Long nodeTypeId, Map<String, Object> data) {
+        // TODO: 实现新增节点数据逻辑
+        return true;
+    }
+
+    @Override
+    public boolean addEdgeData(Long graphId, Long edgeTypeId, Map<String, Object> data) {
+        // TODO: 实现新增边数据逻辑
+        return true;
+    }
+
+    @Override
+    public boolean updateNodeData(Long graphId, String nodeId, Map<String, Object> data) {
+        // TODO: 实现更新节点数据逻辑
+        return true;
+    }
+
+    @Override
+    public boolean updateEdgeData(Long graphId, String edgeId, Map<String, Object> data) {
+        // TODO: 实现更新边数据逻辑
+        return true;
+    }
+
+    @Override
     public boolean deleteNode(Long graphId, String nodeId, String label) {
         List<String> nodeIds = new ArrayList<>();
         nodeIds.add(nodeId);

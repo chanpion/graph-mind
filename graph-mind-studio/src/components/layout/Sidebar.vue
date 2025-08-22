@@ -26,7 +26,9 @@
         <el-icon class="menu-icon">
           <component :is="getIcon('Odometer')"/>
         </el-icon>
-        <span>首页</span>
+        <template #title>
+          <span>首页</span>
+        </template>
       </el-menu-item>
 
       <!-- 其他菜单项 -->
@@ -51,7 +53,9 @@
           <el-icon>
             <component :is="getIcon(child.icon)"/>
           </el-icon>
-          <span>{{ child.authName }}</span>
+          <template #title>
+            <span>{{ child.authName }}</span>
+          </template>
         </el-menu-item>
       </el-sub-menu>
     </el-menu>
@@ -71,6 +75,7 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const route = useRoute()
 
 // 获取首页菜单项的索引
 const getIndexForHomeMenuItem = () => {
@@ -81,7 +86,6 @@ const getIndexForHomeMenuItem = () => {
 const getNonHomeMenuItems = () => {
   return props.menuData.filter(item => item.id !== 100)
 }
-
 
 // 处理首页点击事件
 const handleHomeClick = () => {

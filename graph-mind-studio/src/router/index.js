@@ -1,7 +1,6 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import {createRouter, createWebHistory} from 'vue-router'
 import Home from '@/views/Home.vue'
 import Login from '@/views/Login.vue'
-import Index from '@/views/Index.vue'
 
 // 系统管理模块
 import User from '@/views/system/User.vue'
@@ -25,78 +24,93 @@ const router = createRouter({
             path: '/login',
             name: 'Login',
             component: Login,
-            meta: { title: '登录', hidden: true }
+            meta: {title: '登录', hidden: true}
         },
         {
             path: '/',
             redirect: '/home',  // 直接重定向到首页
-            meta: { hidden: true ,closable: true }
+            meta: {hidden: true, closable: true}
         },
         {
             path: '/home',
             name: 'Home',
             component: Home,
-            meta: { title: '首页',closable: true  },
+            meta: {title: '首页', closable: true},
             children: [
                 // 系统管理子模块
                 {
                     path: 'admin',
                     name: 'Admin',
                     component: MainLayout,
-                    meta: { title: '系统管理' ,closable: true },
+                    meta: {title: '系统管理', closable: true},
                     children: [
-                        { path: 'user', name: 'User', component: User, meta: { title: '用户管理',closable: true  } },
-                        { path: 'role', name: 'Role', component: Role, meta: { title: '角色管理',closable: true  } },
-                        { path: 'permission', name: 'Permission', component: Permission, meta: { title: '权限管理',closable: true  } },
-                        { path: 'profile', name: 'Profile', component: () => import('@/views/system/Profile.vue'), meta: { title: '个人中心',closable: true  } },
-                        { path: 'settings', name: 'Settings', component: () => import('@/views/system/Settings.vue'), meta: { title: '系统设置',closable: true  } }
+                        {path: 'user', name: 'User', component: User, meta: {title: '用户管理', closable: true}},
+                        {path: 'role', name: 'Role', component: Role, meta: {title: '角色管理', closable: true}},
+                        {
+                            path: 'permission',
+                            name: 'Permission',
+                            component: Permission,
+                            meta: {title: '权限管理', closable: true}
+                        },
+                        {
+                            path: 'profile',
+                            name: 'Profile',
+                            component: () => import('@/views/system/Profile.vue'),
+                            meta: {title: '个人中心', closable: true}
+                        },
+                        {
+                            path: 'settings',
+                            name: 'Settings',
+                            component: () => import('@/views/system/Settings.vue'),
+                            meta: {title: '系统设置', closable: true}
+                        }
                     ]
                 },
                 // 图库管理子模块
                 {
-                  path: 'graph',
-                  name: 'Graph',
-                  component: MainLayout,
-                  meta: { title: '图库管理', icon: 'Histogram' , closable: true},
-                  children: [
-                    {
-                      path: 'list',
-                      name: 'GraphList',
-                      component: () => import('@/views/graph/GraphList.vue'),
-                      meta: { title: '图列表', icon: 'List' }
-                    },
-                    {
-                      path: 'detail/:id',
-                      name: 'GraphDetail',
-                      component: () => import('@/views/graph/GraphDetail.vue'),
-                      meta: { title: '图详情', icon: 'Document' },
-                      props: true
-                    },
-                    {
-                      path: 'connection',
-                      name: 'Connection',
-                      component: () => import('@/views/graph/Connection.vue'),
-                      meta: { title: '连接管理', icon: 'Connection' }
-                    },
-                    {
-                      path: 'process',
-                      name: 'DataProcess',
-                      component: () => import('@/views/graph/DataProcess.vue'),
-                      meta: { title: '数据处理', icon: 'DataLine' }
-                    },
-                    {
-                      path: 'visual',
-                      name: 'GraphVisual',
-                      component: () => import('@/views/graph/GraphVisual.vue'),
-                      meta: { title: '图可视化', icon: 'View' }
-                    },
-                    {
-                      path: 'analysis',
-                      name: 'GraphAnalysis',
-                      component: () => import('@/views/graph/GraphAnalysis.vue'),
-                      meta: { title: '图分析', icon: 'DataAnalysis' }
-                    }
-                  ]
+                    path: 'graph',
+                    name: 'Graph',
+                    component: MainLayout,
+                    meta: {title: '图库管理', icon: 'Histogram', closable: true},
+                    children: [
+                        {
+                            path: 'list',
+                            name: 'GraphList',
+                            component: () => import('@/views/graph/GraphList.vue'),
+                            meta: {title: '图列表', icon: 'List'}
+                        },
+                        {
+                            path: 'detail/:id',
+                            name: 'GraphDetail',
+                            component: () => import('@/views/graph/GraphDetail.vue'),
+                            meta: {title: '图详情', icon: 'Document'},
+                            props: true
+                        },
+                        {
+                            path: 'connection',
+                            name: 'Connection',
+                            component: () => import('@/views/graph/Connection.vue'),
+                            meta: {title: '连接管理', icon: 'Connection'}
+                        },
+                        {
+                            path: 'process',
+                            name: 'DataProcess',
+                            component: () => import('@/views/graph/DataProcess.vue'),
+                            meta: {title: '数据处理', icon: 'DataLine'}
+                        },
+                        {
+                            path: 'visual',
+                            name: 'GraphVisual',
+                            component: () => import('@/views/graph/GraphVisual.vue'),
+                            meta: {title: '图可视化', icon: 'View'}
+                        },
+                        {
+                            path: 'data',
+                            name: 'GraphData',
+                            component: () => import('@/views/graph/GraphData.vue'),
+                            meta: {title: '图分数据', icon: 'DataAnalysis'}
+                        }
+                    ]
                 }
             ]
         }
@@ -105,27 +119,27 @@ const router = createRouter({
 
 // 路由守卫
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token')
-  
-  // 如果访问登录页，直接放行
-  if (to.path === '/login') {
-    // 如果已经登录，跳转到首页
-    if (token) {
-      next('/home')
-      return
+    const token = localStorage.getItem('token')
+
+    // 如果访问登录页，直接放行
+    if (to.path === '/login') {
+        // 如果已经登录，跳转到首页
+        if (token) {
+            next('/home')
+            return
+        }
+        next()
+        return
     }
+
+    // 如果没有token，跳转到登录页
+    if (!token) {
+        next('/login')
+        return
+    }
+
+    // 其他情况正常放行
     next()
-    return
-  }
-  
-  // 如果没有token，跳转到登录页
-  if (!token) {
-    next('/login')
-    return
-  }
-  
-  // 其他情况正常放行
-  next()
 })
 
 export default router

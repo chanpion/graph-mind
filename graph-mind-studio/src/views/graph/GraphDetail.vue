@@ -2,7 +2,7 @@
   <div class="graph-detail-container">
     <div class="page-header">
       <div class="page-header-left">
-        <h2 class="page-title">图详情</h2>
+        <h2 class="page-title">图设计</h2>
         <p class="page-description">图ID：{{ graphId }}，展示点定义、边定义并支持增删改查</p>
       </div>
       <div class="publish-toolbar" v-if="nodeDefs.length > 0 || edgeDefs.length > 0">
@@ -16,6 +16,7 @@
         </el-button>
       </div>
     </div>
+
     <el-tabs v-model="activeTab" @tab-change="handleTabChange">
       <el-tab-pane label="点定义" name="nodes">
         <div class="toolbar">
@@ -392,14 +393,31 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, reactive, onMounted, watch, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Edit } from '@element-plus/icons-vue'
-import graphApi from '@/api/graph'
+import { Edit, Delete, Plus } from '@element-plus/icons-vue'
+import { graphApi } from '@/api/graph'
+
+// 引入图store
+import { useGraphStore } from '@/stores/graph'
 
 const route = useRoute()
-const graphId = route.params.id
+const router = useRouter()
+const graphStore = useGraphStore()
+
+// 获取图ID（优先使用全局选中的图，其次使用路由参数）
+const graphId = computed(() => {
+  return graphStore.currentGraph?.id || route.params.id
+})
+
+const graphName = computed(() => {
+  return graphStore.currentGraph?.name || ''
+})
+
+// 页面加载状态
+const loading = ref(false)
+const graphInfo = ref({})
 
 // 标签页相关
 const activeTab = ref('nodes')
@@ -461,10 +479,33 @@ const checkIfGraphPublished = computed(() => {
   return allNodesPublished && allEdgesPublished
 })
 
+// 获取图详情
+const fetchGraphDetail = async () => {
+  try {
+    loading.value = true
+    // 使用计算后的graphId
+    const response = await graphApi.getGraph(graphId.value)
+    graphInfo.value = response.data
+    
+    // 如果全局没有选中图，则设置当前图
+    if (!graphStore.currentGraph && response.data) {
+      graphStore.setCurrentGraph(response.data)
+    }
+  } catch (error) {
+    console.error('获取图详情失败:', error)
+    ElMessage.error('获取图详情失败')
+  } finally {
+    loading.value = false
+  }
+}
+
 // 获取点定义列表
 const fetchNodeDefs = async () => {
+  if (!graphId.value) return
+  
   try {
-    const res = await graphApi.getNodeDefs(graphId)
+    console.log("graphId", graphId.value)
+    const res = await graphApi.getNodeDefs(graphId.value)
     nodeDefs.value = res.data
     // 更新图发布状态
     isGraphPublished.value = checkIfGraphPublished.value
@@ -475,8 +516,10 @@ const fetchNodeDefs = async () => {
 
 // 获取边定义列表
 const fetchEdgeDefs = async () => {
+  if (!graphId.value) return
+  
   try {
-    const res = await graphApi.getEdgeDefs(graphId)
+    const res = await graphApi.getEdgeDefs(graphId.value)
     edgeDefs.value = res.data
     // 更新图发布状态
     isGraphPublished.value = checkIfGraphPublished.value
@@ -539,7 +582,7 @@ const handleDeleteNode = (row) => {
     type: 'warning'
   }).then(async () => {
     try {
-      await graphApi.deleteNodeDef(graphId, row.id)
+      await graphApi.deleteNodeDef(graphId.value, row.id)
       ElMessage.success('删除成功')
       fetchNodeDefs()
     } catch (e) {
@@ -558,11 +601,11 @@ const saveNode = async () => {
     
     if (nodeForm.value.id) {
       // 更新
-      await graphApi.updateNodeDef(graphId, nodeForm.value.id, nodeData)
+      await graphApi.updateNodeDef(graphId.value, nodeForm.value.id, nodeData)
       ElMessage.success('更新成功')
     } else {
       // 新增
-      await graphApi.addNodeDef(graphId, nodeData)
+      await graphApi.addNodeDef(graphId.value, nodeData)
       ElMessage.success('新增成功')
     }
     nodeDialogVisible.value = false
@@ -627,7 +670,7 @@ const handleDeleteEdge = (row) => {
     type: 'warning'
   }).then(async () => {
     try {
-      await graphApi.deleteEdgeDef(graphId, row.id)
+      await graphApi.deleteEdgeDef(graphId.value, row.id)
       ElMessage.success('删除成功')
       fetchEdgeDefs()
     } catch (e) {
@@ -646,11 +689,11 @@ const saveEdge = async () => {
     
     if (edgeForm.value.id) {
       // 更新
-      await graphApi.updateEdgeDef(graphId, edgeForm.value.id, edgeData)
+      await graphApi.updateEdgeDef(graphId.value, edgeForm.value.id, edgeData)
       ElMessage.success('更新成功')
     } else {
       // 新增
-      await graphApi.addEdgeDef(graphId, edgeData)
+      await graphApi.addEdgeDef(graphId.value, edgeData)
       ElMessage.success('新增成功')
     }
     edgeDialogVisible.value = false
@@ -680,7 +723,7 @@ const handlePublishSchema = async () => {
   // 设置加载状态
   publishLoading.value = true
   try {
-    const res = await graphApi.publishSchema(graphId)
+    const res = await graphApi.publishSchema(graphId.value)
     publishResult.value = {
       success: res.code === 200,
       message: res.code === 200 ? 'Schema发布成功' : 'Schema发布完成，但存在错误',
@@ -703,8 +746,22 @@ const handlePublishSchema = async () => {
   }
 }
 
+// 监听全局图切换
+watch(() => graphStore.currentGraph, (newGraph, oldGraph) => {
+  if (newGraph && newGraph.id !== (oldGraph?.id)) {
+    // 图发生切换，重新获取点边定义
+    fetchNodeDefs()
+    // 如果当前在边定义标签页，也获取边定义
+    if (activeTab.value === 'edges') {
+      fetchEdgeDefs()
+    }
+  }
+})
+
 onMounted(() => {
-  fetchNodeDefs()
+  if (graphId.value) {
+    fetchNodeDefs()
+  }
 })
 </script>
 
@@ -732,6 +789,31 @@ onMounted(() => {
   font-size: 14px;
 }
 
+/* 优化图信息展示区域样式 */
+.graph-info-card {
+  margin-bottom: 20px;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  padding: 15px 0;
+}
+
+.info-label {
+  font-weight: bold;
+  color: #606266;
+  font-size: 14px;
+  margin-right: 10px;
+  white-space: nowrap;
+}
+
+.info-value {
+  color: #303133;
+  font-size: 16px;
+  font-weight: 500;
+}
+
 .toolbar {
   margin-bottom: 20px;
   display: flex;
@@ -742,6 +824,6 @@ onMounted(() => {
   position: absolute;
   top: 120px;
   right: 20px;
-  z-index: 100;
+  z-index: 1000;
 }
 </style>

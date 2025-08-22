@@ -1,5 +1,35 @@
 # 菜单结构说明
 
+## 一级菜单
+
+### 首页
+- 路由: `/`
+- 图标: HomeFilled
+
+### 图管理
+- 路由: `/graph`
+- 图标: Promotion
+
+### 系统管理
+- 路由: `/system`
+- 图标: Setting
+
+## 二级菜单
+
+### 图管理
+- 图列表: `/graph/list`
+- 图连接: `/graph/connection`
+- 数据加工: `/graph/process`
+- 图数据管理: `/graph/data`
+- 图分析: `/graph/analysis`
+
+### 系统管理
+- 用户管理: `/system/user`
+- 角色管理: `/system/role`
+- 权限管理: `/system/permission`
+- 个人中心: `/system/profile`
+- 系统设置: `/system/settings`
+
 ## 当前菜单结构
 
 ### 1. 图库管理 (ID: 200)
@@ -44,7 +74,7 @@
 - **图标配置**: `src/utils/icons.js`
 
 ### 菜单数据结构
-```javascript
+``javascript
 {
     id: 200,                    // 菜单ID
     authName: "图库管理",        // 菜单名称
@@ -65,7 +95,7 @@
 ## 路由配置
 
 ### 路由结构
-```javascript
+``javascript
 {
     path: 'graph',                    // 路由路径
     name: 'Graph',                    // 路由名称
@@ -131,7 +161,7 @@
 
 #### 1. 更新菜单数据
 在 `src/utils/commonData.js` 中添加菜单配置：
-```javascript
+``javascript
 {
     id: 300,
     authName: "新功能模块",
@@ -151,7 +181,7 @@
 
 #### 2. 添加图标
 在 `src/utils/icons.js` 中导入新图标：
-```javascript
+``javascript
 import { NewIcon, SubIcon } from '@element-plus/icons-vue'
 
 export const iconComponents = {
@@ -166,7 +196,7 @@ export const iconComponents = {
 
 #### 4. 配置路由
 在 `src/router/index.js` 中添加路由配置：
-```javascript
+``javascript
 import NewComponent from '@/views/newmodule/NewComponent.vue'
 
 // 在路由配置中添加

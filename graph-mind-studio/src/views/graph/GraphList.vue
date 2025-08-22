@@ -193,11 +193,12 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
-import {
-  Search, Plus, Refresh
-} from '@element-plus/icons-vue'
-import graphApi from '@/api/graph'
-import connectionApi from '@/api/connection'
+import { Search, Plus, Refresh, Edit, Delete } from '@element-plus/icons-vue'
+import { graphApi } from '@/api/graph'
+import { connectionApi } from '@/api/connection'
+
+// 引入图store
+import { useGraphStore } from '@/stores/graph'
 
 // 响应式数据
 const loading = ref(false)
@@ -209,6 +210,7 @@ const dialogVisible = ref(false)
 const submitLoading = ref(false)
 const formRef = ref()
 const router = useRouter()
+const graphStore = useGraphStore()
 
 // 图数据
 const graphs = ref([])
@@ -398,6 +400,8 @@ const handleCurrentChange = (val) => {
 
 // 点击卡片跳转到图设计页面
 const handleCardClick = (graph) => {
+  // 设置全局选中的图
+  graphStore.setCurrentGraph(graph)
   router.push({ name: 'GraphDetail', params: { id: graph.id } })
 }
 

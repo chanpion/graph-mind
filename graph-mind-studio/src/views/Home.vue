@@ -25,6 +25,24 @@
             </div>
           </div>
           <div class="toolbar">
+            <!-- 图切换下拉框 -->
+            <el-select
+              v-if="graphOptions.length > 0"
+              :model-value="graphStore.currentGraph?.id"
+              :options="graphOptions"
+              placeholder="请选择图"
+              size="small"
+              style="width: 200px; margin-right: 16px;"
+              @change="handleGraphChange"
+            >
+              <el-option
+                v-for="graph in graphStore.graphList"
+                :key="graph.id"
+                :label="graph.name"
+                :value="graph.id"
+              />
+            </el-select>
+            
             <el-dropdown @command="handleCommand">
               <span class="user-info">
                 <el-avatar :size="32" :src="userInfo.avatar">
@@ -78,11 +96,14 @@ import Dashboard from './Index.vue' // 导入仪表盘组件
 // 引入 Pinia stores
 import { useTabsStore } from '@/stores/tabs'
 import { useUserStore } from '@/stores/user'
+import { useGraphStore } from '@/stores/graph'
+import { graphApi } from '@/api/graph'
 
 const router = useRouter()
 const route = useRoute()
 const tabsStore = useTabsStore()
 const userStore = useUserStore()
+const graphStore = useGraphStore()
 
 // 用户信息
 const userInfo = computed(() => userStore.userInfo)
@@ -123,7 +144,7 @@ const activeMenuIndex = computed(() => {
   
   // 特殊处理首页
   if (currentPath === '/home' || currentPath === '/home/' || currentPath === '/home/index') {
-    return '100' // 首页菜单ID
+    return '/home' // 首页菜单路径
   }
   
   // 在菜单数据中查找匹配的菜单项
@@ -146,13 +167,13 @@ const activeMenuIndex = computed(() => {
         }
       }
       
-      // 如果没有匹配的子菜单，返回一级菜单的ID
-      return String(menu.id)
+      // 如果没有匹配的子菜单，返回一级菜单的路径
+      return menu.path
     }
   }
   
-  // 默认返回首页菜单ID
-  return '100'
+  // 默认返回首页菜单路径
+  return '/home'
 })
 
 // 折叠图标计算属性
@@ -196,11 +217,50 @@ const handleCommand = async (command) => {
   }
 }
 
+// 图相关状态
+const graphLoading = ref(false)
+const graphOptions = computed(() => {
+  return graphStore.graphList.map(graph => ({
+    value: graph.id,
+    label: graph.name
+  }))
+})
+
+// 获取图列表
+const fetchGraphList = async () => {
+  try {
+    graphLoading.value = true
+    const response = await graphApi.getGraphs()
+    const graphList = response.data.records || response.data.list || []
+    graphStore.setGraphList(graphList)
+    
+    // 如果当前没有选中图，且图列表不为空，则默认选中第一个
+    if (!graphStore.currentGraph && graphList.length > 0) {
+      graphStore.setCurrentGraph(graphList[0])
+    }
+  } catch (error) {
+    console.error('获取图列表失败:', error)
+    ElMessage.error('获取图列表失败')
+  } finally {
+    graphLoading.value = false
+  }
+}
+
+// 处理图切换
+const handleGraphChange = (graphId) => {
+  const selectedGraph = graphStore.graphList.find(graph => graph.id === graphId)
+  if (selectedGraph) {
+    graphStore.setCurrentGraph(selectedGraph)
+  }
+}
+
 // 组件挂载时检查登录状态
 onMounted(() => {
   if (!userStore.isLoggedIn) {
     router.push('/login')
   }
+  // 获取图列表
+  fetchGraphList()
 })
 </script>
 
