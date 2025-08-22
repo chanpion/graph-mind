@@ -63,19 +63,23 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getIcon } from '@/utils/icons'
 import { useRouter } from 'vue-router'
 
 const props = defineProps({
   isCollapse: Boolean,
-  menuData: Array,
-  activeMenuIndex: String
+  menuData: Array
 })
 
 const router = useRouter()
 const route = useRoute()
+
+// 计算属性获取当前激活菜单的索引
+const activeMenuIndex = computed(() => {
+  return route.path
+})
 
 // 获取首页菜单项的索引
 const getIndexForHomeMenuItem = () => {

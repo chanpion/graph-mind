@@ -1,16 +1,24 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
-import { Share, Connection, DataAnalysis, User } from '@element-plus/icons-vue'
+import { graphApi } from '@/api/graph'
+import { connectionApi } from '@/api/connection'
+import { userApi } from '@/api/user'
+import { Share, Connection, DataAnalysis, User, Promotion, Upload } from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
+const router = useRouter()
 
 // 系统信息
 const systemInfo = ref({
   version: '1.0.0',
   lastUpdate: '2025-08-01',
-  totalGraphs: 12,
-  totalConnections: 8
+  totalGraphs: 0,
+  totalConnections: 0,
+  totalUsers: 0,
+  totalTasks: 24
 })
 
 // 快捷操作
@@ -19,28 +27,28 @@ const quickActions = ref([
     id: 1, 
     title: '新建图连接', 
     description: '创建新的图数据库连接', 
-    icon: 'Connection',
+    icon: Connection,
     path: '/home/graph/connection' 
   },
   { 
     id: 2, 
     title: '创建图实例', 
     description: '创建新的图数据实例', 
-    icon: 'Promotion',
+    icon: Promotion,
     path: '/home/graph/list' 
   },
   { 
     id: 3, 
     title: '图数据处理', 
     description: '处理图数据导入导出', 
-    icon: 'Upload',
+    icon: Upload,
     path: '/home/graph/process' 
   },
   { 
     id: 4, 
     title: '图可视化分析', 
     description: '进行图数据可视化分析', 
-    icon: 'DataAnalysis',
+    icon: DataAnalysis,
     path: '/home/graph/visual' 
   }
 ])
@@ -52,8 +60,34 @@ const recentGraphs = ref([
   { id: 3, name: '推荐系统图谱', type: 'JanusGraph', updateTime: '2025-07-20' }
 ])
 
+// 处理快捷操作点击事件
+const handleQuickActionClick = (path) => {
+  router.push(path)
+}
+
+// 获取统计数据
+const fetchStatistics = async () => {
+  try {
+    // 获取图实例数量
+    const graphResponse = await graphApi.getGraphs()
+    systemInfo.value.totalGraphs = graphResponse.data.total || graphResponse.data.records?.length || 0
+
+    // 获取连接数
+    const connectionResponse = await connectionApi.getConnections()
+    systemInfo.value.totalConnections = connectionResponse.data.total || connectionResponse.data.records?.length || 0
+
+    // 获取用户数
+    const userResponse = await userApi.getUsers()
+    systemInfo.value.totalUsers = userResponse.data.total || userResponse.data.records?.length || 0
+  } catch (error) {
+    console.error('获取统计数据失败:', error)
+    ElMessage.error('获取统计数据失败')
+  }
+}
+
 onMounted(() => {
-  // 可以在这里获取实际数据
+  // 获取统计数据
+  fetchStatistics()
 })
 </script>
 
@@ -105,7 +139,7 @@ onMounted(() => {
               <el-icon size="24"><User /></el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-value">5</div>
+              <div class="stat-value">{{ systemInfo.totalUsers }}</div>
               <div class="stat-label">团队成员</div>
             </div>
           </div>
@@ -127,7 +161,7 @@ onMounted(() => {
                   :key="action.id" 
                   :span="12"
                 >
-                  <div class="action-item">
+                  <div class="action-item" @click="handleQuickActionClick(action.path)">
                     <div class="action-icon">
                       <el-icon size="20"><component :is="action.icon" /></el-icon>
                     </div>
@@ -140,24 +174,8 @@ onMounted(() => {
               </el-row>
             </div>
           </div>
-
-          <div class="content-card" style="margin-top: 20px;">
-            <div class="card-header">
-              <h3>最近访问</h3>
-            </div>
-            <el-table :data="recentGraphs" style="width: 100%">
-              <el-table-column prop="name" label="图名称" />
-              <el-table-column prop="type" label="类型" />
-              <el-table-column prop="updateTime" label="更新时间" />
-              <el-table-column label="操作" width="150">
-                <template #default>
-                  <el-button type="primary" size="small">查看</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
         </el-col>
-        
+
         <el-col :span="8">
           <div class="content-card">
             <div class="card-header">
@@ -182,22 +200,6 @@ onMounted(() => {
                   <span class="info-value">chanpion@gmail.com</span>
                 </li>
               </ul>
-            </div>
-          </div>
-          
-          <div class="content-card" style="margin-top: 20px;">
-            <div class="card-header">
-              <h3>使用统计</h3>
-            </div>
-            <div class="chart-placeholder">
-              <div class="chart-info">
-                <p>图数据增长趋势</p>
-                <el-progress :percentage="60" :stroke-width="12" />
-              </div>
-              <div class="chart-info">
-                <p>查询性能</p>
-                <el-progress :percentage="80" :stroke-width="12" status="success" />
-              </div>
             </div>
           </div>
         </el-col>
@@ -308,6 +310,7 @@ onMounted(() => {
 
 .quick-actions {
   padding: 10px 0;
+  flex: 1;
 }
 
 .action-item {
@@ -355,6 +358,7 @@ onMounted(() => {
   padding: 0;
   margin: 0;
   list-style: none;
+  flex: 1;
 }
 
 .system-info li {
