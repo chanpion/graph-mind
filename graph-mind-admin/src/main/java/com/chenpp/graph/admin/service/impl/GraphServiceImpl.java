@@ -8,18 +8,17 @@ import com.chenpp.graph.admin.model.Graph;
 import com.chenpp.graph.admin.model.GraphDatabaseConnection;
 import com.chenpp.graph.admin.model.GraphEdgeDef;
 import com.chenpp.graph.admin.model.GraphNodeDef;
+import com.chenpp.graph.admin.model.GraphPropertyDef;
 import com.chenpp.graph.admin.service.GraphDatabaseConnectionService;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
 import com.chenpp.graph.admin.service.GraphNodeDefService;
+import com.chenpp.graph.admin.service.GraphPropertyDefService;
 import com.chenpp.graph.admin.service.GraphService;
 import com.chenpp.graph.admin.util.GraphClientFactory;
 import com.chenpp.graph.core.GraphClient;
 import com.chenpp.graph.core.GraphOperations;
 import com.chenpp.graph.core.exception.BusinessException;
 import com.chenpp.graph.core.model.GraphConf;
-import com.chenpp.graph.janus.JanusClient;
-import com.chenpp.graph.neo4j.Neo4jClient;
-import com.chenpp.graph.nebula.NebulaClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -42,7 +41,11 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
     private GraphEdgeDefService edgeDefService;
 
     @Autowired
+    private GraphPropertyDefService propertyDefService;
+
+    @Autowired
     private GraphDatabaseConnectionService connectionService;
+
 
     @Override
     public Page<Graph> queryGraphs(Page<Graph> page, String keyword) {
@@ -60,6 +63,16 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
         queryWrapper.eq("connection_id", connectionId);
         queryWrapper.orderByDesc("create_time");
         return this.page(page, queryWrapper);
+    }
+
+    @Override
+    public boolean save(Graph graph) {
+        GraphDatabaseConnection connection = connectionService.getById(graph.getConnectionId());
+        if (connection == null) {
+            throw new BusinessException("图数据库连接不存在");
+        }
+        graph.setGraphType(connection.getType());
+        return super.save(graph);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -89,7 +102,7 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
                     graphOperations.dropGraph(graphConf);
 
                     // 关闭图客户端
-                    closeGraphClient(graphClient);
+                    graphClient.close();
                 } catch (Exception e) {
                     log.warn("删除图数据库中的数据和schema失败，graphId={}, error={}", graphId, e.getMessage());
                     // 即使删除图数据库中的数据失败，也继续删除本地数据
@@ -103,32 +116,13 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
             edgeDefService.remove(new QueryWrapper<GraphEdgeDef>().eq("graph_id", graphId));
 
             // 删除关联的属性定义
-
+            propertyDefService.remove(new QueryWrapper<GraphPropertyDef>().eq("graph_id", graphId));
 
             // 删除图本身
             return this.removeById(graphId);
         } catch (Exception e) {
             log.error("删除图失败，graphId={}", graphId, e);
             throw new BusinessException("删除图失败", e);
-        }
-    }
-
-    /**
-     * 关闭图客户端连接
-     *
-     * @param graphClient 图客户端
-     */
-    private void closeGraphClient(GraphClient graphClient) {
-        try {
-            if (graphClient instanceof JanusClient) {
-                ((JanusClient) graphClient).close();
-            } else if (graphClient instanceof Neo4jClient) {
-                // Neo4jClient没有close方法，不需要特殊处理
-            } else if (graphClient instanceof NebulaClient) {
-                // NebulaClient没有close方法，不需要特殊处理
-            }
-        } catch (Exception e) {
-            log.warn("关闭图客户端连接失败: {}", e.getMessage());
         }
     }
 }

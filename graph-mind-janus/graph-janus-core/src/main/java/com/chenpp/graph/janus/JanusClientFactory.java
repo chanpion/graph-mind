@@ -10,8 +10,11 @@ import org.janusgraph.core.JanusGraphFactory;
 
 import java.time.Duration;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static com.chenpp.graph.janus.JanusConstants.BACKEND_CASSANDRA;
+import static com.chenpp.graph.janus.JanusConstants.BACKEND_HBASE;
 import static org.janusgraph.diskstorage.hbase.HBaseStoreManager.HBASE_TABLE;
 import static org.janusgraph.diskstorage.hbase.HBaseStoreManager.REGION_COUNT;
 import static org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration.AUTH_PASSWORD;
@@ -51,8 +54,6 @@ public class JanusClientFactory {
         }
     }
 
-    private static final String BACKEND_HBASE = "hbase";
-    private static final String BACKEND_CASSANDRA = "cassandra";
 
     private static final Map<String, JanusGraph> JANUS_GRAPH_MAP = new ConcurrentHashMap<>();
 
@@ -133,7 +134,11 @@ public class JanusClientFactory {
         configuration.setProperty(STORAGE_BACKEND.toStringWithoutRoot(), "cql");
         configuration.setProperty(STORAGE_HOSTS.toStringWithoutRoot(), cassandraConf.getHostname());
         configuration.setProperty(STORAGE_PORT.toStringWithoutRoot(), cassandraConf.getPort());
-        configuration.setProperty("storage.cql.keyspace", janusConf.getGraphCode());
+        String keyspace = cassandraConf.getKeyspace();
+        if (Objects.equals(keyspace, JanusConstants.DEFAULT_GRAPH_CODE)) {
+            keyspace = "\"default\"";
+        }
+        configuration.setProperty("storage.cql.keyspace", keyspace);
         if (StringUtils.isNoneBlank(cassandraConf.getPassword(), cassandraConf.getPassword())) {
             configuration.setProperty(AUTH_USERNAME.toStringWithoutRoot(), janusConf.getCassandraConf().getUsername());
             configuration.setProperty(AUTH_PASSWORD.toStringWithoutRoot(), janusConf.getCassandraConf().getPassword());

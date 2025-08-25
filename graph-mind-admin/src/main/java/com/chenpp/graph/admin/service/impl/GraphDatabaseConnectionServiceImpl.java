@@ -9,6 +9,7 @@ import com.chenpp.graph.admin.model.GraphDatabaseConnection;
 import com.chenpp.graph.admin.service.GraphDatabaseConnectionService;
 import com.chenpp.graph.admin.util.GraphClientFactory;
 import com.chenpp.graph.core.GraphClient;
+import com.chenpp.graph.core.exception.BusinessException;
 import com.chenpp.graph.core.model.GraphConf;
 import org.springframework.stereotype.Service;
 
@@ -48,16 +49,23 @@ public class GraphDatabaseConnectionServiceImpl extends ServiceImpl<GraphDatabas
         if (connection == null) {
             return false;
         }
-        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, new Graph());
-        GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
-        boolean result = graphClient.checkConnection();
-        if (result) {
-            connection.setStatus(1);
-        }else {
+        try {
+            GraphConf graphConf = GraphClientFactory.createGraphConf(connection, new Graph());
+            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+            boolean result = graphClient.checkConnection();
+            if (result) {
+                connection.setStatus(1);
+            } else {
+                connection.setStatus(2);
+            }
+            return result;
+        } catch (Exception e) {
+            log.error("连接测试异常", e);
             connection.setStatus(2);
+            throw new BusinessException("test connection error", e);
+        } finally {
+            this.updateById(connection);
         }
-        this.updateById(connection);
-        return result;
     }
 
     @Override

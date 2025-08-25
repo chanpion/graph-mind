@@ -1,5 +1,4 @@
 <template>
-
   <div class="connection-container">
     <div class="page-header">
       <h2 class="page-title">系统配置</h2>
@@ -55,8 +54,22 @@
         </el-table-column>
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="scope">
-            <el-button type="primary" link @click="showEditDialog(scope.row)">编辑</el-button>
-            <el-button type="danger" link @click="deleteConfig(scope.row)">删除</el-button>
+            <el-button 
+              type="primary" 
+              circle 
+              @click="showEditDialog(scope.row)"
+              title="编辑"
+            >
+              <el-icon><Edit /></el-icon>
+            </el-button>
+            <el-button 
+              type="danger" 
+              circle 
+              @click="deleteConfigItem(scope.row)"
+              title="删除"
+            >
+              <el-icon><Delete /></el-icon>
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -125,19 +138,8 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getConfigList, addConfig, updateConfig, deleteConfig } from '@/api/config.js'
-import {Plus, Refresh, Search} from "@element-plus/icons-vue";
-
-const formatDateTime = (date) => {
-  if (!date) return ''
-  const d = new Date(date)
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  const hours = String(d.getHours()).padStart(2, '0')
-  const minutes = String(d.getMinutes()).padStart(2, '0')
-  const seconds = String(d.getSeconds()).padStart(2, '0')
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
-}
+import { Plus, Refresh, Search, Edit, Delete } from "@element-plus/icons-vue"
+import { formatDateTime } from '@/utils/commonUtils.js'
 
 const configKey = ref('')
 
@@ -211,7 +213,7 @@ const searchConfigs = () => {
 
 // 重置搜索
 const resetSearch = () => {
-  searchForm.configKey = ''
+  configKey.value = ''
   pagination.currentPage = 1
   loadConfigList()
 }

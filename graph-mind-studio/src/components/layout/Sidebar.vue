@@ -5,7 +5,7 @@
   >
     <div class="system-logo" :class="{ 'logo-collapse': isCollapse }">
       <span v-if="!isCollapse" class="logo-text">图数据库管理系统</span>
-      <span v-else class="logo-text">易</span>
+      <span v-else class="logo-text">图</span>
     </div>
 
     <el-menu

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, markRaw } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
@@ -27,28 +27,28 @@ const quickActions = ref([
     id: 1, 
     title: '新建图连接', 
     description: '创建新的图数据库连接', 
-    icon: Connection,
+    icon: markRaw(Connection),
     path: '/home/graph/connection' 
   },
   { 
     id: 2, 
     title: '创建图实例', 
     description: '创建新的图数据实例', 
-    icon: Promotion,
+    icon: markRaw(Promotion),
     path: '/home/graph/list' 
   },
   { 
     id: 3, 
     title: '图数据处理', 
     description: '处理图数据导入导出', 
-    icon: Upload,
+    icon: markRaw(Upload),
     path: '/home/graph/process' 
   },
   { 
     id: 4, 
     title: '图可视化分析', 
     description: '进行图数据可视化分析', 
-    icon: DataAnalysis,
+    icon: markRaw(DataAnalysis),
     path: '/home/graph/visual' 
   }
 ])

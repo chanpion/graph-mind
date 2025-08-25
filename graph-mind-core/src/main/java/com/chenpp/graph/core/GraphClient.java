@@ -28,4 +28,11 @@ public interface GraphClient {
      * @return true:连接正常, false:连接异常
      */
     boolean checkConnection();
+
+    /**
+     * 关闭连接
+     *
+     * @return true:关闭成功, false:关闭失败
+     */
+    void close();
 }

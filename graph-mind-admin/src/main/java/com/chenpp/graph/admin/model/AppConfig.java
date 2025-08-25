@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
  * 系统配置实体类
  */
 @Data
-@TableName("app_config")
+@TableName("sys_app_config")
 public class AppConfig {
 
     /**

@@ -66,9 +66,30 @@
         </el-table-column>
         <el-table-column label="操作" align="center" width="280" class-name="small-padding fixed-width">
           <template #default="scope">
-            <el-button type="text" size="small" :icon="Edit" @click="handleUpdate(scope.row)">修改</el-button>
-            <el-button type="text" size="small" :icon="Delete" @click="handleDelete(scope.row)">删除</el-button>
-            <el-button type="text" size="small" :icon="Key" @click="handleResetPwd(scope.row)">重置密码</el-button>
+            <el-button 
+              type="primary" 
+              circle 
+              @click="handleUpdate(scope.row)"
+              title="修改"
+            >
+              <el-icon><Edit /></el-icon>
+            </el-button>
+            <el-button 
+              type="danger" 
+              circle 
+              @click="handleDelete(scope.row)"
+              title="删除"
+            >
+              <el-icon><Delete /></el-icon>
+            </el-button>
+            <el-button 
+              type="warning" 
+              circle 
+              @click="handleResetPwd(scope.row)"
+              title="重置密码"
+            >
+              <el-icon><Refresh /></el-icon>
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -183,6 +204,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import Pagination from '@/components/Pagination.vue'
 import { userApi } from '@/api/user'
+import { Delete, Edit, Refresh, Plus, Search } from "@element-plus/icons-vue";
 
 // 模拟字典数据
 const sys_normal_disable = [
@@ -333,6 +355,12 @@ const resetQuery = () => {
   queryParams.username = undefined
   queryParams.phoneNumber = undefined
   queryParams.status = undefined
+  handleQuery()
+}
+
+// 处理搜索输入框的输入事件
+const handleSearch = () => {
+  queryParams.username = searchKeyword.value
   handleQuery()
 }
 

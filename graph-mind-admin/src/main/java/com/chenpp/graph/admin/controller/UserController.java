@@ -63,6 +63,17 @@ public class UserController {
         User user = userService.getUserById(userId);
         return Result.success(user);
     }
+    /**
+     * 获取用户详情
+     *
+     * @param username 用户名
+     * @return 用户详情
+     */
+    @GetMapping("/profile")
+    public Result<User> getUserByName(@RequestParam String username) {
+        User user = userService.getUserByName(username);
+        return Result.success(user);
+    }
 
     @DeleteMapping("/{userId}")
     public Result<String> deleteUser(@PathVariable Long userId) {

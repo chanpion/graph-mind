@@ -21,7 +21,7 @@ public class JanusClient implements GraphClient {
     public JanusClient(JanusConf janusConf) {
         this.janusConf = janusConf;
         if (janusConf.getGraphCode() == null) {
-            janusConf.setGraphCode("\"default\"");
+            janusConf.setGraphCode(JanusConstants.DEFAULT_GRAPH_CODE);
         }
         this.graph = JanusClientFactory.getOrCreateJanusGrapht(janusConf);
     }
@@ -41,16 +41,19 @@ public class JanusClient implements GraphClient {
         return graph.isOpen();
     }
 
+
+    public JanusGraph getGraph() {
+        return graph;
+    }
+
     /**
      * 关闭图数据库连接
      */
+    @Override
     public void close() {
         if (graph != null && !graph.isClosed()) {
             graph.close();
         }
     }
 
-    public JanusGraph getGraph() {
-        return graph;
-    }
 }

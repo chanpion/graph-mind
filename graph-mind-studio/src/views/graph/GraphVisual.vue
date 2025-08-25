@@ -325,9 +325,9 @@ const handleQuery = async () => {
       y: 0
     }))
     
-    // 转换边数据格式以适配可视化
-    edges.value = edgesData.map(edge => ({
-      id: edge.uid,
+    // 转换边数据格式以适配可视化，并为每条边添加唯一ID
+    edges.value = edgesData.map((edge, index) => ({
+      id: `${edge.uid || (edges.value.length + index)}`, // 为每条边生成唯一ID
       uid: edge.uid,
       label: edge.label,
       source: edge.startUid, // 使用startUid作为source
@@ -591,10 +591,74 @@ const handleExpandNode = async () => {
   }
 }
 
-const handleCollapseNode = () => {
-  // 收起节点功能
-  ElMessage.info('收起节点功能待实现')
+const handleCollapseNode = async () => {
   contextMenuVisible.value = false
+  if (!selectedGraph.value || !selectedGraph.value.id) {
+    ElMessage.warning('请选择图')
+    return
+  }
+  
+  if (!contextMenuData.value || !contextMenuData.value.uid) {
+    ElMessage.warning('无法获取节点信息')
+    return
+  }
+  
+  try {
+    // 显示加载状态
+    canvasLoading.value = true
+    
+    // 获取当前节点的UID
+    const nodeUid = contextMenuData.value.uid
+    
+    // 找到与当前节点直接相连的边
+    const connectedEdges = edges.value.filter(edge => 
+      edge.startUid === nodeUid || edge.endUid === nodeUid
+    )
+    
+    // 获取需要隐藏的节点UID（与当前节点直接相连的节点，但不包括当前节点本身）
+    const nodesToHide = new Set()
+    connectedEdges.forEach(edge => {
+      if (edge.startUid !== nodeUid) {
+        nodesToHide.add(edge.startUid)
+      }
+      if (edge.endUid !== nodeUid) {
+        nodesToHide.add(edge.endUid)
+      }
+    })
+    
+    // 保留在其他地方也有连接的节点（避免误删）
+    const nodesToKeep = new Set()
+    edges.value.forEach(edge => {
+      // 检查边的两端是否在要隐藏的节点中，但不是与当前节点相连的边
+      if (nodesToHide.has(edge.startUid) && edge.startUid !== nodeUid && edge.endUid !== nodeUid) {
+        nodesToKeep.add(edge.startUid)
+      }
+      if (nodesToHide.has(edge.endUid) && edge.startUid !== nodeUid && edge.endUid !== nodeUid) {
+        nodesToKeep.add(edge.endUid)
+      }
+    })
+    
+    // 真正需要隐藏的节点是nodesToHide中去掉nodesToKeep的部分
+    const nodesToRemove = new Set([...nodesToHide].filter(x => !nodesToKeep.has(x)))
+    
+    // 从本地数据中移除需要隐藏的节点
+    nodes.value = nodes.value.filter(node => !nodesToRemove.has(node.uid))
+    
+    // 移除与被隐藏节点相关的边（但保留与当前节点直接相连的边）
+    edges.value = edges.value.filter(edge => 
+      !nodesToRemove.has(edge.startUid) && !nodesToRemove.has(edge.endUid)
+    )
+    
+    // 重新绘制图形
+    drawGraph()
+    
+    ElMessage.success(`成功收起${nodesToRemove.size}个节点`)
+  } catch (e) {
+    ElMessage.error('收起节点失败: ' + (e.message || '未知错误'))
+    console.error('收起节点失败:', e)
+  } finally {
+    canvasLoading.value = false
+  }
 }
 
 const handleDeleteNode = () => {
@@ -688,9 +752,9 @@ const handleFindPath = async () => {
         })
       })
       
-      edgesData.forEach(edge => {
+      edgesData.forEach((edge, index) => {
         edges.value.push({
-          id: edge.uid,
+          id: `${edge.uid || (edges.value.length + index)}`, // 为每条边生成唯一ID
           uid: edge.uid,
           label: edge.label,
           source: edge.startUid,
@@ -851,19 +915,23 @@ const drawForceLayout = (container) => {
   // 为节点间连线定义箭头
   defs.append("marker")
     .attr("id", "arrow")
-    .attr("viewBox", "-10 -5 10 10")
-    .attr("refX", -15) // 调整箭头位置，使其接触目标节点边缘
+    .attr("viewBox", "0 -5 10 10")
+    .attr("refX", 25) // 调整箭头位置，使其接触目标节点边缘
     .attr("refY", 0)
     .attr("markerWidth", 6)
     .attr("markerHeight", 6)
     .attr("orient", "auto")
     .append("path")
-    .attr("d", "M -10 -5 L 0 0 L -10 5")
+    .attr("d", "M 0 -5 L 10 0 L 0 5")
     .attr("fill", "#999")
 
   // 力导向布局
   const simulation = d3.forceSimulation(nodes.value)
-    .force('link', d3.forceLink(edges.value).id(d => d.id).distance(120))
+    .force('link', d3.forceLink(edges.value)
+      .id(d => d.id)
+      .distance(120)
+      .links(edges.value.map((d, i) => ({ ...d, index: i }))) // 为每条边添加唯一索引
+    )
     .force('charge', d3.forceManyBody().strength(-300))
     .force('center', d3.forceCenter(width / 2, height / 2))
 
@@ -992,14 +1060,14 @@ const drawHierarchyLayout = (container) => {
   // 为节点间连线定义箭头
   defs.append("marker")
     .attr("id", "arrow-hierarchy")
-    .attr("viewBox", "-10 -5 10 10")
-    .attr("refX", -15) // 调整箭头位置，使其接触目标节点边缘
+    .attr("viewBox", "0 -5 10 10")
+    .attr("refX", 25) // 调整箭头位置，使其接触目标节点边缘
     .attr("refY", 0)
     .attr("markerWidth", 6)
     .attr("markerHeight", 6)
     .attr("orient", "auto")
     .append("path")
-    .attr("d", "M -10 -5 L 0 0 L -10 5")
+    .attr("d", "M 0 -5 L 10 0 L 0 5")
     .attr("fill", "#999")
   
   // 计算节点位置（层次布局）

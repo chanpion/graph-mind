@@ -202,7 +202,10 @@ function validateConfirmPassword(rule, value, callback) {
 
 // 获取当前用户信息
 const getCurrentUserInfo = () => {
-  userApi.getCurrentUser(userStore.userInfo.username).then(response => {
+  const params = {
+    username: userStore.userInfo.username
+  }
+  userApi.getCurrentUser(params).then(response => {
     if (response.code === 200) {
       const userInfo = response.data
       // 更新表单数据

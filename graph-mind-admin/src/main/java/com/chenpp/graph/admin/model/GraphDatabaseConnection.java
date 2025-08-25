@@ -1,7 +1,6 @@
 package com.chenpp.graph.admin.model;
 
 import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -25,16 +24,10 @@ public class GraphDatabaseConnection {
     private String type;
     private String host;
     private Integer port;
-    @TableField("`database`")
-    private String database;
-    private String username;
-    private String password;
     /**
      * 0: 未检测, 1: 通过, 2: 失败
      */
     private Integer status;
-    private Integer poolSize;
-    private Integer timeout;
     private String description;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;

@@ -5,13 +5,15 @@ import com.chenpp.graph.admin.model.Graph;
 import com.chenpp.graph.admin.model.GraphDatabaseConnection;
 import com.chenpp.graph.core.GraphClient;
 import com.chenpp.graph.core.model.GraphConf;
+import com.chenpp.graph.janus.CassandraConf;
+import com.chenpp.graph.janus.HBaseConf;
 import com.chenpp.graph.janus.JanusClient;
 import com.chenpp.graph.janus.JanusConf;
+import com.chenpp.graph.janus.JanusConstants;
 import com.chenpp.graph.nebula.NebulaClient;
 import com.chenpp.graph.nebula.NebulaConf;
 import com.chenpp.graph.neo4j.Neo4jClient;
 import com.chenpp.graph.neo4j.Neo4jConf;
-import org.apache.commons.lang3.math.NumberUtils;
 
 /**
  * 图客户端工厂类，用于根据数据库类型动态创建对应的图客户端实例
@@ -33,20 +35,34 @@ public class GraphClientFactory {
             case "neo4j":
                 Neo4jConf neo4jConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), Neo4jConf.class);
                 neo4jConf.setGraphCode(graphConf.getGraphCode());
-                neo4jConf.setUri(String.format("neo4j://%s:%s", graphConf.getParams().get("host"), graphConf.getParams().get("port")));
+                if (graphConf.getHost() != null) {
+                    neo4jConf.setUri(String.format("neo4j://%s:%s", graphConf.getHost(), graphConf.getPort()));
+                } else {
+                    neo4jConf.setUri(String.format("neo4j://%s:%s", graphConf.getParams().get("host"), graphConf.getParams().get("port")));
+                }
                 return new Neo4jClient(neo4jConf);
 
             case "nebula":
                 NebulaConf nebulaConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), NebulaConf.class);
                 nebulaConf.setGraphCode(graphConf.getGraphCode());
-                nebulaConf.setHosts(graphConf.getParams().get("host").toString());
-                nebulaConf.setPort(NumberUtils.toInt(graphConf.getParams().getOrDefault("port", "").toString()));
+                nebulaConf.setHosts(graphConf.getHost());
+                nebulaConf.setPort(graphConf.getPort());
                 nebulaConf.setSpace(graphConf.getGraphCode());
                 return new NebulaClient(nebulaConf);
             case "janus":
                 JanusConf janusConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), JanusConf.class);
                 janusConf.setGraphCode(graphConf.getGraphCode());
-
+                if (janusConf.getStorageBackend().equals(JanusConstants.BACKEND_CASSANDRA)) {
+                    CassandraConf cassandraConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), CassandraConf.class);
+                    cassandraConf.setHostname(graphConf.getHost());
+                    cassandraConf.setPort(graphConf.getPort());
+                    janusConf.setCassandraConf(cassandraConf);
+                } else {
+                    HBaseConf hBaseConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), HBaseConf.class);
+                    hBaseConf.setHbaseHost(graphConf.getHost());
+                    hBaseConf.setHbasePort(graphConf.getPort());
+                    janusConf.setHBaseConf(hBaseConf);
+                }
                 return new JanusClient(janusConf);
 
             default:
@@ -58,6 +74,8 @@ public class GraphClientFactory {
         GraphConf graphConf = new GraphConf();
         graphConf.setGraphCode(graph.getCode());
         graphConf.setType(connection.getType());
+        graphConf.setHost(connection.getHost());
+        graphConf.setPort(connection.getPort());
         if (connection.getParams() != null) {
             graphConf.setParams(JSON.parseObject(connection.getParams()));
         } else {

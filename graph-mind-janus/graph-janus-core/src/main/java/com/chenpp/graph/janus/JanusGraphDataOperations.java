@@ -163,49 +163,53 @@ public class JanusGraphDataOperations implements GraphDataOperations {
 
     @Override
     public void addEdge(GraphEdge edge) throws GraphException {
-        try (JanusGraphTransaction tx = graph.newTransaction()) {
-            try {
-                // 查找起始顶点
-                Iterator<JanusGraphVertex> startVertices = tx.query().has(GraphConstants.UID, edge.getStartUid()).vertices().iterator();
-                if (!startVertices.hasNext()) {
-                    tx.rollback();
-                    throw new GraphException("Start vertex not found with uid: " + edge.getStartUid());
-                }
-                JanusGraphVertex startVertex = startVertices.next();
-
-                // 查找结束顶点
-                Iterator<JanusGraphVertex> endVertices = tx.query().has(GraphConstants.UID, edge.getEndUid()).vertices().iterator();
-                if (!endVertices.hasNext()) {
-                    tx.rollback();
-                    throw new GraphException("End vertex not found with uid: " + edge.getEndUid());
-                }
-                JanusGraphVertex endVertex = endVertices.next();
-
-                // 创建边
-                JanusGraphEdge janusEdge = startVertex.addEdge(edge.getLabel(), endVertex);
-
-                // 设置UID
-                if (edge.getUid() != null) {
-                    janusEdge.property(GraphConstants.UID, edge.getUid());
-                }
-
-                // 设置其他属性
-                if (edge.getProperties() != null) {
-                    edge.getProperties().forEach((key, value) -> {
-                        if (value != null) {
-                            janusEdge.property(key, value);
-                        }
-                    });
-                }
-
-                // 提交事务
-                tx.commit();
-            } catch (Exception e) {
+        JanusGraphTransaction tx = graph.newTransaction();
+        try {
+            // 查找起始顶点
+            Iterator<JanusGraphVertex> startVertices = tx.query().has(GraphConstants.UID, edge.getStartUid()).vertices().iterator();
+            if (!startVertices.hasNext()) {
                 tx.rollback();
-                throw new GraphException("Failed to add edge from " + edge.getStartUid() + " to " + edge.getEndUid(), e);
+                throw new GraphException("Start vertex not found with uid: " + edge.getStartUid());
             }
+            JanusGraphVertex startVertex = startVertices.next();
+
+            // 查找结束顶点
+            Iterator<JanusGraphVertex> endVertices = tx.query().has(GraphConstants.UID, edge.getEndUid()).vertices().iterator();
+            if (!endVertices.hasNext()) {
+                tx.rollback();
+                throw new GraphException("End vertex not found with uid: " + edge.getEndUid());
+            }
+            JanusGraphVertex endVertex = endVertices.next();
+
+            // 创建边
+            JanusGraphEdge janusEdge = startVertex.addEdge(edge.getLabel(), endVertex);
+
+            // 设置UID
+            if (edge.getUid() != null) {
+                janusEdge.property(GraphConstants.UID, edge.getUid());
+            }
+
+            // 设置其他属性
+            if (edge.getProperties() != null) {
+                edge.getProperties().forEach((key, value) -> {
+                    if (value != null) {
+                        janusEdge.property(key, value);
+                    }
+                });
+            }
+
+            // 提交事务
+            tx.commit();
         } catch (Exception e) {
+            if (tx.isOpen()) {
+                tx.rollback();
+            }
             throw new GraphException("Failed to add edge from " + edge.getStartUid() + " to " + edge.getEndUid(), e);
+        } finally {
+            // 确保事务已关闭
+            if (tx.isOpen()) {
+                tx.close();
+            }
         }
     }
 

@@ -1,5 +1,6 @@
 package com.chenpp.graph.admin.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -28,10 +29,10 @@ public class UserServiceImpl extends ServiceImpl<UserDao, User> implements UserS
     public PageResult<User> getUsers(Integer pageNum, Integer pageSize, String username, String phoneNumber, Integer status) {
         // 创建分页对象
         Page<User> page = new Page<>(pageNum, pageSize);
-        
+
         // 执行分页查询
         IPage<User> userIPage = this.baseMapper.selectUserPage(page, username, phoneNumber, status);
-        
+
         // 封装分页结果
         return new PageResult<>(userIPage.getRecords(), userIPage.getTotal(), pageNum, pageSize);
     }
@@ -39,6 +40,11 @@ public class UserServiceImpl extends ServiceImpl<UserDao, User> implements UserS
     @Override
     public User getUserById(Long userId) {
         return this.getById(userId);
+    }
+
+    @Override
+    public User getUserByName(String username) {
+        return this.getOne(new QueryWrapper<>(User.class).eq("username", username));
     }
 
     @Override

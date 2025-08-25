@@ -42,4 +42,9 @@ public class NebulaClient implements GraphClient {
         NebulaPool nebulaPool = NebulaClientFactory.getNebulaPool(nebulaConf);
         return nebulaPool != null;
     }
+
+    @Override
+    public void close() {
+        //todo close
+    }
 }

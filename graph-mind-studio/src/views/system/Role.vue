@@ -71,9 +71,30 @@
         </el-table-column>
         <el-table-column label="操作" align="center" width="280" class-name="small-padding fixed-width">
           <template #default="scope">
-            <el-button type="text" size="small" icon="Edit" @click="handleUpdate(scope.row)">修改</el-button>
-            <el-button type="text" size="small" icon="Delete" @click="handleDelete(scope.row)">删除</el-button>
-            <el-button type="text" size="small" icon="Lock" @click="handleDataScope(scope.row)">数据权限</el-button>
+            <el-button 
+              type="primary" 
+              circle 
+              @click="handleUpdate(scope.row)"
+              title="修改"
+            >
+              <el-icon><Edit /></el-icon>
+            </el-button>
+            <el-button 
+              type="danger" 
+              circle 
+              @click="handleDelete(scope.row)"
+              title="删除"
+            >
+              <el-icon><Delete /></el-icon>
+            </el-button>
+            <el-button 
+              type="warning" 
+              circle 
+              @click="handleDataScope(scope.row)"
+              title="数据权限"
+            >
+              <el-icon><Lock /></el-icon>
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -196,7 +217,8 @@
   <script setup name="Role">
   import { ref, reactive, onMounted } from 'vue'
   import { ElMessage, ElMessageBox } from 'element-plus'
-  import { Plus, Search, Refresh } from '@element-plus/icons-vue'
+  import {Plus, Search, Refresh, Edit, Delete, Lock} from '@element-plus/icons-vue'
+  import Pagination from '@/components/Pagination.vue'
 
   // 定义响应式数据
   const loading = ref(false)

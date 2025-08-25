@@ -56,7 +56,7 @@
         <el-table-column label="权限名称" prop="menuName" :show-overflow-tooltip="true" width="160" />
         <el-table-column label="图标" prop="icon" align="center" width="80">
           <template #default="scope">
-            <svg-icon :icon-class="scope.row.icon" v-if="scope.row.icon" />
+            <el-icon v-if="scope.row.icon"><component :is="scope.row.icon" /></el-icon>
           </template>
         </el-table-column>
         <el-table-column label="权限标识" prop="perms" :show-overflow-tooltip="true" />
@@ -75,9 +75,30 @@
         </el-table-column>
         <el-table-column label="操作" align="center" width="280" class-name="small-padding fixed-width">
           <template #default="scope">
-            <el-button type="text" size="small" icon="Edit" @click="handleUpdate(scope.row)">修改</el-button>
-            <el-button type="text" size="small" icon="Plus" @click="handleAdd(scope.row)">新增</el-button>
-            <el-button type="text" size="small" icon="Delete" @click="handleDelete(scope.row)">删除</el-button>
+            <el-button 
+              type="primary" 
+              circle 
+              @click="handleUpdate(scope.row)"
+              title="修改"
+            >
+              <el-icon><Edit /></el-icon>
+            </el-button>
+            <el-button 
+              type="success" 
+              circle 
+              @click="handleAdd(scope.row)"
+              title="新增"
+            >
+              <el-icon><Plus /></el-icon>
+            </el-button>
+            <el-button 
+              type="danger" 
+              circle 
+              @click="handleDelete(scope.row)"
+              title="删除"
+            >
+              <el-icon><Delete /></el-icon>
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -204,7 +225,7 @@
 <script setup name="Permission">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Edit, Delete } from '@element-plus/icons-vue'
 
 // 定义响应式数据
 const loading = ref(false)

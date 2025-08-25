@@ -76,8 +76,6 @@
         
         <el-table-column prop="port" label="端口" width="80" />
         
-        <el-table-column prop="database" label="数据库名" min-width="120" />
-        
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="getStatusTagType(row.status)">
@@ -143,10 +141,7 @@
         :rules="rules"
         label-width="100px"
       >
-        <el-form-item label="连接名称" prop="name">
-          <el-input v-model="form.name" placeholder="请输入连接名称" />
-        </el-form-item>
-        
+
         <el-form-item label="数据库类型" prop="type">
           <el-select v-model="form.type" placeholder="请选择数据库类型" style="width: 100%" @change="handleTypeChange">
             <el-option label="Neo4j" value="neo4j">
@@ -169,7 +164,11 @@
             </el-option>
           </el-select>
         </el-form-item>
-        
+
+        <el-form-item label="连接名称" prop="name">
+          <el-input v-model="form.name" placeholder="请输入连接名称" />
+        </el-form-item>
+
         <el-form-item label="主机地址" prop="host">
           <el-input v-model="form.host" placeholder="请输入主机地址" />
         </el-form-item>
@@ -180,85 +179,79 @@
         
         <!-- 根据数据库类型动态显示不同的表单项 -->
         <template v-if="form.type === 'neo4j'">
-          <el-form-item label="数据库名" prop="database">
-            <el-input v-model="form.database" placeholder="请输入数据库名" />
+          <el-form-item label="数据库名" prop="params.database">
+            <el-input v-model="form.params.database" placeholder="请输入数据库名" />
           </el-form-item>
           
-          <el-form-item label="用户名" prop="username">
-            <el-input v-model="form.username" placeholder="请输入用户名" />
+          <el-form-item label="用户名" prop="params.username">
+            <el-input v-model="form.params.username" placeholder="请输入用户名" />
           </el-form-item>
           
-          <el-form-item label="密码" prop="password">
+          <el-form-item label="密码" prop="params.password">
             <el-input
-              v-model="form.password"
+              v-model="form.params.password"
               type="password"
               placeholder="请输入密码"
               show-password
             />
-          </el-form-item>
-          
-          <el-form-item label="加密连接">
-            <el-switch v-model="form.params.encrypted" />
-          </el-form-item>
-          
-          <el-form-item label="最大连接数">
-            <el-input-number v-model="form.params.maxConnectionPoolSize" :min="1" :max="100" />
           </el-form-item>
         </template>
         
         <template v-else-if="form.type === 'nebula'">
-          <el-form-item label="图空间" prop="database">
-            <el-input v-model="form.database" placeholder="请输入图空间名称" />
+          <el-form-item label="Meta地址" prop="params.metaHosts">
+            <el-input v-model="form.params.metaHosts" placeholder="请输入Meta地址" />
           </el-form-item>
           
-          <el-form-item label="用户名" prop="username">
-            <el-input v-model="form.username" placeholder="请输入用户名" />
+          <el-form-item label="用户名" prop="params.username">
+            <el-input v-model="form.params.username" placeholder="请输入用户名" />
           </el-form-item>
           
-          <el-form-item label="密码" prop="password">
+          <el-form-item label="密码" prop="params.password">
             <el-input
-              v-model="form.password"
+              v-model="form.params.password"
               type="password"
               placeholder="请输入密码"
               show-password
             />
           </el-form-item>
-          
-          <el-form-item label="连接超时(秒)">
-            <el-input-number v-model="form.params.timeout" :min="1" :max="300" />
-          </el-form-item>
-          
-          <el-form-item label="连接池大小">
-            <el-input-number v-model="form.params.poolSize" :min="1" :max="100" />
-          </el-form-item>
         </template>
         
         <template v-else-if="form.type === 'janus'">
-          <el-form-item label="后端存储" prop="database">
-            <el-select v-model="form.database" placeholder="请选择后端存储类型">
+          <el-form-item label="后端存储" prop="params.storageBackend">
+            <el-select v-model="form.params.storageBackend" placeholder="请选择后端存储类型">
               <el-option label="Cassandra" value="cassandra" />
               <el-option label="HBase" value="hbase" />
-              <el-option label="BerkeleyDB" value="berkeleyje" />
             </el-select>
           </el-form-item>
-          
-          <el-form-item label="存储主机" prop="params.storageHost">
-            <el-input v-model="form.params.storageHost" placeholder="请输入存储主机地址" />
-          </el-form-item>
-          
-          <el-form-item label="存储端口" prop="params.storagePort">
-            <el-input-number v-model="form.params.storagePort" :min="1" :max="65535" />
-          </el-form-item>
-          
-          <template v-if="form.database === 'cassandra'">
+
+          <template v-if="form.params.storageBackend === 'cassandra'">
             <el-form-item label="键空间">
               <el-input v-model="form.params.keyspace" placeholder="请输入Cassandra键空间" />
             </el-form-item>
+
+
+            <el-form-item label="用户名" prop="params.username">
+              <el-input v-model="form.params.username" placeholder="请输入用户名" />
+            </el-form-item>
+
+            <el-form-item label="密码" prop="params.password">
+              <el-input
+                  v-model="form.params.password"
+                  type="password"
+                  placeholder="请输入密码"
+                  show-password
+              />
+            </el-form-item>
           </template>
-          
-          <template v-else-if="form.database === 'hbase'">
-            <el-form-item label="HBase表名">
-              <el-input v-model="form.params.hbaseTable" placeholder="请输入HBase表名" />
+
+
+          <template v-else-if="form.params.storageBackend === 'hbase'">
+            <el-form-item label="命名空间" prop="params.hbaseNs">
+              <el-input v-model="form.params.hbaseNs" placeholder="HBase命名空间" />
+            </el-form-item>
+
+            <el-form-item label="HBase Znode">
+              <el-input v-model="form.params.hbaseZnode" placeholder="请输入HBase Znode" />
             </el-form-item>
           </template>
         </template>
@@ -339,7 +332,7 @@ const form = reactive({
   name: '',
   type: '',
   host: '',
-  port: 7687,
+  port: null,
   database: '',
   username: '',
   password: '',
@@ -347,18 +340,18 @@ const form = reactive({
   params: {} // 用于存储不同数据库类型的特定参数
 })
 
-const defaultForm = {
-  id: null,
-  name: '',
-  type: '',
-  host: '',
-  port: 7687,
-  database: '',
-  username: '',
-  password: '',
-  description: '',
-  params: {}
-}
+// const defaultForm = {
+//   id: null,
+//   name: '',
+//   type: '',
+//   host: '',
+//   port: 7687,
+//   database: '',
+//   username: '',
+//   password: '',
+//   description: '',
+//   params: {}
+// }
 
 // 表单验证规则
 const rules = {
@@ -501,11 +494,21 @@ const handleAdd = () => {
 
 const handleEdit = (row) => {
   // 深拷贝row对象，确保不会修改原始数据
-  Object.assign(form, JSON.parse(JSON.stringify(row)))
-  // 确保params对象存在
-  if (!form.params) {
-    form.params = {}
+  const editRow = JSON.parse(JSON.stringify(row))
+  
+  // 处理params字段，如果它是字符串则解析为对象
+  if (typeof editRow.params === 'string' && editRow.params) {
+    try {
+      editRow.params = JSON.parse(editRow.params)
+    } catch (e) {
+      console.error('解析params失败:', e)
+      editRow.params = {}
+    }
+  } else if (!editRow.params) {
+    editRow.params = {}
   }
+  
+  Object.assign(form, editRow)
   dialogVisible.value = true
 }
 
@@ -536,6 +539,8 @@ const handleTest = async (row) => {
     const response = await connectionApi.testConnection(row.id)
     if (response.code === 200){
       ElMessage.success("连接成功")
+      // 测试成功后刷新列表以更新状态
+      await fetchConnections()
     }else {
       ElMessage.error('连接失败')
     }
@@ -552,9 +557,9 @@ const handleTypeChange = (type) => {
     switch (type) {
       case 'neo4j':
         form.port = 7687
-        form.database = 'neo4j'
         // 初始化Neo4j特定参数
         form.params = {
+          database: 'neo4j',
           encrypted: false,
           maxConnectionPoolSize: 10
         }
@@ -569,16 +574,16 @@ const handleTypeChange = (type) => {
         }
         break
       case 'janus':
-        form.port = 8182
-        form.database = 'cassandra' // 默认使用Cassandra
+        form.port = 9042,
         // 初始化JanusGraph特定参数
         form.params = {
+          storageBackend: 'cassandra',
           storageHost: '',
           storagePort: 9042
         }
         break
       default:
-        form.port = 7687
+        form.port = null
         form.database = ''
         form.params = {}
     }
@@ -593,7 +598,7 @@ const handleSubmit = async () => {
     // 构造提交数据，确保params对象正确传递
     const submitData = {
       ...form,
-      params: form.params || {}
+      params: form.params ? JSON.stringify(form.params) : '{}' // 将params转换为字符串
     }
     
     if (form.id) {
@@ -628,7 +633,7 @@ const resetForm = () => {
     name: '',
     type: '',
     host: '',
-    port: 7687,
+    port: null,
     database: '',
     username: '',
     password: '',

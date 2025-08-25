@@ -55,7 +55,7 @@ const router = createRouter({
                         {
                             path: 'config',
                             name: 'Config',
-                            component: () => import('@/views/system/Config.vue'),
+                            component: () => import('@/views/system/AppConfig.vue'),
                             meta: {title: '系统配置', closable: true}
                         },
                         {
@@ -63,12 +63,6 @@ const router = createRouter({
                             name: 'Profile',
                             component: () => import('@/views/system/Profile.vue'),
                             meta: {title: '个人中心', closable: true}
-                        },
-                        {
-                            path: 'settings',
-                            name: 'Settings',
-                            component: () => import('@/views/system/Settings.vue'),
-                            meta: {title: '系统设置', closable: true}
                         }
                     ]
                 },
@@ -109,12 +103,6 @@ const router = createRouter({
                             name: 'GraphVisual',
                             component: () => import('@/views/graph/GraphVisual.vue'),
                             meta: {title: '图可视化', icon: 'View'}
-                        },
-                        {
-                            path: 'data',
-                            name: 'GraphData',
-                            component: () => import('@/views/graph/GraphData.vue'),
-                            meta: {title: '图分数据', icon: 'DataAnalysis'}
                         }
                     ]
                 }

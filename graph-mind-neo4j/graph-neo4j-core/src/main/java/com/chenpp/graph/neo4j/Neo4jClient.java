@@ -44,4 +44,9 @@ public class Neo4jClient implements GraphClient {
         }
         return true;
     }
+
+    @Override
+    public void close() {
+        driver.close();
+    }
 }

@@ -62,6 +62,7 @@ public class GraphNodeDefServiceImpl extends ServiceImpl<GraphNodeDefDao, GraphN
         if (saved && nodeDef.getProperties() != null) {
             // 保存节点属性
             for (GraphPropertyDef property : nodeDef.getProperties()) {
+                property.setGraphId(nodeDef.getGraphId());
                 property.setEntityId(nodeDef.getId());
                 property.setPropertyType("node");
                 graphPropertyDefService.saveOrUpdate(property);
@@ -90,6 +91,7 @@ public class GraphNodeDefServiceImpl extends ServiceImpl<GraphNodeDefDao, GraphN
             // 重新保存节点属性
             if (nodeDef.getProperties() != null) {
                 for (GraphPropertyDef property : nodeDef.getProperties()) {
+                    property.setGraphId(nodeDef.getGraphId());
                     property.setEntityId(nodeDef.getId());
                     property.setPropertyType("node");
                     graphPropertyDefService.saveOrUpdate(property);

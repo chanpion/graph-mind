@@ -9,7 +9,7 @@ import lombok.Data;
 @Data
 public class HBaseConf {
 
-    private String hbasePort;
+    private int hbasePort;
     private String hbaseHost;
     private String hbaseZnode;
     private String hbaseNs = "default";

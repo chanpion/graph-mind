@@ -26,8 +26,8 @@ export const userApi = {
   },
   
   // 获取当前用户信息
-  getCurrentUser() {
-    return request.get('/api/users/profile')
+  getCurrentUser(params) {
+    return request.get('/api/users/profile', { params })
   },
 
   // 新增用户
