@@ -410,7 +410,6 @@ const fetchGraphList = async () => {
 
 // 获取实体类型（点和边）
 const fetchEntityTypes = async () => {
-  console.log('current graph', selectedGraph.value, selectedGraph.value.id)
   if (selectedGraph.value && selectedGraph.value.id) {
     fetchNodeTypes(selectedGraph.value.id)
     fetchEdgeTypes(selectedGraph.value.id)

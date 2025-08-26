@@ -83,7 +83,7 @@ const router = createRouter({
                             path: 'detail/:id',
                             name: 'GraphDetail',
                             component: () => import('@/views/graph/GraphDetail.vue'),
-                            meta: {title: '图详情', icon: 'Document'},
+                            meta: {title: '图设计', icon: 'Document'},
                             props: true
                         },
                         {
@@ -96,13 +96,19 @@ const router = createRouter({
                             path: 'process',
                             name: 'DataProcess',
                             component: () => import('@/views/graph/DataProcess.vue'),
-                            meta: {title: '数据处理', icon: 'DataLine'}
+                            meta: {title: '图加工', icon: 'DataLine'}
                         },
                         {
                             path: 'visual',
                             name: 'GraphVisual',
                             component: () => import('@/views/graph/GraphVisual.vue'),
                             meta: {title: '图可视化', icon: 'View'}
+                        },
+                        {
+                            path: 'summary',
+                            name: 'GraphSummary',
+                            component: () => import('@/views/graph/GraphSummary.vue'),
+                            meta: {title: '图统计', icon: 'PieChart'}
                         }
                     ]
                 }

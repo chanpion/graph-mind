@@ -90,16 +90,26 @@
                 <el-button 
                   type="primary" 
                   size="small" 
-                  @click.stop="handleEdit(graph)"
+                  @click.stop="handleViewStats(graph)"
+                  title="查看统计"
                 >
-                  编辑
+                  <el-icon><View /></el-icon>
+                </el-button>
+                <el-button 
+                  type="primary" 
+                  size="small" 
+                  @click.stop="handleEdit(graph)"
+                  title="编辑"
+                >
+                  <el-icon><Edit /></el-icon>
                 </el-button>
                 <el-button 
                   type="danger" 
                   size="small" 
                   @click.stop="handleDelete(graph)"
+                  title="删除"
                 >
-                  删除
+                  <el-icon><Delete /></el-icon>
                 </el-button>
               </div>
             </el-card>
@@ -193,7 +203,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
-import { Search, Plus, Refresh, Edit, Delete } from '@element-plus/icons-vue'
+import {Search, Plus, Refresh, Edit, Delete, View} from '@element-plus/icons-vue'
 import { graphApi } from '@/api/graph'
 import { connectionApi } from '@/api/connection'
 
@@ -343,6 +353,13 @@ const handleDelete = async (row) => {
       ElMessage.error('删除失败')
     }
   }
+}
+
+const handleViewStats = (row) => {
+  // 设置全局选中的图
+  graphStore.setCurrentGraph(row)
+  // 跳转到图统计页面
+  router.push({ name: 'GraphSummary' })
 }
 
 const handleSubmit = async () => {
@@ -546,14 +563,17 @@ onMounted(() => {
 
 .card-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   margin-top: 15px;
   gap: 10px;
 }
 
 .card-actions .el-button {
-  flex: 1;
-  font-size: 12px;
+  padding: 8px 12px;
+}
+
+.card-actions .el-button .el-icon {
+  font-size: 16px;
 }
 
 .empty-state {

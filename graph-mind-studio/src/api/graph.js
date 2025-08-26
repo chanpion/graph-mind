@@ -132,6 +132,11 @@ export const graphApi = {
     })
   },
 
+  // 获取图统计信息
+  getGraphSummary(graphId) {
+    return request.get(`/api/graphs/${graphId}/summary`)
+  },
+
   publishSchema(graphId){
     return request.post(`/api/graphs/${graphId}/publish`)
   },

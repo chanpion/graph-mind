@@ -1,7 +1,7 @@
 <template>
   <div class="connection-container">
     <div class="page-header">
-      <h2 class="page-title">图连接管理</h2>
+      <h2 class="page-title">连接管理</h2>
       <p class="page-description">管理图数据库连接配置，支持 Neo4j、Nebula Graph、JanusGraph</p>
     </div>
 

@@ -5,6 +5,7 @@ import com.chenpp.graph.core.exception.ErrorCode;
 import com.chenpp.graph.core.exception.GraphException;
 import com.chenpp.graph.core.model.GraphData;
 import com.chenpp.graph.core.model.GraphEdge;
+import com.chenpp.graph.core.model.GraphSummary;
 import com.chenpp.graph.core.model.GraphVertex;
 import com.vesoft.nebula.client.graph.SessionPool;
 import com.vesoft.nebula.client.graph.data.ResultSet;
@@ -14,14 +15,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 
 import java.io.UnsupportedEncodingException;
-import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -564,4 +564,76 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
         return query(ngql);
     }
 
+    @Override
+    public GraphSummary getSummary() throws GraphException {
+        GraphSummary summary = new GraphSummary();
+        try {
+            // 提交STATS作业
+            String submitStatsJob = "SUBMIT JOB STATS";
+            ResultSet submitResult = sessionPool.execute(submitStatsJob);
+            if (!submitResult.isSucceeded()) {
+                throw new GraphException("Failed to submit STATS job, errorCode: " + submitResult.getErrorCode()
+                        + ", errorMessage: " + submitResult.getErrorMessage());
+            }
+
+            // 获取作业ID
+            long jobId = submitResult.rowValues(0).get(0).asLong();
+
+            // 轮询检查作业状态，直到完成
+            String showJob = "SHOW JOB " + jobId;
+            ResultSet jobResult = null;
+            while (jobResult == null || !"FINISHED".equals(jobResult.rowValues(1).get(2).asString())) {
+                Thread.sleep(100);
+                jobResult = sessionPool.execute(showJob);
+                if (!jobResult.isSucceeded()) {
+                    throw new GraphException("Failed to get job status, errorCode: " + jobResult.getErrorCode()
+                            + ", errorMessage: " + jobResult.getErrorMessage());
+                }
+                // 检查作业状态
+                String status = jobResult.rowValues(1).get(2).asString();
+                if ("FAILED".equals(status)) {
+                    throw new GraphException("STATS job failed");
+                }
+            }
+
+            // 获取统计信息
+            String showStats = "SHOW STATS";
+            ResultSet statsResult = sessionPool.execute(showStats);
+            if (!statsResult.isSucceeded()) {
+                throw new GraphException("Failed to show stats, errorCode: " + statsResult.getErrorCode()
+                        + ", errorMessage: " + statsResult.getErrorMessage());
+            }
+
+            // 解析统计信息
+            Map<String, Integer> vertexLabelCount = new HashMap<>();
+            Map<String, Integer> edgeLabelCount = new HashMap<>();
+
+            for (int i = 0; i < statsResult.rowsSize(); i++) {
+                ResultSet.Record record = statsResult.rowValues(i);
+                String type = record.get(0).asString();
+                String name = record.get(1).asString();
+                long count = record.get(2).asLong();
+
+                switch (type) {
+                    case "Tag" -> vertexLabelCount.put(name, (int) count);
+                    case "Edge" -> edgeLabelCount.put(name, (int) count);
+                    case "Space" -> {
+                        if ("vertices".equals(name)) {
+                            summary.setVertexCount((int) count);
+                        } else if ("edges".equals(name)) {
+                            summary.setEdgeCount((int) count);
+                        }
+                    }
+                    default -> log.warn("Unknown stats type: {}", type);
+                }
+            }
+
+            summary.setVertexLabelCount(vertexLabelCount);
+            summary.setEdgeLabelCount(edgeLabelCount);
+
+            return summary;
+        } catch (Exception e) {
+            throw new GraphException("Failed to get graph summary from Nebula", e);
+        }
+    }
 }

@@ -26,11 +26,12 @@ export const menuData = {
             icon: "Share",
             path: '/home/graph',
             children: [
-                { id: 200001, authName: "图连接管理", path: "/home/graph/connection", icon: "Connection", children: [] },
-                { id: 200002, authName: "图管理", path: "/home/graph/list", icon: "DataAnalysis", children: [] },  // 将Promotion改为DataAnalysis，更适合图管理
+                { id: 200001, authName: "连接管理", path: "/home/graph/connection", icon: "Connection", children: [] },
+                { id: 200002, authName: "图管理", path: "/home/graph/list", icon: "Grid", children: [] },  // 使用Grid图标，更适合图管理
                 { id: 200003, authName: "图设计", path: "/home/graph/detail/:id", icon: "EditPen", children: [] },   // 将Promotion改为EditPen，更适合图设计
-                { id: 200004, authName: "图可视化", path: "/home/graph/visual", icon: "DataAnalysis", children: [] },
-                { id: 200005, authName: "图加工", path: "/home/graph/process", icon: "Upload", children: [] }
+                { id: 200004, authName: "图可视化", path: "/home/graph/visual", icon: "DataAnalysis", children: [] },  // 使用View图标，更适合可视化
+                { id: 200005, authName: "图加工", path: "/home/graph/process", icon: "Upload", children: [] },
+                { id: 200006, authName: "图统计", path: "/home/graph/summary", icon: "PieChart", children: [] }  // 使用PieChart图标，更适合统计信息
             ]
         }
     ],

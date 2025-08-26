@@ -18,6 +18,7 @@ import com.chenpp.graph.core.GraphClient;
 import com.chenpp.graph.core.GraphDataOperations;
 import com.chenpp.graph.core.model.GraphConf;
 import com.chenpp.graph.core.model.GraphEdge;
+import com.chenpp.graph.core.model.GraphSummary;
 import com.chenpp.graph.core.model.GraphVertex;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -385,6 +386,46 @@ public class GraphDataServiceImpl implements GraphDataService {
         } catch (Exception e) {
             log.error("批量删除节点失败，graphId={}", graphId, e);
             return false;
+        }
+    }
+
+    @Override
+    public GraphSummary getGraphSummary(Long graphId) {
+        try {
+            // 获取图信息
+            Graph graph = graphService.getById(graphId);
+            if (graph == null) {
+                log.error("图不存在，graphId={}", graphId);
+                throw new RuntimeException("图不存在，graphId=" + graphId);
+            }
+
+            // 获取图数据库连接信息
+            GraphDatabaseConnection connection = connectionService.getById(graph.getConnectionId());
+            if (connection == null) {
+                log.error("图数据库连接不存在，connectionId={}", graph.getConnectionId());
+                throw new RuntimeException("图数据库连接不存在，connectionId=" + graph.getConnectionId());
+            }
+
+            // 构建图配置信息
+            GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
+            
+            // 创建图客户端
+            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+            
+            // 获取图数据操作接口
+            GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
+            
+            // 获取图统计信息
+            GraphSummary summary = graphDataOperations.getSummary();
+            
+            // 设置图的基本信息
+            summary.setGraphCode(graph.getCode());
+            summary.setGraphName(graph.getName());
+            
+            return summary;
+        } catch (Exception e) {
+            log.error("获取图统计信息失败，graphId={}", graphId, e);
+            throw new RuntimeException("获取图统计信息失败: " + e.getMessage(), e);
         }
     }
 }

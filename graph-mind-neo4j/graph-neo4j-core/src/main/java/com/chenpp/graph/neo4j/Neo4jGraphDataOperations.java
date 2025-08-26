@@ -6,6 +6,7 @@ import com.chenpp.graph.core.exception.GraphException;
 import com.chenpp.graph.core.model.GraphData;
 import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphVertex;
+import com.chenpp.graph.core.model.GraphSummary;
 import com.chenpp.graph.neo4j.util.Neo4jUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -339,5 +340,54 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
         relationship.keys().forEach(key -> properties.put(key, relationship.get(key).asObject()));
         edge.setProperties(properties);
         return edge;
+    }
+
+    @Override
+    public GraphSummary getSummary() throws GraphException {
+        GraphSummary summary = new GraphSummary();
+        
+        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+            // 获取节点总数
+            String nodeCountCypher = "MATCH (n) RETURN count(n) AS count";
+            Result nodeCountResult = session.run(nodeCountCypher);
+            if (nodeCountResult.hasNext()) {
+                summary.setVertexCount(nodeCountResult.next().get("count").asInt());
+            }
+            
+            // 获取边总数
+            String edgeCountCypher = "MATCH ()-[r]->() RETURN count(r) AS count";
+            Result edgeCountResult = session.run(edgeCountCypher);
+            if (edgeCountResult.hasNext()) {
+                summary.setEdgeCount(edgeCountResult.next().get("count").asInt());
+            }
+            
+            // 获取各标签节点数量统计
+            String nodeLabelCountCypher = "MATCH (n) RETURN DISTINCT labels(n) AS labels, count(n) AS count";
+            Result nodeLabelResult = session.run(nodeLabelCountCypher);
+            Map<String, Integer> vertexLabelCount = new HashMap<>();
+            while (nodeLabelResult.hasNext()) {
+                Record record = nodeLabelResult.next();
+                String label = String.join(":", record.get("labels").asList(Value::asString));
+                int count = record.get("count").asInt();
+                vertexLabelCount.put(label, count);
+            }
+            summary.setVertexLabelCount(vertexLabelCount);
+            
+            // 获取各类型边数量统计
+            String edgeLabelCountCypher = "MATCH ()-[r]->() RETURN type(r) AS type, count(r) AS count";
+            Result edgeLabelResult = session.run(edgeLabelCountCypher);
+            Map<String, Integer> edgeLabelCount = new HashMap<>();
+            while (edgeLabelResult.hasNext()) {
+                Record record = edgeLabelResult.next();
+                String type = record.get("type").asString();
+                int count = record.get("count").asInt();
+                edgeLabelCount.put(type, count);
+            }
+            summary.setEdgeLabelCount(edgeLabelCount);
+            
+            return summary;
+        } catch (Exception e) {
+            throw new GraphException("Failed to get graph summary from Neo4j", e);
+        }
     }
 }

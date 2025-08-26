@@ -48,9 +48,6 @@ const breadcrumbItems = computed(() => {
   return matched.length ? matched : [{ path: '/home', title: '首页' }]
 })
 
-// 调试输出（对应截图底部控制台的日志输出）
-console.log('当前面包屑数据:', breadcrumbItems.value)
-
 // 从菜单数据查找标题,如果路由未设置 则从菜单里查找
 const findMenuTitle = (path) => {
   // 扁平化菜单数据结构（包含多级菜单）

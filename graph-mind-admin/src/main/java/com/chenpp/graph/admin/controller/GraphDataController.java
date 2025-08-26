@@ -3,6 +3,7 @@ package com.chenpp.graph.admin.controller;
 import com.chenpp.graph.admin.model.ImportResult;
 import com.chenpp.graph.admin.model.Result;
 import com.chenpp.graph.admin.service.GraphDataService;
+import com.chenpp.graph.core.model.GraphSummary;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -386,6 +387,26 @@ public class GraphDataController {
         } catch (Exception e) {
             log.error("批量删除节点失败，graphId={}", graphId, e);
             return Result.error(500, "批量删除节点失败: " + e.getMessage(), false);
+        }
+    }
+    
+    /**
+     * 获取图统计信息
+     *
+     * @param graphId 图ID
+     * @return 图统计信息
+     */
+    @GetMapping("/summary")
+    public Result<GraphSummary> getGraphSummary(@PathVariable Long graphId) {
+        try {
+            log.info("获取图统计信息，graphId={}", graphId);
+            
+            GraphSummary summary = graphDataService.getGraphSummary(graphId);
+            
+            return Result.success(summary);
+        } catch (Exception e) {
+            log.error("获取图统计信息失败，graphId={}", graphId, e);
+            return Result.error(500, "获取图统计信息失败: " + e.getMessage(), null);
         }
     }
 }

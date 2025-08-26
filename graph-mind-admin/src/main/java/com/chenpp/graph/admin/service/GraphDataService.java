@@ -1,6 +1,7 @@
 package com.chenpp.graph.admin.service;
 
 import com.chenpp.graph.admin.model.ImportResult;
+import com.chenpp.graph.core.model.GraphSummary;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -140,4 +141,12 @@ public interface GraphDataService {
      * @return 删除结果
      */
     boolean deleteNodes(Long graphId, List<String> nodeIds, String label);
+    
+    /**
+     * 获取图统计信息
+     *
+     * @param graphId 图ID
+     * @return 图统计信息
+     */
+    GraphSummary getGraphSummary(Long graphId);
 }

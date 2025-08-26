@@ -504,7 +504,6 @@ const fetchNodeDefs = async () => {
   if (!graphId.value) return
   
   try {
-    console.log("graphId", graphId.value)
     const res = await graphApi.getNodeDefs(graphId.value)
     nodeDefs.value = res.data
     // 更新图发布状态

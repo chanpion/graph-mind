@@ -1222,7 +1222,6 @@ onMounted(() => {
 
 // 监听全局选中图的变化
 watch(() => graphStore.currentGraph, (newGraph) => {
-  console.log('graphStore.currentGraph', newGraph)
   if (newGraph && newGraph.id) {
     // 更新查询语句
     updateQueryByGraphType()

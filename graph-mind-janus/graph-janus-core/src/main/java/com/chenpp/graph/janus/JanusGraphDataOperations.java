@@ -5,10 +5,10 @@ import com.chenpp.graph.core.constant.GraphConstants;
 import com.chenpp.graph.core.exception.GraphException;
 import com.chenpp.graph.core.model.GraphData;
 import com.chenpp.graph.core.model.GraphEdge;
+import com.chenpp.graph.core.model.GraphSummary;
 import com.chenpp.graph.core.model.GraphVertex;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import groovy.json.StringEscapeUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -17,7 +17,6 @@ import org.apache.tinkerpop.gremlin.groovy.jsr223.GremlinGroovyScriptEngine;
 import org.apache.tinkerpop.gremlin.process.traversal.Path;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.process.traversal.step.util.BulkSet;
-import org.apache.tinkerpop.gremlin.process.traversal.translator.GroovyTranslator;
 import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.apache.tinkerpop.gremlin.structure.Element;
 import org.apache.tinkerpop.gremlin.structure.Property;
@@ -55,6 +54,7 @@ import static java.util.stream.Collectors.toList;
 @Slf4j
 public class JanusGraphDataOperations implements GraphDataOperations {
     private JanusGraph graph;
+
 
     public JanusGraphDataOperations(JanusGraph graph) {
         this.graph = graph;
@@ -710,5 +710,44 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         graphEdge.setProperties(properties);
 
         return graphEdge;
+    }
+
+    @Override
+    public GraphSummary getSummary() throws GraphException {
+        GraphSummary summary = new GraphSummary();
+        
+        try (JanusGraphTransaction tx = graph.newTransaction()) {
+            try {
+                // 获取节点总数
+                long nodeCount = tx.traversal().V().count().next();
+                summary.setVertexCount((int) nodeCount);
+                
+                // 获取边总数
+                long edgeCount = tx.traversal().E().count().next();
+                summary.setEdgeCount((int) edgeCount);
+                
+                // 获取各标签节点数量统计
+                Map<String, Integer> vertexLabelCount = new HashMap<>();
+                tx.traversal().V().label().groupCount().next().forEach((label, count) -> {
+                    vertexLabelCount.put(label.toString(), count.intValue());
+                });
+                summary.setVertexLabelCount(vertexLabelCount);
+                
+                // 获取各类型边数量统计
+                Map<String, Integer> edgeLabelCount = new HashMap<>();
+                tx.traversal().E().label().groupCount().next().forEach((label, count) -> {
+                    edgeLabelCount.put(label.toString(), count.intValue());
+                });
+                summary.setEdgeLabelCount(edgeLabelCount);
+                
+                tx.commit();
+                return summary;
+            } catch (Exception e) {
+                tx.rollback();
+                throw new GraphException("Failed to get graph summary from JanusGraph", e);
+            }
+        } catch (Exception e) {
+            throw new GraphException("Failed to get graph summary from JanusGraph", e);
+        }
     }
 }
