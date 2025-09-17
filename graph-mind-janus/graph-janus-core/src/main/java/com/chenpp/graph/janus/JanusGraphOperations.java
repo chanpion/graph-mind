@@ -57,6 +57,7 @@ public class JanusGraphOperations implements GraphOperations {
         // JanusGraph中创建图空间的操作通常在配置中完成，这里可以做一些初始化工作
         try {
             if (graph == null || graph.isClosed()) {
+                log.error("JanusGraph instance is not available");
                 throw new GraphException("JanusGraph instance is not available");
             }
             CassandraClient cassandraClient = new CassandraClient(janusConf.getCassandraConf());
@@ -68,6 +69,7 @@ public class JanusGraphOperations implements GraphOperations {
             }
             log.info("JanusGraph instance is ready for graph: {}", graphConf.getGraphCode());
         } catch (Exception e) {
+            log.error("Failed to initialize JanusGraph for graph: {}", graphConf.getGraphCode(), e);
             throw new GraphException("Failed to initialize JanusGraph", e);
         }
     }
@@ -81,6 +83,7 @@ public class JanusGraphOperations implements GraphOperations {
                 log.info("Closed graph instance for: {}", graphConf.getGraphCode());
             }
         } catch (Exception e) {
+            log.error("Failed to drop graph: {}", graphConf.getGraphCode(), e);
             throw new GraphException("Failed to drop graph: " + graphConf.getGraphCode(), e);
         }
     }
@@ -91,65 +94,80 @@ public class JanusGraphOperations implements GraphOperations {
         try {
             Graph graph = new Graph();
             graph.setCode(graphConf.getGraphCode());
+            log.debug("Listed graphs, returning single graph: {}", graphConf.getGraphCode());
             return java.util.Collections.singletonList(graph);
         } catch (Exception e) {
+            log.error("Failed to list graphs", e);
             throw new GraphException("Failed to list graphs", e);
         }
     }
 
     @Override
     public void applySchema(GraphConf graphConf, GraphSchema graphSchema) throws GraphException {
+        JanusGraphManagement management = null;
         try {
-            JanusGraphManagement management = graph.openManagement();
-            try {
-                // 创建顶点标签
-                createVertexLabels(management, graphSchema.getEntities());
+            management = graph.openManagement();
+            // 创建顶点标签
+            createVertexLabels(management, graphSchema.getEntities());
 
-                // 创建边标签
-                createEdgeLabels(management, graphSchema.getRelations());
+            // 创建边标签
+            createEdgeLabels(management, graphSchema.getRelations());
 
-                // 创建属性键
-                createPropertyKeys(management, graphSchema.getEntities(), graphSchema.getRelations());
+            // 创建属性键
+            createPropertyKeys(management, graphSchema.getEntities(), graphSchema.getRelations());
 
-                // 创建索引
-                createIndices(management, graphSchema.getIndexes());
+            // 创建索引
+            createIndices(management, graphSchema.getIndexes());
 
-                management.commit();
-                log.info("Successfully applied schema to graph: {}", graphConf.getGraphCode());
-            } catch (Exception e) {
-                management.rollback();
-                throw new GraphException("Failed to apply schema", e);
-            }
+            management.commit();
+            log.info("Successfully applied schema to graph: {}", graphConf.getGraphCode());
         } catch (Exception e) {
-            throw new GraphException("Failed to open management transaction", e);
+            log.error("Failed to apply schema to graph: {}", graphConf.getGraphCode(), e);
+            if (management != null) {
+                try {
+                    management.rollback();
+                } catch (Exception rollbackException) {
+                    log.warn("Failed to rollback management transaction", rollbackException);
+                }
+            }
+            throw new GraphException("Failed to apply schema", e);
         }
     }
 
     @Override
     public GraphSchema getPublishedSchema(GraphConf graphConf) throws GraphException {
+        JanusGraphManagement management = null;
+        GraphSchema schema = new GraphSchema();
+
         try {
-            JanusGraphManagement management = graph.openManagement();
-            GraphSchema schema = new GraphSchema();
+            management = graph.openManagement();
 
-            try {
-                // 获取顶点标签
-                List<GraphEntity> entities = getVertexLabels(management);
-                schema.setEntities(entities);
+            // 获取顶点标签
+            List<GraphEntity> entities = getVertexLabels(management);
+            schema.setEntities(entities);
 
-                // 获取边标签
-                List<GraphRelation> relations = getEdgeLabels(management);
-                schema.setRelations(relations);
+            // 获取边标签
+            List<GraphRelation> relations = getEdgeLabels(management);
+            schema.setRelations(relations);
 
-                // 获取索引
-                List<GraphIndex> indexes = getIndices(management);
-                schema.setIndexes(indexes);
+            // 获取索引
+            List<GraphIndex> indexes = getIndices(management);
+            schema.setIndexes(indexes);
 
-                return schema;
-            } finally {
-                management.rollback(); // 只读操作，回滚以避免持有管理会话
-            }
+            log.debug("Retrieved published schema for graph: {}, entities: {}, relations: {}, indexes: {}", 
+                    graphConf.getGraphCode(), entities.size(), relations.size(), indexes.size());
+            return schema;
         } catch (Exception e) {
+            log.error("Failed to get published schema for graph: {}", graphConf.getGraphCode(), e);
             throw new GraphException("Failed to get published schema", e);
+        } finally {
+            if (management != null) {
+                try {
+                    management.rollback(); // 只读操作，回滚以避免持有管理会话
+                } catch (Exception rollbackException) {
+                    log.warn("Failed to rollback management transaction", rollbackException);
+                }
+            }
         }
     }
 
@@ -184,6 +202,7 @@ public class JanusGraphOperations implements GraphOperations {
     private List<GraphIndex> getIndices(JanusGraphManagement management) {
         // 注意：由于JanusGraph API限制，我们无法直接获取所有索引信息
         // 实际应用中可以通过其他方式获取索引信息，这里返回空列表
+        log.debug("Retrieved indices (currently returning empty list due to API limitations)");
         return new ArrayList<>();
     }
 
@@ -195,15 +214,19 @@ public class JanusGraphOperations implements GraphOperations {
      */
     private void createVertexLabels(JanusGraphManagement management, List<GraphEntity> entities) {
         if (entities == null || entities.isEmpty()) {
+            log.info("No vertex labels to create");
             return;
         }
 
+        int createdCount = 0;
         for (GraphEntity entity : entities) {
             if (!management.containsVertexLabel(entity.getLabel())) {
                 management.makeVertexLabel(entity.getLabel()).make();
                 log.info("Created vertex label: {}", entity.getLabel());
+                createdCount++;
             }
         }
+        log.debug("Created {} vertex labels", createdCount);
     }
 
     /**
@@ -214,9 +237,11 @@ public class JanusGraphOperations implements GraphOperations {
      */
     private void createEdgeLabels(JanusGraphManagement management, List<GraphRelation> relations) {
         if (relations == null || relations.isEmpty()) {
+            log.info("No edge labels to create");
             return;
         }
 
+        int createdCount = 0;
         for (GraphRelation relation : relations) {
             if (!management.containsEdgeLabel(relation.getLabel())) {
                 Multiplicity multiplicity = relation.getMultiple() ? Multiplicity.MULTI : Multiplicity.SIMPLE;
@@ -224,8 +249,10 @@ public class JanusGraphOperations implements GraphOperations {
                         .multiplicity(multiplicity)
                         .make();
                 log.info("Created edge label: {}", relation.getLabel());
+                createdCount++;
             }
         }
+        log.debug("Created {} edge labels", createdCount);
     }
 
     /**
@@ -250,6 +277,12 @@ public class JanusGraphOperations implements GraphOperations {
             allProperties.addAll(relationProperties);
         }
 
+        if (allProperties.isEmpty()) {
+            log.info("No property keys to create");
+            return;
+        }
+
+        int createdCount = 0;
         // 创建属性键
         for (GraphProperty property : allProperties) {
             if (!management.containsPropertyKey(property.getCode())) {
@@ -264,8 +297,10 @@ public class JanusGraphOperations implements GraphOperations {
                         .cardinality(Cardinality.SINGLE)
                         .make();
                 log.info("Created property key: {} with type: {}, propertyKey: {}", property.getCode(), property.getDataType(), propertyKey);
+                createdCount++;
             }
         }
+        log.debug("Created {} property keys", createdCount);
     }
 
     /**
@@ -276,8 +311,11 @@ public class JanusGraphOperations implements GraphOperations {
      */
     private void createIndices(JanusGraphManagement management, List<GraphIndex> indexes) {
         if (indexes == null || indexes.isEmpty()) {
+            log.info("No indices to create");
             return;
         }
+        
+        int createdCount = 0;
         for (GraphIndex index : indexes) {
             if (CollectionUtils.isEmpty(index.getPropertyNames())) {
                 log.warn("index ({}) contains empty property keys, skip.", index.getName());
@@ -286,12 +324,15 @@ public class JanusGraphOperations implements GraphOperations {
             // 创建图索引
             if (isGraphIndex(index.getType())) {
                 createVertexIndex(management, index);
+                createdCount++;
             }
             // 创建关系索引
             if (isRelationIndex(index.getType())) {
                 createRelationIndex(index, management);
+                createdCount++;
             }
         }
+        log.debug("Created {} indices", createdCount);
     }
 
 
@@ -309,6 +350,7 @@ public class JanusGraphOperations implements GraphOperations {
             builder = mgmt.buildIndex(name, Edge.class);
         } else {
             // never happen
+            log.error("the schema type ({}) of index ({}) is not support!", index.getType(), index.getName());
             throw new IllegalArgumentException("the schema type (" + index.getType() + ") of index (" + index.getName() + ") is not support!");
         }
 
@@ -325,6 +367,8 @@ public class JanusGraphOperations implements GraphOperations {
         if (IndexType.MIX.equals(index.getType())) {
             builder.buildMixedIndex(BACKING_INDEX);
         }
+        
+        log.info("Created vertex index: {}", name);
     }
 
     private static void addPropertyKeyForIndex(JanusGraphManagement.IndexBuilder builder, GraphIndex index, JanusGraphManagement mgmt) {
@@ -368,5 +412,6 @@ public class JanusGraphOperations implements GraphOperations {
         }
 
         mgmt.buildEdgeIndex(edgeLabel, name, Direction.BOTH, Order.desc, propertyKeys.toArray(PropertyKey[]::new));
+        log.info("Created relation index: {} for edge label: {}", name, edgeLabel.name());
     }
 }

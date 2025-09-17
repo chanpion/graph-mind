@@ -62,13 +62,53 @@ public class JanusGraphDataOperations implements GraphDataOperations {
 
     @Override
     public GraphVertex addVertex(GraphVertex vertex) throws GraphException {
-        try (JanusGraphTransaction tx = graph.newTransaction()) {
-            try {
-                // 创建顶点
-                JanusGraphVertex janusVertex = tx.addVertex(vertex.getLabel());
-                // 设置UID
-                janusVertex.property(GraphConstants.UID, vertex.getUid());
-                // 设置其他属性
+        JanusGraphTransaction tx = null;
+        try {
+            tx = graph.newTransaction();
+            // 创建顶点
+            JanusGraphVertex janusVertex = tx.addVertex(vertex.getLabel());
+            // 设置UID
+            janusVertex.property(GraphConstants.UID, vertex.getUid());
+            // 设置其他属性
+            if (vertex.getProperties() != null) {
+                vertex.getProperties().forEach((key, value) -> {
+                    if (value != null) {
+                        janusVertex.property(key, value);
+                    }
+                });
+            }
+
+            // 提交事务
+            tx.commit();
+            if (janusVertex.id() != null) {
+                vertex.setId(janusVertex.id().toString());
+            }
+            // 返回创建的顶点
+            return vertex;
+        } catch (Exception e) {
+            log.error("Failed to add vertex: {}", vertex, e);
+            if (tx != null && tx.isOpen()) {
+                tx.rollback();
+            }
+            throw new GraphException("Failed to add vertex: " + vertex.getUid(), e);
+        } finally {
+            if (tx != null && tx.isOpen()) {
+                tx.close();
+            }
+        }
+    }
+
+    @Override
+    public GraphVertex updateVertex(GraphVertex vertex) throws GraphException {
+        JanusGraphTransaction tx = null;
+        try {
+            tx = graph.newTransaction();
+            // 查找顶点
+            Iterator<JanusGraphVertex> vertices = tx.query().has(GraphConstants.UID, vertex.getUid()).vertices().iterator();
+            if (vertices.hasNext()) {
+                JanusGraphVertex janusVertex = vertices.next();
+
+                // 更新属性
                 if (vertex.getProperties() != null) {
                     vertex.getProperties().forEach((key, value) -> {
                         if (value != null) {
@@ -79,57 +119,27 @@ public class JanusGraphDataOperations implements GraphDataOperations {
 
                 // 提交事务
                 tx.commit();
-                if (janusVertex.id() != null) {
-                    vertex.setId(janusVertex.id().toString());
-                }
-                // 返回创建的顶点
                 return vertex;
-            } catch (Exception e) {
-                tx.rollback();
-                throw e;
+            } else {
+                throw new GraphException("Vertex not found with uid: " + vertex.getUid());
             }
         } catch (Exception e) {
-            throw new GraphException("Failed to add vertex: " + vertex.getUid(), e);
-        }
-    }
-
-    @Override
-    public GraphVertex updateVertex(GraphVertex vertex) throws GraphException {
-        try (JanusGraphTransaction tx = graph.newTransaction()) {
-            try {
-                // 查找顶点
-                Iterator<JanusGraphVertex> vertices = tx.query().has(GraphConstants.UID, vertex.getUid()).vertices().iterator();
-                if (vertices.hasNext()) {
-                    JanusGraphVertex janusVertex = vertices.next();
-
-                    // 更新属性
-                    if (vertex.getProperties() != null) {
-                        vertex.getProperties().forEach((key, value) -> {
-                            if (value != null) {
-                                janusVertex.property(key, value);
-                            }
-                        });
-                    }
-
-                    // 提交事务
-                    tx.commit();
-                    return vertex;
-                } else {
-                    tx.rollback();
-                    throw new GraphException("Vertex not found with uid: " + vertex.getUid());
-                }
-            } catch (Exception e) {
+            log.error("Failed to update vertex: {}", vertex, e);
+            if (tx != null && tx.isOpen()) {
                 tx.rollback();
-                throw new GraphException("Vertex not found with uid: " + vertex.getUid(), e);
             }
-        } catch (Exception e) {
             throw new GraphException("Failed to update vertex: " + vertex.getUid(), e);
+        } finally {
+            if (tx != null && tx.isOpen()) {
+                tx.close();
+            }
         }
     }
 
     @Override
     public void addVertices(Collection<GraphVertex> vertices) throws GraphException {
         if (CollectionUtils.isEmpty(vertices)) {
+            log.info("Vertices collection is empty, skipping batch insert");
             return;
         }
 
@@ -138,37 +148,41 @@ public class JanusGraphDataOperations implements GraphDataOperations {
 
     @Override
     public void deleteVertex(GraphVertex vertex) throws GraphException {
-        try (JanusGraphTransaction tx = graph.newTransaction()) {
-            try {
-                // 查找顶点
-                Iterator<JanusGraphVertex> vertices = tx.query().has(GraphConstants.UID, vertex.getUid()).vertices().iterator();
-                if (vertices.hasNext()) {
-                    JanusGraphVertex janusVertex = vertices.next();
-                    // 删除顶点
-                    janusVertex.remove();
-                    // 提交事务
-                    tx.commit();
-                } else {
-                    tx.rollback();
-                    throw new GraphException("Vertex not found with uid: " + vertex.getUid());
-                }
-            } catch (Exception e) {
-                tx.rollback();
-                throw e;
+        JanusGraphTransaction tx = null;
+        try {
+            tx = graph.newTransaction();
+            // 查找顶点
+            Iterator<JanusGraphVertex> vertices = tx.query().has(GraphConstants.UID, vertex.getUid()).vertices().iterator();
+            if (vertices.hasNext()) {
+                JanusGraphVertex janusVertex = vertices.next();
+                // 删除顶点
+                janusVertex.remove();
+                // 提交事务
+                tx.commit();
+            } else {
+                throw new GraphException("Vertex not found with uid: " + vertex.getUid());
             }
         } catch (Exception e) {
+            log.error("Failed to delete vertex: {}", vertex, e);
+            if (tx != null && tx.isOpen()) {
+                tx.rollback();
+            }
             throw new GraphException("Failed to delete vertex: " + vertex.getUid(), e);
+        } finally {
+            if (tx != null && tx.isOpen()) {
+                tx.close();
+            }
         }
     }
 
     @Override
     public void addEdge(GraphEdge edge) throws GraphException {
-        JanusGraphTransaction tx = graph.newTransaction();
+        JanusGraphTransaction tx = null;
         try {
+            tx = graph.newTransaction();
             // 查找起始顶点
             Iterator<JanusGraphVertex> startVertices = tx.query().has(GraphConstants.UID, edge.getStartUid()).vertices().iterator();
             if (!startVertices.hasNext()) {
-                tx.rollback();
                 throw new GraphException("Start vertex not found with uid: " + edge.getStartUid());
             }
             JanusGraphVertex startVertex = startVertices.next();
@@ -176,7 +190,6 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             // 查找结束顶点
             Iterator<JanusGraphVertex> endVertices = tx.query().has(GraphConstants.UID, edge.getEndUid()).vertices().iterator();
             if (!endVertices.hasNext()) {
-                tx.rollback();
                 throw new GraphException("End vertex not found with uid: " + edge.getEndUid());
             }
             JanusGraphVertex endVertex = endVertices.next();
@@ -201,13 +214,14 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             // 提交事务
             tx.commit();
         } catch (Exception e) {
-            if (tx.isOpen()) {
+            log.error("Failed to add edge from {} to {}: {}", edge.getStartUid(), edge.getEndUid(), e.getMessage(), e);
+            if (tx != null && tx.isOpen()) {
                 tx.rollback();
             }
             throw new GraphException("Failed to add edge from " + edge.getStartUid() + " to " + edge.getEndUid(), e);
         } finally {
             // 确保事务已关闭
-            if (tx.isOpen()) {
+            if (tx != null && tx.isOpen()) {
                 tx.close();
             }
         }
@@ -216,6 +230,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
     @Override
     public void addEdges(Collection<GraphEdge> edges) throws GraphException {
         if (CollectionUtils.isEmpty(edges)) {
+            log.info("Edges collection is empty, skipping batch insert");
             return;
         }
 
@@ -224,67 +239,76 @@ public class JanusGraphDataOperations implements GraphDataOperations {
 
     @Override
     public int updateEdge(GraphEdge edge) throws GraphException {
-        try (JanusGraphTransaction tx = graph.newTransaction()) {
-            try {
-                // 在JanusGraph中更新边的属性
-                Iterator<JanusGraphEdge> edges = tx.query().has(GraphConstants.UID, edge.getUid()).edges().iterator();
-                if (edges.hasNext()) {
-                    JanusGraphEdge janusEdge = edges.next();
+        JanusGraphTransaction tx = null;
+        try {
+            tx = graph.newTransaction();
+            // 在JanusGraph中更新边的属性
+            Iterator<JanusGraphEdge> edges = tx.query().has(GraphConstants.UID, edge.getUid()).edges().iterator();
+            if (edges.hasNext()) {
+                JanusGraphEdge janusEdge = edges.next();
 
-                    // 更新属性
-                    if (edge.getProperties() != null) {
-                        edge.getProperties().forEach((key, value) -> {
-                            if (value != null) {
-                                janusEdge.property(key, value);
-                            }
-                        });
-                    }
-
-                    // 提交事务
-                    tx.commit();
-                    return 1;
-                } else {
-                    tx.rollback();
-                    throw new GraphException("Edge not found with uid: " + edge.getUid());
+                // 更新属性
+                if (edge.getProperties() != null) {
+                    edge.getProperties().forEach((key, value) -> {
+                        if (value != null) {
+                            janusEdge.property(key, value);
+                        }
+                    });
                 }
-            } catch (Exception e) {
-                tx.rollback();
-                throw e;
+
+                // 提交事务
+                tx.commit();
+                return 1;
+            } else {
+                throw new GraphException("Edge not found with uid: " + edge.getUid());
             }
         } catch (Exception e) {
+            log.error("Failed to update edge: {}", edge, e);
+            if (tx != null && tx.isOpen()) {
+                tx.rollback();
+            }
             throw new GraphException("Failed to update edge: " + edge.getUid(), e);
+        } finally {
+            if (tx != null && tx.isOpen()) {
+                tx.close();
+            }
         }
     }
 
     @Override
     public int deleteEdge(GraphEdge edge) throws GraphException {
-        try (JanusGraphTransaction tx = graph.newTransaction()) {
-            try {
-                // 查找边
-                Iterator<JanusGraphEdge> edges = tx.query().has(GraphConstants.UID, edge.getUid()).edges().iterator();
-                if (edges.hasNext()) {
-                    JanusGraphEdge janusEdge = edges.next();
-                    // 删除边
-                    janusEdge.remove();
-                    // 提交事务
-                    tx.commit();
-                    return 1;
-                } else {
-                    tx.rollback();
-                    throw new GraphException("Edge not found with uid: " + edge.getUid());
-                }
-            } catch (Exception e) {
-                tx.rollback();
-                throw e;
+        JanusGraphTransaction tx = null;
+        try {
+            tx = graph.newTransaction();
+            // 查找边
+            Iterator<JanusGraphEdge> edges = tx.query().has(GraphConstants.UID, edge.getUid()).edges().iterator();
+            if (edges.hasNext()) {
+                JanusGraphEdge janusEdge = edges.next();
+                // 删除边
+                janusEdge.remove();
+                // 提交事务
+                tx.commit();
+                return 1;
+            } else {
+                throw new GraphException("Edge not found with uid: " + edge.getUid());
             }
         } catch (Exception e) {
+            log.error("Failed to delete edge: {}", edge, e);
+            if (tx != null && tx.isOpen()) {
+                tx.rollback();
+            }
             throw new GraphException("Failed to delete edge: " + edge.getUid(), e);
+        } finally {
+            if (tx != null && tx.isOpen()) {
+                tx.close();
+            }
         }
     }
 
     @Override
     public GraphData query(String gremlinQuery) throws GraphException {
         if (StringUtils.isBlank(gremlinQuery)) {
+            log.info("Gremlin query is blank, returning empty GraphData");
             return new GraphData();
         }
         GremlinGroovyScriptEngine engine = new GremlinGroovyScriptEngine();
@@ -602,28 +626,31 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             return new ArrayList<>();
         }
 
+        JanusGraphTransaction tx = null;
         try {
+            tx = graph.newTransaction();
+            // 查询边
+            Iterator<JanusGraphEdge> edges = tx.query().has(GraphConstants.UID, org.janusgraph.core.attribute.Contain.IN, edgeIds).edges().iterator();
             List<GraphEdge> result = new ArrayList<>();
-            // 开启事务
-            org.janusgraph.core.JanusGraphTransaction tx = graph.newTransaction();
-            try {
-                // 查询边
-                Iterator<JanusGraphEdge> edges = tx.query().has(GraphConstants.UID, org.janusgraph.core.attribute.Contain.IN, edgeIds).edges().iterator();
-                while (edges.hasNext()) {
-                    JanusGraphEdge edge = edges.next();
-                    GraphEdge graphEdge = parseEdge(edge);
-                    result.add(graphEdge);
-                }
-
-                // 提交事务
-                tx.commit();
-                return result;
-            } catch (Exception e) {
-                tx.rollback();
-                throw e;
+            while (edges.hasNext()) {
+                JanusGraphEdge edge = edges.next();
+                GraphEdge graphEdge = parseEdge(edge);
+                result.add(graphEdge);
             }
+
+            // 提交事务
+            tx.commit();
+            return result;
         } catch (Exception e) {
+            log.error("Failed to get edges by ids: {}", edgeIds, e);
+            if (tx != null && tx.isOpen()) {
+                tx.rollback();
+            }
             throw new GraphException("Failed to get edges by ids", e);
+        } finally {
+            if (tx != null && tx.isOpen()) {
+                tx.close();
+            }
         }
     }
 
@@ -631,6 +658,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
     public GraphData expand(String nodeId, int depth) throws GraphException {
         String gremlinQuery = String.format("g.V().has('%s', '%s').repeat(bothE().bothV().simplePath()).times(%d).path()", 
                 GraphConstants.UID, nodeId, depth);
+        log.debug("Executing expand query: {}", gremlinQuery);
         return query(gremlinQuery);
     }
 
@@ -638,6 +666,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
     public GraphData findPath(String startNodeId, String endNodeId, int maxDepth) throws GraphException {
         String gremlinQuery = String.format("g.V().has('%s', '%s').repeat(bothE().bothV().simplePath()).until(has('%s', '%s')).limit(1).path()",
                 GraphConstants.UID, startNodeId, GraphConstants.UID, endNodeId);
+        log.debug("Executing findPath query: {}", gremlinQuery);
         return query(gremlinQuery);
     }
 
@@ -714,40 +743,46 @@ public class JanusGraphDataOperations implements GraphDataOperations {
 
     @Override
     public GraphSummary getSummary() throws GraphException {
+        JanusGraphTransaction tx = null;
         GraphSummary summary = new GraphSummary();
         
-        try (JanusGraphTransaction tx = graph.newTransaction()) {
-            try {
-                // 获取节点总数
-                long nodeCount = tx.traversal().V().count().next();
-                summary.setVertexCount((int) nodeCount);
-                
-                // 获取边总数
-                long edgeCount = tx.traversal().E().count().next();
-                summary.setEdgeCount((int) edgeCount);
-                
-                // 获取各标签节点数量统计
-                Map<String, Integer> vertexLabelCount = new HashMap<>();
-                tx.traversal().V().label().groupCount().next().forEach((label, count) -> {
-                    vertexLabelCount.put(label.toString(), count.intValue());
-                });
-                summary.setVertexLabelCount(vertexLabelCount);
-                
-                // 获取各类型边数量统计
-                Map<String, Integer> edgeLabelCount = new HashMap<>();
-                tx.traversal().E().label().groupCount().next().forEach((label, count) -> {
-                    edgeLabelCount.put(label.toString(), count.intValue());
-                });
-                summary.setEdgeLabelCount(edgeLabelCount);
-                
-                tx.commit();
-                return summary;
-            } catch (Exception e) {
-                tx.rollback();
-                throw new GraphException("Failed to get graph summary from JanusGraph", e);
-            }
+        try {
+            tx = graph.newTransaction();
+            // 获取节点总数
+            long nodeCount = tx.traversal().V().count().next();
+            summary.setVertexCount((int) nodeCount);
+            
+            // 获取边总数
+            long edgeCount = tx.traversal().E().count().next();
+            summary.setEdgeCount((int) edgeCount);
+            
+            // 获取各标签节点数量统计
+            Map<String, Integer> vertexLabelCount = new HashMap<>();
+            tx.traversal().V().label().groupCount().next().forEach((label, count) -> {
+                vertexLabelCount.put(label.toString(), count.intValue());
+            });
+            summary.setVertexLabelCount(vertexLabelCount);
+            
+            // 获取各类型边数量统计
+            Map<String, Integer> edgeLabelCount = new HashMap<>();
+            tx.traversal().E().label().groupCount().next().forEach((label, count) -> {
+                edgeLabelCount.put(label.toString(), count.intValue());
+            });
+            summary.setEdgeLabelCount(edgeLabelCount);
+            
+            tx.commit();
+            log.debug("Retrieved graph summary: {} vertices, {} edges", nodeCount, edgeCount);
+            return summary;
         } catch (Exception e) {
+            log.error("Failed to get graph summary from JanusGraph", e);
+            if (tx != null && tx.isOpen()) {
+                tx.rollback();
+            }
             throw new GraphException("Failed to get graph summary from JanusGraph", e);
+        } finally {
+            if (tx != null && tx.isOpen()) {
+                tx.close();
+            }
         }
     }
 }

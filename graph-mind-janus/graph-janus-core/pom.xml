@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.chenpp.graph</groupId>
         <artifactId>graph-mind-janus</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>${reversion}</version>
     </parent>
 
     <artifactId>graph-janus-core</artifactId>

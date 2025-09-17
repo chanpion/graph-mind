@@ -60,27 +60,34 @@ public class JanusClientFactory {
     public static JanusGraph getOrCreateJanusGrapht(JanusConf janusConf) {
         String key = String.format("%s_%s_%s", janusConf.getStorageHost(), janusConf.getStoragePort(), janusConf.getGraphCode());
 
-        JanusGraph graph = JANUS_GRAPH_MAP.get(janusConf.getGraphCode());
+        JanusGraph graph = JANUS_GRAPH_MAP.get(key);
         if (graph != null && graph.isOpen()) {
             return graph;
         }
+        
         Configuration configuration;
-
-        switch (janusConf.getStorageBackend()) {
-            case BACKEND_HBASE:
-                configuration = buildHBaseConfiguration(janusConf);
-                break;
-            case BACKEND_CASSANDRA:
-                configuration = buildCassandraConfiguration(janusConf);
-                break;
-            default:
-                throw new GraphException("Not supported backend: " + janusConf.getStorageBackend());
-
+        try {
+            switch (janusConf.getStorageBackend()) {
+                case BACKEND_HBASE:
+                    configuration = buildHBaseConfiguration(janusConf);
+                    break;
+                case BACKEND_CASSANDRA:
+                    configuration = buildCassandraConfiguration(janusConf);
+                    break;
+                default:
+                    log.error("Not supported backend: {}", janusConf.getStorageBackend());
+                    throw new GraphException("Not supported backend: " + janusConf.getStorageBackend());
+            }
+            
+            //open a graph database
+            graph = JanusGraphFactory.open(configuration);
+            JANUS_GRAPH_MAP.put(key, graph);
+            log.info("Created new JanusGraph instance for key: {}", key);
+            return graph;
+        } catch (Exception e) {
+            log.error("Failed to create or get JanusGraph instance for key: {}", key, e);
+            throw new GraphException("Failed to create or get JanusGraph instance", e);
         }
-        //open a graph database
-        graph = JanusGraphFactory.open(configuration);
-        JANUS_GRAPH_MAP.put(key, graph);
-        return graph;
     }
 
 

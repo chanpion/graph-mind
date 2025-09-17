@@ -3,10 +3,9 @@ package com.chenpp.graph.janus;
 import com.chenpp.graph.core.GraphClient;
 import com.chenpp.graph.core.GraphDataOperations;
 import com.chenpp.graph.core.GraphOperations;
-import org.apache.commons.configuration2.Configuration;
-import org.apache.commons.configuration2.BaseConfiguration;
+import com.chenpp.graph.core.exception.GraphException;
+import lombok.extern.slf4j.Slf4j;
 import org.janusgraph.core.JanusGraph;
-import org.janusgraph.core.JanusGraphFactory;
 
 /**
  * JanusGraph客户端实现
@@ -14,16 +13,28 @@ import org.janusgraph.core.JanusGraphFactory;
  * @author April.Chen
  * @date 2025/8/13 15:40
  */
+@Slf4j
 public class JanusClient implements GraphClient {
     private final JanusConf janusConf;
     private JanusGraph graph;
 
     public JanusClient(JanusConf janusConf) {
+        if (janusConf == null) {
+            throw new IllegalArgumentException("JanusConf cannot be null");
+        }
+        
         this.janusConf = janusConf;
         if (janusConf.getGraphCode() == null) {
             janusConf.setGraphCode(JanusConstants.DEFAULT_GRAPH_CODE);
         }
-        this.graph = JanusClientFactory.getOrCreateJanusGrapht(janusConf);
+        
+        try {
+            this.graph = JanusClientFactory.getOrCreateJanusGrapht(janusConf);
+            log.debug("Successfully created JanusClient for graph: {}", janusConf.getGraphCode());
+        } catch (Exception e) {
+            log.error("Failed to create JanusGraph client for graph: {}", janusConf.getGraphCode(), e);
+            throw new GraphException("Failed to create JanusGraph client", e);
+        }
     }
 
     @Override
@@ -38,7 +49,9 @@ public class JanusClient implements GraphClient {
 
     @Override
     public boolean checkConnection() {
-        return graph.isOpen();
+        boolean isOpen = graph != null && graph.isOpen();
+        log.debug("Checking JanusGraph connection status: {}", isOpen);
+        return isOpen;
     }
 
 
@@ -51,8 +64,14 @@ public class JanusClient implements GraphClient {
      */
     @Override
     public void close() {
+        log.info("Closing JanusGraph client for graph: {}", janusConf.getGraphCode());
         if (graph != null && !graph.isClosed()) {
-            graph.close();
+            try {
+                graph.close();
+                log.info("Successfully closed JanusGraph client for graph: {}", janusConf.getGraphCode());
+            } catch (Exception e) {
+                log.error("Error closing JanusGraph client for graph: {}", janusConf.getGraphCode(), e);
+            }
         }
     }
 
