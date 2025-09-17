@@ -7,7 +7,7 @@ package com.chenpp.graph.core.exception;
  * @date 2025/8/14 11:00
  */
 public class BusinessException extends RuntimeException {
-    private ErrorCode errorCode;
+    private final ErrorCode errorCode;
 
     public BusinessException(String message) {
         super(message);

@@ -1,10 +1,11 @@
 package com.chenpp.graph.core.exception;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 
 /**
+ * 图数据库操作异常
+ *
  * @author April.Chen
  * @date 2025/4/7 16:21
  */
@@ -15,6 +16,12 @@ public class GraphDatabaseException extends RuntimeException {
 
     public GraphDatabaseException(ErrorCode errorCode, String message) {
         this(errorCode, message, Collections.emptyMap());
+    }
+
+    public GraphDatabaseException(ErrorCode errorCode, Throwable e) {
+        super(errorCode.getMessage(), e);
+        this.errorCode = errorCode;
+        this.context = Collections.emptyMap();
     }
 
     public GraphDatabaseException(ErrorCode errorCode, String message, Map<String, Object> context) {

@@ -43,8 +43,4 @@ public class GraphRelation {
      * 是否多边
      */
     private Boolean multiple;
-    /**
-     * 是否写图库
-     */
-    private Boolean sinkGraph;
 }

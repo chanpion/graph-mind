@@ -9,6 +9,8 @@ import com.chenpp.graph.core.model.GraphSummary;
 import java.util.Collection;
 
 /**
+ * 图数据接口定义
+ *
  * @author April.Chen
  * @date 2025/4/7 17:43
  */

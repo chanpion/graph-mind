@@ -1,11 +1,13 @@
 package com.chenpp.graph.core.exception;
 
 /**
+ * 图操作异常
+ *
  * @author April.Chen
  * @date 2025/4/7 17:22
  */
 public class GraphException extends RuntimeException {
-    private ErrorCode errorCode;
+    private final ErrorCode errorCode;
 
     public GraphException(String message) {
         super(message);
