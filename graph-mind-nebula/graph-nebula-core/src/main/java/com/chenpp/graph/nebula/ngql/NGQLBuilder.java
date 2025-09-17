@@ -8,6 +8,7 @@ import com.chenpp.graph.nebula.schema.NebulaProperty;
 import com.chenpp.graph.nebula.schema.NebulaTag;
 import com.chenpp.graph.nebula.schema.SchemaType;
 import com.chenpp.graph.nebula.schema.Space;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -32,6 +33,7 @@ import static com.chenpp.graph.nebula.schema.NebulaProperty.FIXED_STRING_SIZE;
  * @author April.Chen
  * @date 2025/7/8 15:22
  */
+@Slf4j
 public class NGQLBuilder {
     protected final ZoneOffset zoneOffset;
 
@@ -147,6 +149,7 @@ public class NGQLBuilder {
 
         if (tag.getTtlDuration() != null && tag.getTtlCol() != null) {
             if (!tag.getProperties().stream().map(NebulaProperty::getName).collect(Collectors.toSet()).contains(tag.getTtlCol())) {
+                log.warn("TTL PropertyType name is not exist in PropertyTypes to be created");
                 throw new NebulaException("TTL PropertyType name is not exist in PropertyTypes to be created");
             } else {
                 builder.append(" TTL_DURATION = ").append(tag.getTtlDuration())
@@ -158,6 +161,7 @@ public class NGQLBuilder {
     public String buildAlterTag(Alter alter, NebulaTag tag) throws NebulaException {
         if (tag.getProperties() == null || tag.getProperties().isEmpty()) {
             //  如果是修改 TTL，那么 属性列表可以为空
+            log.warn("TTL PropertyType name is not exist in PropertyTypes to be created");
             throw new NebulaException("TTL PropertyType name is not exist in PropertyTypes to be created");
         }
         StringBuilder builder = new StringBuilder();
@@ -189,6 +193,7 @@ public class NGQLBuilder {
 
         if (edge.getTtlDuration() != null && edge.getTtlCol() != null) {
             if (!edge.getProperties().stream().map(NebulaProperty::getName).collect(Collectors.toSet()).contains(edge.getTtlCol())) {
+                log.warn("TTL PropertyType name is not exist in PropertyTypes to be created");
                 throw new NebulaException("TTL PropertyType name is not exist in PropertyTypes to be created");
             } else {
                 builder.append(" TTL_DURATION = ").append(edge.getTtlDuration())
@@ -201,6 +206,7 @@ public class NGQLBuilder {
     public String buildAlterEdge(Alter alter, NebulaEdge edgeType) throws NebulaException {
         if (edgeType.getProperties() == null || edgeType.getProperties().isEmpty()) {
             //  如果是修改 TTL，那么 属性列表可以为空
+            log.warn("TTL PropertyType name is not exist in PropertyTypes to be created");
             throw new NebulaException("TTL PropertyType name is not exist in PropertyTypes to be created");
         }
         StringBuilder builder = new StringBuilder();

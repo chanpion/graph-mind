@@ -19,8 +19,6 @@ import com.vesoft.nebula.client.graph.data.ValueWrapper;
 import com.vesoft.nebula.client.graph.net.NebulaPool;
 import com.vesoft.nebula.client.graph.net.Session;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.BooleanUtils;
-import org.apache.commons.lang3.StringUtils;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
@@ -29,8 +27,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
-
-import static com.chenpp.graph.nebula.schema.NebulaProperty.FIXED_STRING_SIZE;
 
 /**
  * @author April.Chen
@@ -53,31 +49,41 @@ public class NebulaGraphOperations implements GraphOperations {
 
     @Override
     public void createGraph(GraphConf graphConf) {
+        log.info("Creating graph: {}", graphConf.getGraphCode());
 //        NebulaConf nebulaConf = (NebulaConf) graphConf;
         String nql = NebulaUtil.buildCreateSpace(nebulaConf);
         ResultSet resultSet = execute(nebulaConf, nql);
         if (!resultSet.isSucceeded()) {
+            log.error("Create graph failed, errorCode: {}, errorMessage: {}", 
+                    resultSet.getErrorCode(), resultSet.getErrorMessage());
             throw new GraphException("create graph failed, errorCode: " + resultSet.getErrorCode() + ", errorMessage: " + resultSet.getErrorMessage());
         }
-        log.info("create graph {} success", nebulaConf.getGraphCode());
+        log.info("Create graph {} success", nebulaConf.getGraphCode());
     }
 
     @Override
     public void dropGraph(GraphConf graphConf) throws GraphException {
+        log.info("Dropping graph: {}", graphConf.getGraphCode());
         NebulaConf nebulaConf = (NebulaConf) graphConf;
         String nql = NebulaUtil.buildDropSpace(nebulaConf.getGraphCode());
         ResultSet resultSet = execute(nebulaConf, nql);
         if (!resultSet.isSucceeded()) {
+            log.error("Drop graph failed, errorCode: {}, errorMessage: {}", 
+                    resultSet.getErrorCode(), resultSet.getErrorMessage());
             throw new GraphException("drop graph failed, errorCode: " + resultSet.getErrorCode() + ", errorMessage: " + resultSet.getErrorMessage());
         }
+        log.info("Drop graph {} success", nebulaConf.getGraphCode());
     }
 
     @Override
     public List<Graph> listGraphs(GraphConf graphConf) {
+        log.info("Listing graphs");
 //        NebulaConf nebulaConf = (NebulaConf) graphConf;
         String nql = "SHOW SPACES";
         ResultSet resultSet = execute(nebulaConf, nql);
         if (!resultSet.isSucceeded()) {
+            log.error("List graph failed, errorCode: {}, errorMessage: {}", 
+                    resultSet.getErrorCode(), resultSet.getErrorMessage());
             throw new GraphException("list graph failed, errorCode: " + resultSet.getErrorCode() + ", errorMessage: " + resultSet.getErrorMessage());
         }
         return resultSet.getRows().stream().map(row -> {
@@ -90,7 +96,7 @@ public class NebulaGraphOperations implements GraphOperations {
 
     @Override
     public void applySchema(GraphConf graphConf, GraphSchema graphSchema) {
-        log.info("begin apply graph schema");
+        log.info("Begin apply graph schema for: {}", graphConf.getGraphCode());
 //        NebulaConf nebulaConf = (NebulaConf) graphConf;
         NebulaPool nebulaPool = NebulaClientFactory.getNebulaPool(nebulaConf);
 
@@ -104,25 +110,29 @@ public class NebulaGraphOperations implements GraphOperations {
         try (Session session = nebulaPool.getSession(nebulaConf.getUsername(), nebulaConf.getPassword(), false)) {
             ResultSet rs = session.execute(useSpace);
             if (!rs.isSucceeded()) {
+                log.error("Failed to use space, error code: {}, error message: {}", 
+                        rs.getErrorCode(), rs.getErrorMessage());
                 throw new GraphException(String.format("Failed to use space, error code: %s ,error message %s", rs.getErrorCode(), rs.getErrorMessage()));
             }
             createTags(graphSchema.getEntities(), session);
             createEdges(graphSchema.getRelations(), session);
             createIndices(graphSchema.getIndexes(), session);
+            log.info("Successfully applied schema for graph: {}", graphConf.getGraphCode());
         } catch (Exception e) {
-            log.error("nebula create schema error", e);
+            log.error("Nebula create schema error", e);
             throw new GraphException("nebula create schema error", e);
         }
 
         ResultSet rs = execute(nebulaConf, useSpace);
         if (!rs.isSucceeded()) {
+            log.warn("Failed to re-use space after schema application");
             return;
         }
-
     }
 
     @Override
     public GraphSchema getPublishedSchema(GraphConf graphConf) throws GraphException {
+        log.info("Getting published schema for: {}", graphConf.getGraphCode());
         NebulaConf nebulaConf = (NebulaConf) graphConf;
         GraphSchema schema = new GraphSchema();
         
@@ -138,17 +148,19 @@ public class NebulaGraphOperations implements GraphOperations {
         List<GraphIndex> indexes = getIndexes(nebulaConf);
         schema.setIndexes(indexes);
         
+        log.info("Retrieved schema: {} entities, {} relations, {} indexes", 
+                entities.size(), relations.size(), indexes.size());
         return schema;
     }
 
 
     private ResultSet execute(NebulaConf nebulaConf, String nql) {
-        log.info("execute ngql: {}", nql);
+        log.debug("Execute ngql: {}", nql);
         NebulaPool nebulaPool = NebulaClientFactory.getNebulaPool(nebulaConf);
         try (Session session = nebulaPool.getSession(nebulaConf.getUsername(), nebulaConf.getPassword(), false)) {
             return session.execute(nql);
         } catch (Exception e) {
-            log.error("nebula execute error", e);
+            log.error("Nebula execute error for query: {}", nql, e);
             throw new GraphException(e);
         }
     }
@@ -156,9 +168,11 @@ public class NebulaGraphOperations implements GraphOperations {
 
     public void createTags(List<GraphEntity> entities, Session session) {
         if (entities == null || entities.isEmpty()) {
+            log.info("No tags to create");
             return;
         }
 
+        log.info("Creating {} tags", entities.size());
         entities.forEach(entity -> {
             try {
                 // 执行创建Tag的语句
@@ -177,6 +191,7 @@ public class NebulaGraphOperations implements GraphOperations {
     }
     
     public List<GraphEntity> getTags(NebulaConf nebulaConf) throws GraphException {
+        log.debug("Getting tags for space: {}", nebulaConf.getSpace());
         String useSpace = ngqlBuilder.buildUseSpace(nebulaConf.getSpace());
         String nql = "SHOW TAGS";
         
@@ -184,6 +199,8 @@ public class NebulaGraphOperations implements GraphOperations {
         ResultSet resultSet = execute(nebulaConf, nql);
         
         if (!resultSet.isSucceeded()) {
+            log.error("Failed to get tags, errorCode: {}, errorMessage: {}", 
+                    resultSet.getErrorCode(), resultSet.getErrorMessage());
             throw new GraphException("Failed to get tags, errorCode: " + resultSet.getErrorCode() + ", errorMessage: " + resultSet.getErrorMessage());
         }
         
@@ -195,6 +212,7 @@ public class NebulaGraphOperations implements GraphOperations {
             try {
                 tagName = tagValue.asString();
             } catch (UnsupportedEncodingException e) {
+                log.error("Failed to parse tag name", e);
                 throw new GraphException("Failed to parse tag name", e);
             }
             
@@ -203,15 +221,17 @@ public class NebulaGraphOperations implements GraphOperations {
             entity.setLabel(tagName);
             entities.add(entity);
         }
-        
+
         return entities;
     }
 
     public void createEdges(List<GraphRelation> edges, Session session) {
         if (edges == null || edges.isEmpty()) {
+            log.info("No edges to create");
             return;
         }
 
+        log.info("Creating {} edges", edges.size());
         edges.forEach(edge -> {
             try {
                 // 执行创建Edge的语句
@@ -237,6 +257,8 @@ public class NebulaGraphOperations implements GraphOperations {
         ResultSet resultSet = execute(nebulaConf, nql);
         
         if (!resultSet.isSucceeded()) {
+            log.error("Failed to get edges, errorCode: {}, errorMessage: {}", 
+                    resultSet.getErrorCode(), resultSet.getErrorMessage());
             throw new GraphException("Failed to get edges, errorCode: " + resultSet.getErrorCode() + ", errorMessage: " + resultSet.getErrorMessage());
         }
         
@@ -248,6 +270,7 @@ public class NebulaGraphOperations implements GraphOperations {
             try {
                 edgeName = edgeValue.asString();
             } catch (UnsupportedEncodingException e) {
+                log.error("Failed to parse edge name", e);
                 throw new GraphException("Failed to parse edge name", e);
             }
             
@@ -256,15 +279,17 @@ public class NebulaGraphOperations implements GraphOperations {
             relation.setLabel(edgeName);
             relations.add(relation);
         }
-        
+
         return relations;
     }
 
     public void createIndices(List<GraphIndex> indices, Session session) {
         if (indices == null || indices.isEmpty()) {
+            log.info("No indices to create");
             return;
         }
 
+        log.info("Creating {} indices", indices.size());
         indices.forEach(index -> {
             try {
                 // 构建创建索引的NGQL语句
@@ -302,6 +327,8 @@ public class NebulaGraphOperations implements GraphOperations {
         ResultSet resultSet = execute(nebulaConf, nql);
         
         if (!resultSet.isSucceeded()) {
+            log.error("Failed to get indexes, errorCode: {}, errorMessage: {}", 
+                    resultSet.getErrorCode(), resultSet.getErrorMessage());
             throw new GraphException("Failed to get indexes, errorCode: " + resultSet.getErrorCode() + ", errorMessage: " + resultSet.getErrorMessage());
         }
         
@@ -313,6 +340,7 @@ public class NebulaGraphOperations implements GraphOperations {
             try {
                 indexName = indexValue.asString();
             } catch (UnsupportedEncodingException e) {
+                log.error("Failed to parse index name", e);
                 throw new GraphException("Failed to parse index name", e);
             }
             
@@ -321,7 +349,7 @@ public class NebulaGraphOperations implements GraphOperations {
             index.setName(indexName);
             indexes.add(index);
         }
-        
+
         return indexes;
     }
 
@@ -372,7 +400,10 @@ public class NebulaGraphOperations implements GraphOperations {
             case Float, Double -> "DOUBLE";
             case Boolean -> "BOOL";
             case String -> "STRING";
-            default -> throw new IllegalArgumentException("Unsupported data type: " + dataType);
+            default -> {
+                log.warn("Unsupported data type: {}, using STRING as default", dataType);
+                yield "STRING";
+            }
         };
     }
 }

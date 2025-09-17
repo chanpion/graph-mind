@@ -1,5 +1,6 @@
 package com.chenpp.graph.nebula;
 
+import com.chenpp.graph.core.exception.GraphException;
 import com.vesoft.nebula.client.graph.NebulaPoolConfig;
 import com.vesoft.nebula.client.graph.SessionPool;
 import com.vesoft.nebula.client.graph.SessionPoolConfig;
@@ -24,25 +25,32 @@ public class NebulaClientFactory {
      * SessionPool 用于单个图库操作，业务面
      */
     public static SessionPool getSessionPool(NebulaConf nebulaConf) {
-        List<HostAddress> addresses = Arrays.stream(nebulaConf.getHosts().split(","))
-                .map(ip -> new HostAddress(ip, nebulaConf.getPort())).collect(Collectors.toList());
-        String spaceName = nebulaConf.getGraphCode();
-        String user = nebulaConf.getUsername();
-        String password = nebulaConf.getPassword();
-        SessionPoolConfig sessionPoolConfig = new SessionPoolConfig(addresses, spaceName, user, password);
-        SessionPool sessionPool = new SessionPool(sessionPoolConfig);
-        if (!sessionPool.isActive()) {
-            log.error("session pool init failed.");
-            System.exit(1);
+        try {
+            List<HostAddress> addresses = Arrays.stream(nebulaConf.getHosts().split(","))
+                    .map(ip -> new HostAddress(ip, nebulaConf.getPort())).collect(Collectors.toList());
+            String spaceName = nebulaConf.getGraphCode();
+            String user = nebulaConf.getUsername();
+            String password = nebulaConf.getPassword();
+            SessionPoolConfig sessionPoolConfig = new SessionPoolConfig(addresses, spaceName, user, password);
+            SessionPool sessionPool = new SessionPool(sessionPoolConfig);
+            if (!sessionPool.isActive()) {
+                log.error("Session pool init failed for space: {}", spaceName);
+                // 不应该直接退出JVM，而应该抛出异常让调用方处理
+                throw new GraphException("Session pool init failed for space: " + spaceName);
+            }
+            log.debug("Successfully created session pool for space: {}", spaceName);
+            return sessionPool;
+        } catch (Exception e) {
+            log.error("Failed to create session pool for space: {}", nebulaConf.getGraphCode(), e);
+            throw new GraphException("Failed to create session pool", e);
         }
-        return sessionPool;
     }
 
     /**
      * NebulaPool 用户图库操作，管理面
      *
-     * @param nebulaConf
-     * @return
+     * @param nebulaConf 配置信息
+     * @return NebulaPool实例
      */
     public static NebulaPool getNebulaPool(NebulaConf nebulaConf) {
         NebulaPoolConfig nebulaPoolConfig = new NebulaPoolConfig();
@@ -53,11 +61,13 @@ public class NebulaClientFactory {
         try {
             boolean initResult = pool.init(addresses, nebulaPoolConfig);
             if (!initResult) {
-                log.error("pool init failed.");
+                log.error("Pool init failed for hosts: {}", nebulaConf.getHosts());
                 pool = null;
+            } else {
+                log.info("Successfully initialized NebulaPool for hosts: {}", nebulaConf.getHosts());
             }
         } catch (Exception e) {
-            log.error("init nebula session error", e);
+            log.error("Init nebula session error for hosts: {}", nebulaConf.getHosts(), e);
             pool = null;
         }
         return pool;

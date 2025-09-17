@@ -70,14 +70,18 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
 
             ResultSet resultSet = sessionPool.execute(nql);
             if (!resultSet.isSucceeded()) {
+                log.error("Failed to add vertex, errorCode: {}, errorMessage: {}", 
+                        resultSet.getErrorCode(), resultSet.getErrorMessage());
                 throw new GraphException("Failed to add vertex, errorCode: " + resultSet.getErrorCode()
                         + ", errorMessage: " + resultSet.getErrorMessage());
             }
 
             return vertex;
         } catch (IOErrorException e) {
+            log.error("Failed to add vertex due to IO error: {}", vertex, e);
             throw new GraphException("Failed to add vertex due to IO error", e);
         } catch (Exception e) {
+            log.error("Failed to add vertex: {}", vertex, e);
             throw new GraphException("Failed to add vertex", e);
         }
     }
@@ -107,14 +111,18 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
 
             ResultSet resultSet = sessionPool.execute(nql);
             if (!resultSet.isSucceeded()) {
+                log.error("Failed to update vertex, errorCode: {}, errorMessage: {}", 
+                        resultSet.getErrorCode(), resultSet.getErrorMessage());
                 throw new GraphException("Failed to update vertex, errorCode: " + resultSet.getErrorCode()
                         + ", errorMessage: " + resultSet.getErrorMessage());
             }
 
             return vertex;
         } catch (IOErrorException e) {
+            log.error("Failed to update vertex due to IO error: {}", vertex, e);
             throw new GraphException("Failed to update vertex due to IO error", e);
         } catch (Exception e) {
+            log.error("Failed to update vertex: {}", vertex, e);
             throw new GraphException("Failed to update vertex", e);
         }
     }
@@ -122,6 +130,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
     @Override
     public void addVertices(Collection<GraphVertex> vertices) throws GraphException {
         if (CollectionUtils.isEmpty(vertices)) {
+            log.info("Vertices collection is empty, skipping batch insert");
             return;
         }
 
@@ -140,12 +149,16 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
 
             ResultSet resultSet = sessionPool.execute(nql);
             if (!resultSet.isSucceeded()) {
+                log.error("Failed to delete vertex, errorCode: {}, errorMessage: {}", 
+                        resultSet.getErrorCode(), resultSet.getErrorMessage());
                 throw new GraphException("Failed to delete vertex, errorCode: " + resultSet.getErrorCode()
                         + ", errorMessage: " + resultSet.getErrorMessage());
             }
         } catch (IOErrorException e) {
+            log.error("Failed to delete vertex due to IO error: {}", vertex, e);
             throw new GraphException("Failed to delete vertex due to IO error", e);
         } catch (Exception e) {
+            log.error("Failed to delete vertex: {}", vertex, e);
             throw new GraphException("Failed to delete vertex", e);
         }
     }
@@ -182,12 +195,16 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
 
             ResultSet resultSet = sessionPool.execute(nql);
             if (!resultSet.isSucceeded()) {
+                log.error("Failed to add edge, errorCode: {}, errorMessage: {}", 
+                        resultSet.getErrorCode(), resultSet.getErrorMessage());
                 throw new GraphException("Failed to add edge, errorCode: " + resultSet.getErrorCode()
                         + ", errorMessage: " + resultSet.getErrorMessage());
             }
         } catch (IOErrorException e) {
+            log.error("Failed to add edge due to IO error: {}", edge, e);
             throw new GraphException("Failed to add edge due to IO error", e);
         } catch (Exception e) {
+            log.error("Failed to add edge: {}", edge, e);
             throw new GraphException("Failed to add edge", e);
         }
     }
@@ -195,6 +212,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
     @Override
     public void addEdges(Collection<GraphEdge> edges) throws GraphException {
         if (CollectionUtils.isEmpty(edges)) {
+            log.info("Edges collection is empty, skipping batch insert");
             return;
         }
 
@@ -228,14 +246,18 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
 
             ResultSet resultSet = sessionPool.execute(nql);
             if (!resultSet.isSucceeded()) {
+                log.error("Failed to update edge, errorCode: {}, errorMessage: {}", 
+                        resultSet.getErrorCode(), resultSet.getErrorMessage());
                 throw new GraphException("Failed to update edge, errorCode: " + resultSet.getErrorCode()
                         + ", errorMessage: " + resultSet.getErrorMessage());
             }
 
             return 1;
         } catch (IOErrorException e) {
+            log.error("Failed to update edge due to IO error: {}", edge, e);
             throw new GraphException("Failed to update edge due to IO error", e);
         } catch (Exception e) {
+            log.error("Failed to update edge: {}", edge, e);
             throw new GraphException("Failed to update edge", e);
         }
     }
@@ -249,14 +271,18 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
 
             ResultSet resultSet = sessionPool.execute(nql);
             if (!resultSet.isSucceeded()) {
+                log.error("Failed to delete edge, errorCode: {}, errorMessage: {}", 
+                        resultSet.getErrorCode(), resultSet.getErrorMessage());
                 throw new GraphException("Failed to delete edge, errorCode: " + resultSet.getErrorCode()
                         + ", errorMessage: " + resultSet.getErrorMessage());
             }
 
             return 1;
         } catch (IOErrorException e) {
+            log.error("Failed to delete edge due to IO error: {}", edge, e);
             throw new GraphException("Failed to delete edge due to IO error", e);
         } catch (Exception e) {
+            log.error("Failed to delete edge: {}", edge, e);
             throw new GraphException("Failed to delete edge", e);
         }
     }
@@ -268,6 +294,8 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
 
             ResultSet resultSet = sessionPool.execute(cypher);
             if (!resultSet.isSucceeded()) {
+                log.error("Failed to execute query, errorCode: {}, errorMessage: {}", 
+                        resultSet.getErrorCode(), resultSet.getErrorMessage());
                 throw new GraphException("Failed to execute query, errorCode: " + resultSet.getErrorCode()
                         + ", errorMessage: " + resultSet.getErrorMessage());
             }
@@ -302,8 +330,10 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
             }
             return graphData;
         } catch (IOErrorException e) {
+            log.error("Failed to execute query due to IO error: {}", cypher, e);
             throw new GraphException("Failed to execute query due to IO error", e);
         } catch (Exception e) {
+            log.error("Failed to execute query: {}", cypher, e);
             throw new GraphException(ErrorCode.GRAPH_QUERY_FAILED, e);
         }
     }
@@ -463,11 +493,14 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
         try {
             // 添加ID列表
             String idListStr = idList.stream().map(id -> "'" + id + "'").collect(Collectors.joining(", "));
-            String ngql = String.format("MATCH (v) WHERE id(v) IN [%s] RETURN v", idListStr);
+            // 根据Nebula Graph查询规范，必须添加LIMIT子句
+            String ngql = String.format("MATCH (v) WHERE id(v) IN [%s] RETURN v LIMIT 1000", idListStr);
             log.info("Execute NGQL: {}", ngql);
 
             ResultSet resultSet = sessionPool.execute(ngql);
             if (!resultSet.isSucceeded()) {
+                log.error("Failed to query vertices by IDs, errorCode: {}, errorMessage: {}", 
+                        resultSet.getErrorCode(), resultSet.getErrorMessage());
                 throw new GraphException("Failed to query vertices by IDs, errorCode: " + resultSet.getErrorCode()
                         + ", errorMessage: " + resultSet.getErrorMessage());
             }
@@ -487,8 +520,10 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
 
             return vertices;
         } catch (IOErrorException e) {
+            log.error("Failed to query vertices by IDs due to IO error", e);
             throw new GraphException("Failed to query vertices by IDs due to IO error", e);
         } catch (Exception e) {
+            log.error("Failed to query vertices by IDs", e);
             throw new GraphException(ErrorCode.GRAPH_QUERY_FAILED, e);
         }
     }
@@ -523,6 +558,8 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
 
             ResultSet resultSet = sessionPool.execute(ngql);
             if (!resultSet.isSucceeded()) {
+                log.error("Failed to query edges by IDs, errorCode: {}, errorMessage: {}", 
+                        resultSet.getErrorCode(), resultSet.getErrorMessage());
                 throw new GraphException("Failed to query edges by IDs, errorCode: " + resultSet.getErrorCode()
                         + ", errorMessage: " + resultSet.getErrorMessage());
             }
@@ -543,8 +580,10 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
 
             return edges;
         } catch (IOErrorException e) {
+            log.error("Failed to query edges by IDs due to IO error", e);
             throw new GraphException("Failed to query edges by IDs due to IO error", e);
         } catch (Exception e) {
+            log.error("Failed to query edges by IDs", e);
             throw new GraphException(ErrorCode.GRAPH_QUERY_FAILED, e);
         }
     }
@@ -572,6 +611,8 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
             String submitStatsJob = "SUBMIT JOB STATS";
             ResultSet submitResult = sessionPool.execute(submitStatsJob);
             if (!submitResult.isSucceeded()) {
+                log.error("Failed to submit STATS job, errorCode: {}, errorMessage: {}", 
+                        submitResult.getErrorCode(), submitResult.getErrorMessage());
                 throw new GraphException("Failed to submit STATS job, errorCode: " + submitResult.getErrorCode()
                         + ", errorMessage: " + submitResult.getErrorMessage());
             }
@@ -582,24 +623,38 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
             // 轮询检查作业状态，直到完成
             String showJob = "SHOW JOB " + jobId;
             ResultSet jobResult = null;
-            while (jobResult == null || !"FINISHED".equals(jobResult.rowValues(1).get(2).asString())) {
+            int retryCount = 0;
+            final int maxRetries = 30; // 最多重试30次，每次间隔100ms，总共3秒
+            while (retryCount < maxRetries) {
                 Thread.sleep(100);
                 jobResult = sessionPool.execute(showJob);
                 if (!jobResult.isSucceeded()) {
+                    log.error("Failed to get job status, errorCode: {}, errorMessage: {}", 
+                            jobResult.getErrorCode(), jobResult.getErrorMessage());
                     throw new GraphException("Failed to get job status, errorCode: " + jobResult.getErrorCode()
                             + ", errorMessage: " + jobResult.getErrorMessage());
                 }
                 // 检查作业状态
                 String status = jobResult.rowValues(1).get(2).asString();
+                if ("FINISHED".equals(status)) {
+                    break;
+                }
                 if ("FAILED".equals(status)) {
                     throw new GraphException("STATS job failed");
                 }
+                retryCount++;
+            }
+
+            if (retryCount >= maxRetries) {
+                throw new GraphException("STATS job timeout");
             }
 
             // 获取统计信息
             String showStats = "SHOW STATS";
             ResultSet statsResult = sessionPool.execute(showStats);
             if (!statsResult.isSucceeded()) {
+                log.error("Failed to show stats, errorCode: {}, errorMessage: {}", 
+                        statsResult.getErrorCode(), statsResult.getErrorMessage());
                 throw new GraphException("Failed to show stats, errorCode: " + statsResult.getErrorCode()
                         + ", errorMessage: " + statsResult.getErrorMessage());
             }
@@ -633,6 +688,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
 
             return summary;
         } catch (Exception e) {
+            log.error("Failed to get graph summary from Nebula", e);
             throw new GraphException("Failed to get graph summary from Nebula", e);
         }
     }

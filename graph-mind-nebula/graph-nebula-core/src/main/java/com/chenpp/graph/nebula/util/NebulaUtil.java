@@ -4,6 +4,7 @@ import com.chenpp.graph.core.schema.GraphEntity;
 import com.chenpp.graph.core.schema.GraphIndex;
 import com.chenpp.graph.core.schema.GraphRelation;
 import com.chenpp.graph.nebula.NebulaConf;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.stream.Collectors;
 
@@ -11,6 +12,7 @@ import java.util.stream.Collectors;
  * @author April.Chen
  * @date 2025/4/9 15:24
  */
+@Slf4j
 public class NebulaUtil {
 
     public static String buildCreateSpace(NebulaConf nebulaConf) {
@@ -68,6 +70,4 @@ public class NebulaUtil {
     public static String buildDropEdge(String edgeTypeName) {
         return "DROP EDGE IF EXISTS " + edgeTypeName;
     }
-
-
 }
