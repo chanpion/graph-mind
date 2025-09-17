@@ -37,16 +37,23 @@ public class Neo4jClient implements GraphClient {
     public boolean checkConnection() {
         try {
             driver.verifyConnectivity();
-            log.info("Neo4j连接成功:{}", neo4jConf);
+            log.info("Neo4j connection successful: {}", neo4jConf);
+            return true;
         } catch (Exception e) {
-            log.error("Neo4j连接异常", e);
+            log.error("Neo4j connection failed: {}", neo4jConf, e);
             return false;
         }
-        return true;
     }
 
     @Override
     public void close() {
-        driver.close();
+        try {
+            if (driver != null) {
+                driver.close();
+                log.info("Neo4j driver closed successfully");
+            }
+        } catch (Exception e) {
+            log.warn("Error closing Neo4j driver", e);
+        }
     }
 }

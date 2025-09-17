@@ -62,6 +62,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
             Node node = record.get(0).asNode();
             return Neo4jUtil.parseVertex(node);
         } catch (Exception e) {
+            log.error("Failed to add vertex to Neo4j: {}", vertex, e);
             throw new GraphException("Failed to add vertex to Neo4j", e);
         }
     }
@@ -76,14 +77,15 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
             Node node = record.get(0).asNode();
             return Neo4jUtil.parseVertex(node);
         } catch (Exception e) {
-            throw new GraphException("Failed to update vertex to Neo4j", e);
+            log.error("Failed to update vertex in Neo4j: {}", vertex, e);
+            throw new GraphException("Failed to update vertex in Neo4j", e);
         }
     }
 
     @Override
     public void addVertices(Collection<GraphVertex> vertices) throws GraphException {
         if (CollectionUtils.isEmpty(vertices)) {
-            log.info("vertices is empty");
+            log.info("Vertices collection is empty, skipping batch insert");
             return;
         }
         Map<String, List<GraphVertex>> labelVerticesMap = vertices.stream().collect(Collectors.groupingBy(GraphVertex::getLabel));
@@ -98,6 +100,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
                 return null;
             });
         } catch (Exception e) {
+            log.error("Failed to add vertices to Neo4j, vertex count: {}", vertices.size(), e);
             throw new GraphException("Failed to add vertices to Neo4j", e);
         }
     }
@@ -112,6 +115,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
                 return null;
             });
         } catch (Exception e) {
+            log.error("Failed to delete vertex from Neo4j: {}", vertex, e);
             throw new GraphException("Failed to delete vertex", e);
         }
     }
@@ -124,6 +128,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
             Map<String, Object> parameters = Neo4jUtil.convertToMap(edge);
             session.executeWrite(tx -> tx.run(cypher, parameters).single());
         } catch (Exception e) {
+            log.error("Failed to create relationship in Neo4j: {}", edge, e);
             throw new GraphException("Failed to create relationship in Neo4j", e);
         }
     }
@@ -131,7 +136,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
     @Override
     public void addEdges(Collection<GraphEdge> edges) throws GraphException {
         if (CollectionUtils.isEmpty(edges)) {
-            log.info("edges is empty");
+            log.info("Edges collection is empty, skipping batch insert");
             return;
         }
 
@@ -142,15 +147,16 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
                     String[] labelArr = label.split("-");
                     String cypher = String.format("UNWIND $edges AS edge MATCH (a:%s {uid: edge.startUid}), (b:%s {uid: edge.endUid}) CREATE (a)-[r:%s]->(b) SET r += edge.properties",
                             labelArr[1], labelArr[2], labelArr[0]);
-                    log.info("cypher: {}", cypher);
+                    log.info("Executing cypher: {}", cypher);
                     Map<String, Object> parameters = Map.of("edges", edgeList.stream().map(Neo4jUtil::convertToMap).collect(Collectors.toList()));
                     Result rs = tx.run(cypher, parameters);
-                    log.info("record: {}", rs.consume().counters());
+                    log.info("Created {} relationships", rs.consume().counters().relationshipsCreated());
                 });
 
                 return null;
             });
         } catch (Exception e) {
+            log.error("Failed to add edges to Neo4j, edge count: {}", edges.size(), e);
             throw new GraphException("Failed to add edges to Neo4j", e);
         }
     }
@@ -163,9 +169,10 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
 
             Map<String, Object> parameters = Neo4jUtil.convertToMap(edge);
             int count = session.executeWrite(tx -> tx.run(cypher, parameters).consume().counters().propertiesSet());
-            log.info("Updated {} relationships", count);
+            log.debug("Updated {} relationship properties", count);
             return count;
         } catch (Exception e) {
+            log.error("Failed to update relationship in Neo4j: {}", edge, e);
             throw new GraphException("Failed to update relationship in Neo4j", e);
         }
     }
@@ -176,9 +183,10 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
             String cypher = String.format("MATCH ()-[r:%s]->() WHERE r.uid=$uid  DELETE r", edge.getLabel());
             Map<String, Object> parameters = Map.of("uid", edge.getUid());
             int count = session.executeWrite(tx -> tx.run(cypher, parameters).consume().counters().relationshipsDeleted());
-            log.info("Deleted {} relationships", count);
+            log.debug("Deleted {} relationships", count);
             return count;
         } catch (Exception e) {
+            log.error("Failed to delete relationship in Neo4j: {}", edge, e);
             throw new GraphException("Failed to delete relationship in Neo4j", e);
         }
     }
@@ -240,6 +248,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
             });
 
         } catch (Exception e) {
+            log.error("Failed to execute query in Neo4j: {}", cypher, e);
             throw new GraphException(ErrorCode.GRAPH_QUERY_FAILED, e);
         }
 
@@ -387,6 +396,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
             
             return summary;
         } catch (Exception e) {
+            log.error("Failed to get graph summary from Neo4j", e);
             throw new GraphException("Failed to get graph summary from Neo4j", e);
         }
     }

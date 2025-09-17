@@ -2,9 +2,11 @@ package com.chenpp.graph.neo4j.util;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.TypeReference;
+import com.chenpp.graph.core.exception.GraphException;
 import com.chenpp.graph.core.model.GraphData;
 import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphVertex;
+import lombok.extern.slf4j.Slf4j;
 import org.neo4j.driver.AuthTokens;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.GraphDatabase;
@@ -18,6 +20,7 @@ import java.util.Map;
  * @author April.Chen
  * @date 2025/4/30 13:52
  */
+@Slf4j
 public class Neo4jUtil {
 
     public static String buildPropertiesClause(Map<String, Object> properties) {
@@ -39,17 +42,35 @@ public class Neo4jUtil {
     }
 
     public static Driver connect(String uri, String user, String password) {
-        return GraphDatabase.driver(uri, AuthTokens.basic(user, password));
+        try {
+            Driver driver = GraphDatabase.driver(uri, AuthTokens.basic(user, password));
+            log.info("Successfully connected to Neo4j at {}", uri);
+            return driver;
+        } catch (Exception e) {
+            log.error("Failed to connect to Neo4j at {}", uri, e);
+            throw e;
+        }
     }
 
     public static void executeCypher(Driver driver, String cypher) {
-        driver.session().run(cypher);
+        try {
+            driver.session().run(cypher);
+            log.debug("Successfully executed cypher: {}", cypher);
+        } catch (Exception e) {
+            log.error("Failed to execute cypher: {}", cypher, e);
+            throw new GraphException("Failed to execute cypher: " + cypher, e);
+        }
     }
 
     public static GraphVertex parseVertex(Node node) {
+        if (node == null) {
+            log.warn("Attempted to parse null node");
+            return null;
+        }
+
         GraphVertex vertex = new GraphVertex();
-        vertex.setUid(node.get("uid").asString());
-        vertex.setLabel(node.labels().iterator().next());
+        vertex.setUid(getNodePropertyAsString(node, "uid"));
+        vertex.setLabel(node.labels().iterator().hasNext() ? node.labels().iterator().next() : "");
         Map<String, Object> properties = node.asMap();
         vertex.setProperties(properties);
         vertex.setId(node.elementId());
@@ -57,9 +78,14 @@ public class Neo4jUtil {
     }
 
     public static GraphEdge parseEdge(Relationship relationship) {
+        if (relationship == null) {
+            log.warn("Attempted to parse null relationship");
+            return null;
+        }
+
         GraphEdge edge = new GraphEdge();
         edge.setId(relationship.elementId());
-        edge.setUid(relationship.get("uid").asString());
+        edge.setUid(getRelationshipPropertyAsString(relationship, "uid"));
         edge.setStartUid(relationship.startNodeElementId());
         edge.setEndUid(relationship.endNodeElementId());
         edge.setProperties(relationship.asMap());
@@ -68,6 +94,11 @@ public class Neo4jUtil {
     }
 
     public static GraphData parseGraphData(Path path) {
+        if (path == null) {
+            log.warn("Attempted to parse null path");
+            return new GraphData();
+        }
+
         GraphData graphData = new GraphData();
         path.nodes().forEach(node -> graphData.addVertex(parseVertex(node)));
         path.relationships().forEach(relationship -> graphData.addEdge(parseEdge(relationship)));
@@ -75,8 +106,28 @@ public class Neo4jUtil {
     }
 
     public static <T> Map<String, Object> convertToMap(T obj) {
-        return JSON.parseObject(JSON.toJSONString(obj), new TypeReference<Map<String, Object>>() {
+        if (obj == null) {
+            return Map.of();
+        }
+        return JSON.parseObject(JSON.toJSONString(obj), new TypeReference<>() {
         });
     }
 
+    private static String getNodePropertyAsString(Node node, String propertyName) {
+        try {
+            return node.get(propertyName).asString();
+        } catch (Exception e) {
+            log.debug("Failed to get property {} from node: {}", propertyName, e.getMessage());
+            return "";
+        }
+    }
+
+    private static String getRelationshipPropertyAsString(Relationship relationship, String propertyName) {
+        try {
+            return relationship.get(propertyName).asString();
+        } catch (Exception e) {
+            log.debug("Failed to get property {} from relationship: {}", propertyName, e.getMessage());
+            return String.valueOf(relationship.id());
+        }
+    }
 }
