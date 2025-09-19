@@ -2,11 +2,6 @@ import {createRouter, createWebHistory} from 'vue-router'
 import Home from '@/views/Home.vue'
 import Login from '@/views/Login.vue'
 
-// 系统管理模块
-import User from '@/views/system/User.vue'
-import Role from '@/views/system/Role.vue'
-import Permission from '@/views/system/Permission.vue'
-
 // 图库管理模块
 import Connection from '@/views/graph/Connection.vue'
 import GraphList from '@/views/graph/GraphList.vue'
@@ -44,12 +39,22 @@ const router = createRouter({
                     component: MainLayout,
                     meta: {title: '系统管理', closable: true},
                     children: [
-                        {path: 'user', name: 'User', component: User, meta: {title: '用户管理', closable: true}},
-                        {path: 'role', name: 'Role', component: Role, meta: {title: '角色管理', closable: true}},
+                        {
+                            path: 'user',
+                            name: 'User',
+                            component: () => import('@/views/system/User.vue'),
+                            meta: {title: '用户管理', closable: true}
+                        },
+                        {
+                            path: 'role',
+                            name: 'Role',
+                            component: () => import('@/views/system/Role.vue'),
+                            meta: {title: '角色管理', closable: true}
+                        },
                         {
                             path: 'permission',
                             name: 'Permission',
-                            component: Permission,
+                            component: () => import('@/views/system/Permission.vue'),
                             meta: {title: '权限管理', closable: true}
                         },
                         {
@@ -109,16 +114,36 @@ const router = createRouter({
                             name: 'GraphSummary',
                             component: () => import('@/views/graph/GraphSummary.vue'),
                             meta: {title: '图统计', icon: 'PieChart'}
+                        },
+                        {
+                            path: 'analysis',
+                            name: 'GraphAnalysis',
+                            component: () => import('@/views/graph/GraphAnalysis.vue'),
+                            meta: {title: '图分析', icon: 'DataAnalysis'}
                         }
                     ]
                 }
             ]
         }
-    ]
+    ],
+
+    // 滚动行为
+    scrollBehavior(to, from, savedPosition) {
+        if (savedPosition) {
+            return savedPosition
+        } else {
+            return {top: 0}
+        }
+    }
 })
 
 // 路由守卫
 router.beforeEach((to, from, next) => {
+    // 设置页面标题
+    if (to.meta && to.meta.title) {
+        document.title = to.meta.title + ' - 图数据库管理系统'
+    }
+
     const token = localStorage.getItem('token')
 
     // 如果访问登录页，直接放行

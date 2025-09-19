@@ -87,20 +87,19 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Refresh } from '@element-plus/icons-vue'
+import { ref, reactive, onMounted, watch, computed } from 'vue'
+import { useRoute } from 'vue-router'
+import { ElMessage, ElNotification } from 'element-plus'
 import { useGraphStore } from '@/stores/graph'
 import { graphApi } from '@/api/graph'
 
-// 使用图存储
+// 获取路由和图store实例
+const route = useRoute()
 const graphStore = useGraphStore()
 
-// 计算属性：当前选中的图
-const currentGraph = computed(() => graphStore.currentGraph)
-
-// 响应式数据
-const statistics = ref({
+// 响式数据
+const graphId = ref(graphStore.currentGraph?.id || route.params.id)
+const statistics = reactive({
   vertexCount: 0,
   edgeCount: 0,
   vertexLabelCount: {},
@@ -108,18 +107,21 @@ const statistics = ref({
 })
 const loading = ref(false)
 
+// 计算属性：当前选中的图
+const currentGraph = computed(() => graphStore.currentGraph)
+
 // 计算属性
 const vertexLabelStats = computed(() => {
-  if (!statistics.value.vertexLabelCount) return []
-  return Object.entries(statistics.value.vertexLabelCount).map(([label, count]) => ({
+  if (!statistics.vertexLabelCount) return []
+  return Object.entries(statistics.vertexLabelCount).map(([label, count]) => ({
     label,
     count
   }))
 })
 
 const edgeLabelStats = computed(() => {
-  if (!statistics.value.edgeLabelCount) return []
-  return Object.entries(statistics.value.edgeLabelCount).map(([label, count]) => ({
+  if (!statistics.edgeLabelCount) return []
+  return Object.entries(statistics.edgeLabelCount).map(([label, count]) => ({
     label,
     count
   }))
@@ -132,7 +134,7 @@ const fetchStatistics = async () => {
   try {
     loading.value = true
     const response = await graphApi.getGraphSummary(currentGraph.value.id)
-    statistics.value = response.data
+    Object.assign(statistics, response.data)
   } catch (error) {
     console.error('获取统计信息失败:', error)
     ElMessage.error('获取统计信息失败: ' + (error.message || '未知错误'))
@@ -141,26 +143,42 @@ const fetchStatistics = async () => {
   }
 }
 
-// 监听当前图的变化
-watch(currentGraph, (newGraph) => {
-  if (newGraph) {
-    fetchStatistics()
+// 加载图的统计信息
+const loadGraphSummary = async (id) => {
+  try {
+    loading.value = true
+    const response = await graphApi.getGraphSummary(id)
+    Object.assign(statistics, response.data)
+  } catch (error) {
+    console.error('加载图统计信息失败:', error)
+    ElNotification.error({
+      title: '加载图统计信息失败',
+      message: error.message || '未知错误'
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+// 页面加载时初始化
+onMounted(() => {
+  // 优先使用全局状态中的图ID
+  if (graphStore.currentGraph) {
+    graphId.value = graphStore.currentGraph.id
+    loadGraphSummary(graphId.value)
+  } else if (route.params.id) {
+    graphId.value = route.params.id
+    loadGraphSummary(graphId.value)
   } else {
-    // 清空统计信息
-    statistics.value = {
-      vertexCount: 0,
-      edgeCount: 0,
-      vertexLabelCount: {},
-      edgeLabelCount: {}
-    }
+    ElMessage.warning('未选择图，请先选择一个图')
   }
 })
 
-// 生命周期钩子
-onMounted(() => {
-  // 如果已经有选中的图，获取统计信息
-  if (currentGraph.value) {
-    fetchStatistics()
+// 监听全局图状态变化
+watch(() => graphStore.currentGraph, (newGraph, oldGraph) => {
+  if (newGraph && newGraph.id !== graphId.value) {
+    graphId.value = newGraph.id
+    loadGraphSummary(graphId.value)
   }
 })
 </script>

@@ -28,5 +28,12 @@ export const useGraphStore = defineStore('graph', {
     clearGraphList() {
       this.graphList = []
     }
+  },
+  
+  // 添加持久化配置
+  persist: {
+    key: 'graphStore',
+    storage: localStorage,
+    paths: ['currentGraph']
   }
 })

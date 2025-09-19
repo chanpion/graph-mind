@@ -280,8 +280,7 @@ const form = reactive({
   edgeTypeId: ''
 })
 
-// 图列表相关（不再需要）
-// const graphList = ref([])
+// 使用全局图状态
 const selectedGraph = computed(() => graphStore.currentGraph || {})
 
 // 点类型和边类型
@@ -389,24 +388,6 @@ const isEntityTypeSelected = computed(() => {
     return !!form.edgeTypeId
   }
 })
-
-// 获取图列表
-const fetchGraphList = async () => {
-  try {
-    const res = await graphApi.getGraphs()
-    // 根据API返回的数据结构正确设置graphList
-    if (res.data.records) {
-      graphList.value = res.data.records
-    } else if (res.data.list) {
-      graphList.value = res.data.list
-    } else {
-      graphList.value = res.data
-    }
-  } catch (e) {
-    console.error('获取图列表失败:', e)
-    ElMessage.error('获取图列表失败: ' + (e.message || '未知错误'))
-  }
-}
 
 // 获取实体类型（点和边）
 const fetchEntityTypes = async () => {
@@ -760,14 +741,6 @@ watch(() => graphStore.currentGraph, (newGraph) => {
     fetchEntityTypes()
   }
 }, { immediate: true })
-
-// 初始化
-onMounted(() => {
-  // 如果已经有选中的图，则获取其实体类型
-  if (selectedGraph.value && selectedGraph.value.id) {
-    fetchEntityTypes()
-  }
-})
 </script>
 
 <style scoped>
