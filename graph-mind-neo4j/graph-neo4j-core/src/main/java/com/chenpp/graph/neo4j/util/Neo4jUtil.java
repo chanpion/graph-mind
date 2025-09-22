@@ -10,11 +10,21 @@ import lombok.extern.slf4j.Slf4j;
 import org.neo4j.driver.AuthTokens;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.GraphDatabase;
+import org.neo4j.driver.Record;
+import org.neo4j.driver.Result;
+import org.neo4j.driver.Value;
+import org.neo4j.driver.internal.InternalPath;
+import org.neo4j.driver.internal.types.InternalTypeSystem;
 import org.neo4j.driver.types.Node;
 import org.neo4j.driver.types.Path;
 import org.neo4j.driver.types.Relationship;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * @author April.Chen
@@ -129,5 +139,54 @@ public class Neo4jUtil {
             log.debug("Failed to get property {} from relationship: {}", propertyName, e.getMessage());
             return String.valueOf(relationship.id());
         }
+    }
+
+    public static GraphData parseResult(Result result) {
+        GraphData graphData = new GraphData();
+
+        Map<String, GraphVertex> elementIdVertexMap = new HashMap<>();
+
+        while (result.hasNext()) {
+            Record record = result.next();
+            List<Value> values = record.values();
+            for (Value value : values) {
+                // 解析节点
+                if (value.hasType(InternalTypeSystem.TYPE_SYSTEM.NODE())) {
+                    Node node = value.asNode();
+                    GraphVertex vertex = Neo4jUtil.parseVertex(node);
+                    graphData.addVertex(vertex);
+                    elementIdVertexMap.put(node.elementId(), vertex);
+                }
+                // 解析关系
+                else if (value.hasType(InternalTypeSystem.TYPE_SYSTEM.RELATIONSHIP())) {
+                    Relationship relationship = value.asRelationship();
+                    GraphEdge edge = Neo4jUtil.parseEdge(relationship);
+                    graphData.addEdge(edge);
+                }
+                // 解析路径
+                else if (value.hasType(InternalTypeSystem.TYPE_SYSTEM.PATH())) {
+                    InternalPath path = (InternalPath) value.asPath();
+                    for (Node node : path.nodes()) {
+                        GraphVertex vertex = Neo4jUtil.parseVertex(node);
+                        graphData.addVertex(vertex);
+                        elementIdVertexMap.put(node.elementId(), vertex);
+                    }
+                    for (Relationship relationship : path.relationships()) {
+                        GraphEdge edge = Neo4jUtil.parseEdge(relationship);
+                        graphData.addEdge(edge);
+                    }
+                }
+            }
+        }
+
+        graphData.getEdges().forEach(edge -> {
+            GraphVertex start = elementIdVertexMap.get(edge.getStartUid());
+            edge.setStartUid(start.getUid());
+            edge.setStartLabel(start.getLabel());
+            GraphVertex end = elementIdVertexMap.get(edge.getEndUid());
+            edge.setEndUid(end.getUid());
+            edge.setEndLabel(end.getLabel());
+        });
+        return graphData;
     }
 }

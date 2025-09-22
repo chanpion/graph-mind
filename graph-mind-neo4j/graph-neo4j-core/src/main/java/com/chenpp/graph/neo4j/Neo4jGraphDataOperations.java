@@ -5,8 +5,8 @@ import com.chenpp.graph.core.exception.ErrorCode;
 import com.chenpp.graph.core.exception.GraphException;
 import com.chenpp.graph.core.model.GraphData;
 import com.chenpp.graph.core.model.GraphEdge;
-import com.chenpp.graph.core.model.GraphVertex;
 import com.chenpp.graph.core.model.GraphSummary;
+import com.chenpp.graph.core.model.GraphVertex;
 import com.chenpp.graph.neo4j.util.Neo4jUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -15,28 +15,18 @@ import org.neo4j.driver.Record;
 import org.neo4j.driver.Result;
 import org.neo4j.driver.Session;
 import org.neo4j.driver.SessionConfig;
-import org.neo4j.driver.TransactionWork;
 import org.neo4j.driver.Value;
 import org.neo4j.driver.Values;
-import org.neo4j.driver.internal.InternalPath;
-import org.neo4j.driver.internal.types.InternalTypeSystem;
-import org.neo4j.driver.internal.value.NodeValue;
-import org.neo4j.driver.internal.value.PathValue;
-import org.neo4j.driver.internal.value.RelationshipValue;
 import org.neo4j.driver.types.Node;
-import org.neo4j.driver.types.Path;
-import org.neo4j.driver.types.Relationship;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
+ * Neo4j数据操作实现
+ *
  * @author April.Chen
  * @date 2025/7/14 09:56
  */
@@ -195,75 +185,23 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
         try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
             return session.executeRead(tx -> {
                 Result result = tx.run(cypher);
-                GraphData graphData = new GraphData();
-                Map<String, GraphVertex> elementIdVertexMap = new HashMap<>();
-                Set<String> edgeIds = new HashSet<>();
-                result.list().forEach(record -> {
-                    record.values().forEach(value -> {
-                        if (value instanceof PathValue) {
-                            Path path = value.asPath();
-                            path.nodes().forEach(node -> {
-                                if (!elementIdVertexMap.containsKey(node.elementId())) {
-                                    GraphVertex vertex = Neo4jUtil.parseVertex(node);
-                                    graphData.addVertex(vertex);
-                                    elementIdVertexMap.put(node.elementId(), vertex);
-                                }
-                            });
-                            path.relationships().forEach(relationship -> {
-                                if (!edgeIds.contains(relationship.elementId())) {
-                                    GraphEdge edge = Neo4jUtil.parseEdge(relationship);
-                                    graphData.addEdge(edge);
-                                    edgeIds.add(relationship.elementId());
-                                }
-                            });
-                        }
-                        if (value instanceof NodeValue) {
-                            Node node = value.asNode();
-                            if (!elementIdVertexMap.containsKey(node.elementId())) {
-                                GraphVertex vertex = Neo4jUtil.parseVertex(node);
-                                graphData.addVertex(vertex);
-                                elementIdVertexMap.put(node.elementId(), vertex);
-                            }
-                        }
-                        if (value instanceof RelationshipValue) {
-                            Relationship relationship = value.asRelationship();
-                            if (!edgeIds.contains(relationship.elementId())) {
-                                GraphEdge edge = Neo4jUtil.parseEdge(relationship);
-                                graphData.addEdge(edge);
-                                edgeIds.add(relationship.elementId());
-                            }
-                        }
-                    });
-
-                });
-                graphData.getEdges().forEach(edge -> {
-                    GraphVertex start = elementIdVertexMap.get(edge.getStartUid());
-                    edge.setStartUid(start.getUid());
-                    edge.setStartLabel(start.getLabel());
-                    GraphVertex end = elementIdVertexMap.get(edge.getEndUid());
-                    edge.setEndUid(end.getUid());
-                    edge.setEndLabel(end.getLabel());
-                });
-                return graphData;
+                return Neo4jUtil.parseResult(result);
             });
 
         } catch (Exception e) {
             log.error("Failed to execute query in Neo4j: {}", cypher, e);
             throw new GraphException(ErrorCode.GRAPH_QUERY_FAILED, e);
         }
-
     }
 
     @Override
     public GraphData expand(String nodeId, int depth) throws GraphException {
-        String cypher = "MATCH (n {uid: $nodeId})-[*1..$depth]-(m) " +
-                "RETURN n, m, relationships(path) AS rels";
+        String cypher = "MATCH p = (n {uid: $nodeId})-[*1..$depth]-(m)  RETURN P";
         try (Session session = driver.session()) {
-            TransactionWork<GraphData> txWork = tx -> {
+            return session.executeRead(tx -> {
                 Result result = tx.run(cypher, Values.parameters("nodeId", nodeId, "depth", depth));
-                return parseResult(result);
-            };
-            return session.readTransaction(txWork);
+                return Neo4jUtil.parseResult(result);
+            });
         } catch (Exception e) {
             log.error("Failed to expand node: {}", nodeId, e);
             throw new GraphException("Failed to expand node: " + nodeId, e);
@@ -272,89 +210,23 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
 
     @Override
     public GraphData findPath(String startNodeId, String endNodeId, int maxDepth) throws GraphException {
-        String cypher = "MATCH p = shortestPath((a {uid: $startNodeId})-[*..$maxDepth]-(b {uid: $endNodeId})) " +
-                "RETURN p";
+        String cypher = "MATCH p = shortestPath((a {uid: $startNodeId})-[*..$maxDepth]-(b {uid: $endNodeId})) RETURN p";
         try (Session session = driver.session()) {
-            TransactionWork<GraphData> txWork = tx -> {
+            return session.executeRead(tx -> {
                 Result result = tx.run(cypher, Values.parameters("startNodeId", startNodeId, "endNodeId", endNodeId, "maxDepth", maxDepth));
-                return parseResult(result);
-            };
-            return session.readTransaction(txWork);
+                return Neo4jUtil.parseResult(result);
+            });
         } catch (Exception e) {
             log.error("Failed to find path from {} to {}", startNodeId, endNodeId, e);
             throw new GraphException("Failed to find path from " + startNodeId + " to " + endNodeId, e);
         }
     }
 
-    private GraphData parseResult(Result result) {
-        GraphData graphData = new GraphData();
-        Set<GraphVertex> vertices = new HashSet<>();
-        Set<GraphEdge> edges = new HashSet<>();
-
-        while (result.hasNext()) {
-            Record record = result.next();
-            List<Value> values = record.values();
-            for (Value value : values) {
-                // 解析节点
-                if (value.hasType(InternalTypeSystem.TYPE_SYSTEM.NODE())) {
-                    Node node = value.asNode();
-                    GraphVertex vertex = convertNodeToVertex(node);
-                    vertices.add(vertex);
-                }
-                // 解析关系
-                else if (value.hasType(InternalTypeSystem.TYPE_SYSTEM.RELATIONSHIP())) {
-                    Relationship relationship = value.asRelationship();
-                    GraphEdge edge = convertRelationshipToEdge(relationship);
-                    edges.add(edge);
-                }
-                // 解析路径
-                else if (value.hasType(InternalTypeSystem.TYPE_SYSTEM.PATH())) {
-                    InternalPath path = (InternalPath) value.asPath();
-                    for (Node node : path.nodes()) {
-                        GraphVertex vertex = convertNodeToVertex(node);
-                        vertices.add(vertex);
-                    }
-                    for (Relationship relationship : path.relationships()) {
-                        GraphEdge edge = convertRelationshipToEdge(relationship);
-                        edges.add(edge);
-                    }
-                }
-            }
-        }
-
-        graphData.setVertices(new ArrayList<>(vertices));
-        graphData.setEdges(new ArrayList<>(edges));
-        return graphData;
-    }
-
-    private GraphVertex convertNodeToVertex(Node node) {
-        GraphVertex vertex = new GraphVertex();
-        vertex.setId(String.valueOf(node.id()));
-        vertex.setUid((String) node.get("uid").asObject());
-        vertex.setLabel(String.join(":", node.labels()));
-        Map<String, Object> properties = new HashMap<>();
-        node.keys().forEach(key -> properties.put(key, node.get(key).asObject()));
-        vertex.setProperties(properties);
-        return vertex;
-    }
-
-    private GraphEdge convertRelationshipToEdge(Relationship relationship) {
-        GraphEdge edge = new GraphEdge();
-        edge.setId(String.valueOf(relationship.id()));
-        edge.setUid(String.valueOf(relationship.id()));
-        edge.setLabel(relationship.type());
-        edge.setStartUid(String.valueOf(relationship.startNodeId()));
-        edge.setEndUid(String.valueOf(relationship.endNodeId()));
-        Map<String, Object> properties = new HashMap<>();
-        relationship.keys().forEach(key -> properties.put(key, relationship.get(key).asObject()));
-        edge.setProperties(properties);
-        return edge;
-    }
 
     @Override
     public GraphSummary getSummary() throws GraphException {
         GraphSummary summary = new GraphSummary();
-        
+
         try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
             // 获取节点总数
             String nodeCountCypher = "MATCH (n) RETURN count(n) AS count";
@@ -362,38 +234,32 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
             if (nodeCountResult.hasNext()) {
                 summary.setVertexCount(nodeCountResult.next().get("count").asInt());
             }
-            
+
             // 获取边总数
             String edgeCountCypher = "MATCH ()-[r]->() RETURN count(r) AS count";
             Result edgeCountResult = session.run(edgeCountCypher);
             if (edgeCountResult.hasNext()) {
                 summary.setEdgeCount(edgeCountResult.next().get("count").asInt());
             }
-            
+
             // 获取各标签节点数量统计
             String nodeLabelCountCypher = "MATCH (n) RETURN DISTINCT labels(n) AS labels, count(n) AS count";
             Result nodeLabelResult = session.run(nodeLabelCountCypher);
-            Map<String, Integer> vertexLabelCount = new HashMap<>();
-            while (nodeLabelResult.hasNext()) {
-                Record record = nodeLabelResult.next();
-                String label = String.join(":", record.get("labels").asList(Value::asString));
-                int count = record.get("count").asInt();
-                vertexLabelCount.put(label, count);
-            }
+
+            Map<String, Integer> vertexLabelCount = nodeLabelResult.stream()
+                    .collect(Collectors.toMap(r -> String.join(",", r.get("labels").asList(Value::asString)),
+                            r -> r.get("count").asInt()));
             summary.setVertexLabelCount(vertexLabelCount);
-            
+
             // 获取各类型边数量统计
             String edgeLabelCountCypher = "MATCH ()-[r]->() RETURN type(r) AS type, count(r) AS count";
             Result edgeLabelResult = session.run(edgeLabelCountCypher);
-            Map<String, Integer> edgeLabelCount = new HashMap<>();
-            while (edgeLabelResult.hasNext()) {
-                Record record = edgeLabelResult.next();
-                String type = record.get("type").asString();
-                int count = record.get("count").asInt();
-                edgeLabelCount.put(type, count);
-            }
+            Map<String, Integer> edgeLabelCount = edgeLabelResult.stream().collect(Collectors.toMap(
+                    r -> r.get("type").asString(),
+                    r -> r.get("count").asInt()
+            ));
             summary.setEdgeLabelCount(edgeLabelCount);
-            
+
             return summary;
         } catch (Exception e) {
             log.error("Failed to get graph summary from Neo4j", e);
