@@ -1,12 +1,26 @@
 /*
-MySQL Database Data
+ Navicat Premium Data Transfer
+
+ Source Server         : MySQL
+ Source Server Type    : MySQL
+ Source Server Version : 80025
+ Source Host           : localhost:3306
+ Source Schema         : graph_mind
+
+ Target Server Type    : MySQL
+ Target Server Version : 80025
+ File Encoding         : 65001
+
+ Date: 01/08/2025 16:30:00
 */
+
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
 
 -- ----------------------------
 -- 初始化用户数据
 -- ----------------------------
 BEGIN;
--- 密码: admin123 (已使用BCrypt加密)
 INSERT INTO `sys_user` VALUES (1, 'admin', '管理员', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', '13800138000', 'admin@example.com', 0, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
 COMMIT;
 
@@ -42,17 +56,53 @@ INSERT INTO `sys_permission` VALUES (10, '权限管理', 1, 'C', 'system:permiss
 INSERT INTO `sys_permission` VALUES (11, '权限新增', 10, 'F', 'system:permission:add', '', '', '', 1, 0, 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
 INSERT INTO `sys_permission` VALUES (12, '权限修改', 10, 'F', 'system:permission:edit', '', '', '', 2, 0, 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
 INSERT INTO `sys_permission` VALUES (13, '权限删除', 10, 'F', 'system:permission:remove', '', '', '', 3, 0, 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+
+-- 图库管理菜单
+INSERT INTO `sys_permission` VALUES (14, '图库管理', 0, 'M', '', '', '/graph', 'graph', 2, 0, 0, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+
+-- 图连接管理菜单及按钮权限
+INSERT INTO `sys_permission` VALUES (15, '图连接管理', 14, 'C', 'system:connection:list', 'graph/connection/index', '/graph/connection', 'connection', 1, 0, 0, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO `sys_permission` VALUES (16, '连接新增', 15, 'F', 'system:connection:add', '', '', '', 1, 0, 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO `sys_permission` VALUES (17, '连接修改', 15, 'F', 'system:connection:edit', '', '', '', 2, 0, 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO `sys_permission` VALUES (18, '连接删除', 15, 'F', 'system:connection:remove', '', '', '', 3, 0, 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO `sys_permission` VALUES (19, '连接测试', 15, 'F', 'system:connection:test', '', '', '', 4, 0, 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO `sys_permission` VALUES (20, '连接数据库', 15, 'F', 'system:connection:connect', '', '', '', 5, 0, 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO `sys_permission` VALUES (21, '断开连接', 15, 'F', 'system:connection:disconnect', '', '', '', 6, 0, 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+
+-- 图管理菜单及按钮权限
+INSERT INTO `sys_permission` VALUES (22, '图管理', 14, 'C', 'system:graph:list', 'graph/list/index', '/graph/list', 'list', 2, 0, 0, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO `sys_permission` VALUES (23, '图新增', 22, 'F', 'system:graph:add', '', '', '', 1, 0, 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO `sys_permission` VALUES (24, '图修改', 22, 'F', 'system:graph:edit', '', '', '', 2, 0, 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO `sys_permission` VALUES (25, '图删除', 22, 'F', 'system:graph:remove', '', '', '', 3, 0, 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
 COMMIT;
 
 -- ----------------------------
--- Records of sys_user_role
+-- 初始化图数据库连接数据
+-- ----------------------------
+BEGIN;
+INSERT INTO graph_database_connection VALUES (1, 'Neo4j测试环境', 'neo4j', '192.168.1.100', 7687, 'neo4j', 'neo4j', 'password', 1, 10, 30, '用于测试的Neo4j数据库', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO graph_database_connection VALUES (2, 'Nebula生产环境', 'nebula', '192.168.1.101', 9669, 'nebula', 'root', 'nebula', 0, 20, 60, '生产环境Nebula数据库', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO graph_database_connection VALUES (3, 'Janus开发环境', 'janus', '192.168.1.102', 8182, 'janus', 'admin', 'admin', 2, 15, 45, '开发环境Janus数据库', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+COMMIT;
+
+-- ----------------------------
+-- 初始化图数据
+-- ----------------------------
+BEGIN;
+INSERT INTO graph VALUES (1, '用户关系图', 'user_relation', '用户之间的关系图谱', 1, 1, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO graph VALUES (2, '商品知识图谱', 'product_kg', '商品相关的知识图谱', 1, 2, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO graph VALUES (3, '企业图谱', 'company_graph', '企业相关信息图谱', 1, 3, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+COMMIT;
+
+-- ----------------------------
+-- 初始化用户和角色关联数据
 -- ----------------------------
 BEGIN;
 INSERT INTO `sys_user_role` VALUES (1, 1);
 COMMIT;
 
 -- ----------------------------
--- Records of sys_role_permission
+-- 初始化角色和权限关联数据
 -- ----------------------------
 BEGIN;
 -- 管理员角色拥有所有权限
@@ -69,22 +119,31 @@ INSERT INTO `sys_role_permission` VALUES (1, 10);
 INSERT INTO `sys_role_permission` VALUES (1, 11);
 INSERT INTO `sys_role_permission` VALUES (1, 12);
 INSERT INTO `sys_role_permission` VALUES (1, 13);
+INSERT INTO `sys_role_permission` VALUES (1, 14);
+INSERT INTO `sys_role_permission` VALUES (1, 15);
+INSERT INTO `sys_role_permission` VALUES (1, 16);
+INSERT INTO `sys_role_permission` VALUES (1, 17);
+INSERT INTO `sys_role_permission` VALUES (1, 18);
+INSERT INTO `sys_role_permission` VALUES (1, 19);
+INSERT INTO `sys_role_permission` VALUES (1, 20);
+INSERT INTO `sys_role_permission` VALUES (1, 21);
+INSERT INTO `sys_role_permission` VALUES (1, 22);
+INSERT INTO `sys_role_permission` VALUES (1, 23);
+INSERT INTO `sys_role_permission` VALUES (1, 24);
+INSERT INTO `sys_role_permission` VALUES (1, 25);
 COMMIT;
 
 -- ----------------------------
--- 初始化图数据库连接数据
+-- 插入系统配置初始数据
 -- ----------------------------
 BEGIN;
-INSERT INTO `graph_database_connection` VALUES (1, 'Neo4j测试环境', 'neo4j', '192.168.1.100', 7687, 'neo4j', 'neo4j', 'password', 1, 10, 30, '用于测试的Neo4j数据库', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-INSERT INTO `graph_database_connection` VALUES (2, 'Nebula生产环境', 'nebula', '192.168.1.101', 9669, 'nebula', 'root', 'nebula', 0, 20, 60, '生产环境Nebula数据库', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-INSERT INTO `graph_database_connection` VALUES (3, 'Janus开发环境', 'janus', '192.168.1.102', 8182, 'janus', 'admin', 'admin', 2, 15, 45, '开发环境Janus数据库', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+-- 插入系统配置初始数据
+INSERT INTO `app_config` (`config_key`, `config_value`, `description`) VALUES
+('system.name', 'Graph Mind Platform', '系统名称'),
+('system.version', '1.0.0', '系统版本'),
+('system.description', '智能知识图谱管理系统', '系统描述'),
+('graph.default.pageSize', '20', '图数据默认分页大小'),
+('graph.query.timeout', '30000', '图查询超时时间(毫秒)');
 COMMIT;
 
--- ----------------------------
--- 初始化图数据
--- ----------------------------
-BEGIN;
-INSERT INTO `graph` VALUES (1, '用户关系图', 'user_relation', '用户之间的关系图谱', 1, 1, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-INSERT INTO `graph` VALUES (2, '商品知识图谱', 'product_kg', '商品相关的知识图谱', 1, 2, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-INSERT INTO `graph` VALUES (3, '企业图谱', 'company_graph', '企业相关信息图谱', 1, 3, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-COMMIT;
+SET FOREIGN_KEY_CHECKS = 1;
