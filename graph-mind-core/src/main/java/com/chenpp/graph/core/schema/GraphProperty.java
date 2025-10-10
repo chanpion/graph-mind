@@ -40,8 +40,6 @@ public class GraphProperty {
      */
     private ValueCardinality valueCardinality;
 
-    private Boolean isWriteGraph;
-
     /**
      * 是否允许为空
      */

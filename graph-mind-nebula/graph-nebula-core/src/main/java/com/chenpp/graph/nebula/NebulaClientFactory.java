@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -20,11 +22,18 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 public class NebulaClientFactory {
+    private static final Map<String, SessionPool> CACHE_SESSION_POOL = new ConcurrentHashMap<>();
+    private static final Map<String, NebulaPool> CACHE_NEBULA_POOL = new ConcurrentHashMap<>();
 
     /**
      * SessionPool 用于单个图库操作，业务面
      */
     public static SessionPool getSessionPool(NebulaConf nebulaConf) {
+        String key = nebulaConf.getHosts() + ":" + nebulaConf.getPort() + ":" + nebulaConf.getSpace();
+        SessionPool sessionPool = CACHE_SESSION_POOL.get(key);
+        if (sessionPool != null && sessionPool.isActive()) {
+            return sessionPool;
+        }
         try {
             List<HostAddress> addresses = Arrays.stream(nebulaConf.getHosts().split(","))
                     .map(ip -> new HostAddress(ip, nebulaConf.getPort())).collect(Collectors.toList());
@@ -32,13 +41,13 @@ public class NebulaClientFactory {
             String user = nebulaConf.getUsername();
             String password = nebulaConf.getPassword();
             SessionPoolConfig sessionPoolConfig = new SessionPoolConfig(addresses, spaceName, user, password);
-            SessionPool sessionPool = new SessionPool(sessionPoolConfig);
+            sessionPool = new SessionPool(sessionPoolConfig);
             if (!sessionPool.isActive()) {
                 log.error("Session pool init failed for space: {}", spaceName);
-                // 不应该直接退出JVM，而应该抛出异常让调用方处理
                 throw new GraphException("Session pool init failed for space: " + spaceName);
             }
             log.debug("Successfully created session pool for space: {}", spaceName);
+            CACHE_SESSION_POOL.put(key, sessionPool);
             return sessionPool;
         } catch (Exception e) {
             log.error("Failed to create session pool for space: {}", nebulaConf.getGraphCode(), e);
@@ -53,11 +62,16 @@ public class NebulaClientFactory {
      * @return NebulaPool实例
      */
     public static NebulaPool getNebulaPool(NebulaConf nebulaConf) {
+        String key = nebulaConf.getHosts() + ":" + nebulaConf.getPort();
+        NebulaPool pool = CACHE_NEBULA_POOL.get(key);
+        if (pool != null) {
+            return pool;
+        }
         NebulaPoolConfig nebulaPoolConfig = new NebulaPoolConfig();
         nebulaPoolConfig.setMaxConnSize(10);
         List<HostAddress> addresses = Arrays.stream(nebulaConf.getHosts().split(","))
                 .map(ip -> new HostAddress(ip, nebulaConf.getPort())).collect(Collectors.toList());
-        NebulaPool pool = new NebulaPool();
+        pool = new NebulaPool();
         try {
             boolean initResult = pool.init(addresses, nebulaPoolConfig);
             if (!initResult) {
@@ -65,6 +79,7 @@ public class NebulaClientFactory {
                 pool = null;
             } else {
                 log.info("Successfully initialized NebulaPool for hosts: {}", nebulaConf.getHosts());
+                CACHE_NEBULA_POOL.put(key, pool);
             }
         } catch (Exception e) {
             log.error("Init nebula session error for hosts: {}", nebulaConf.getHosts(), e);
