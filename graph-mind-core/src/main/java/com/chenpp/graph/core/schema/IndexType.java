@@ -17,7 +17,7 @@ public enum IndexType {
     COMPOSITE("composite"),
 
     /**
-     * 模糊查找（对应 janus 的混合索引，nebula 不支持）
+     * 模糊查找（对应 janus 的混合索引，nebula 不支持）需要额外的搜索引擎如ElasticSearch支持
      */
     MIX("mix"),
 
