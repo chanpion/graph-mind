@@ -42,6 +42,7 @@ import java.util.stream.Collectors;
 @Service
 public class GraphSchemaServiceImpl implements GraphSchemaService {
 
+
     @Resource
     private GraphService graphService;
 
@@ -56,6 +57,67 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
 
     @Resource
     private GraphPropertyDefService graphPropertyDefService;
+
+    @Override
+    public GraphSchema getGraphSchema(Long graphId) {
+        // 获取图信息
+        Graph graph = graphService.getById(graphId);
+        List<GraphNodeDef> nodes = graphNodeDefService.getNodeDefsByGraphId(graphId, 0);
+        List<GraphEdgeDef> edges = graphEdgeDefService.getEdgeDefsByGraphId(graphId, 0);
+        // 构建图模式
+        GraphSchema graphSchema = new GraphSchema();
+        graphSchema.setGraphCode(graph.getCode());
+
+        List<GraphEntity> entities = nodes.stream().map(node -> {
+            GraphEntity entity = new GraphEntity();
+            entity.setLabel(node.getLabel());
+            entity.setProperties(transformGraphProperty(node.getProperties()));
+            return entity;
+        }).toList();
+
+        List<GraphRelation> relations = edges.stream().map(edge -> {
+            GraphRelation relation = new GraphRelation();
+            relation.setLabel(edge.getLabel());
+            relation.setSourceLabel(edge.getFrom());
+            relation.setTargetLabel(edge.getTo());
+            relation.setProperties(transformGraphProperty(edge.getProperties()));
+            relation.setMultiple(edge.getMultiple());
+            return relation;
+        }).toList();
+        graphSchema.setEntities(entities);
+        graphSchema.setRelations(relations);
+
+
+        List<GraphIndex> indexes = new ArrayList<>();
+        nodes.forEach(node -> node.getProperties().forEach(p -> {
+            if (p.getIndexed()) {
+                GraphIndex index = new GraphIndex();
+                index.setLabel(node.getLabel());
+                index.setProperty(p.getCode());
+                index.setType(IndexType.COMPOSITE.code());
+                index.setSchemaType("vertex");
+                index.setPropertyNames(Collections.singletonList(p.getCode()));
+                index.setName(String.format("idx_%s_%s_%s", graph.getCode(), node.getLabel(), p.getCode()));
+                indexes.add(index);
+            }
+        }));
+
+        edges.forEach(edge -> edge.getProperties().forEach(p -> {
+            if (p.getIndexed()) {
+                GraphIndex index = new GraphIndex();
+                index.setLabel(edge.getLabel());
+                index.setProperty(p.getCode());
+                index.setType(IndexType.COMPOSITE.code());
+                index.setSchemaType("edge");
+                index.setPropertyNames(Collections.singletonList(p.getCode()));
+                index.setName(String.format("idx_%s_%s_%s", graph.getCode(), edge.getLabel(), p.getCode()));
+                indexes.add(index);
+            }
+        }));
+
+        graphSchema.setIndexes(indexes);
+        return graphSchema;
+    }
 
     @Transactional(rollbackFor = Exception.class)
     @Override
@@ -86,58 +148,7 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             GraphOperations graphOperations = graphClient.opsForGraph();
 
 
-            // 构建图模式
-            GraphSchema graphSchema = new GraphSchema();
-            graphSchema.setGraphCode(graph.getCode());
-
-            List<GraphEntity> entities = nodes.stream().map(node -> {
-                GraphEntity entity = new GraphEntity();
-                entity.setLabel(node.getLabel());
-                entity.setProperties(transformGraphProperty(node.getProperties()));
-                return entity;
-            }).toList();
-
-            List<GraphRelation> relations = edges.stream().map(edge -> {
-                GraphRelation relation = new GraphRelation();
-                relation.setLabel(edge.getLabel());
-                relation.setSourceLabel(edge.getFrom());
-                relation.setTargetLabel(edge.getTo());
-                relation.setProperties(transformGraphProperty(edge.getProperties()));
-                relation.setMultiple(edge.getMultiple());
-                return relation;
-            }).toList();
-            graphSchema.setEntities(entities);
-            graphSchema.setRelations(relations);
-
-
-            List<GraphIndex> indexes = new ArrayList<>();
-            nodes.forEach(node -> node.getProperties().forEach(p -> {
-                if (p.getIndexed()) {
-                    GraphIndex index = new GraphIndex();
-                    index.setLabel(node.getLabel());
-                    index.setProperty(p.getCode());
-                    index.setType(IndexType.COMPOSITE.code());
-                    index.setSchemaType("vertex");
-                    index.setPropertyNames(Collections.singletonList(p.getCode()));
-                    index.setName(String.format("idx_%s_%s_%s", graph.getCode(), node.getLabel(), p.getCode()));
-                    indexes.add(index);
-                }
-            }));
-
-            edges.forEach(edge -> edge.getProperties().forEach(p -> {
-                if (p.getIndexed()) {
-                    GraphIndex index = new GraphIndex();
-                    index.setLabel(edge.getLabel());
-                    index.setProperty(p.getCode());
-                    index.setType(IndexType.COMPOSITE.code());
-                    index.setSchemaType("edge");
-                    index.setPropertyNames(Collections.singletonList(p.getCode()));
-                    index.setName(String.format("idx_%s_%s_%s", graph.getCode(), edge.getLabel(), p.getCode()));
-                    indexes.add(index);
-                }
-            }));
-
-            graphSchema.setIndexes(indexes);
+            GraphSchema graphSchema = getGraphSchema(graphId);
             // 应用图模式
             graphOperations.applySchema(graphConf, graphSchema);
 
