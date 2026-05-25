@@ -1,0 +1,25 @@
+/* 暗色主题覆盖 */
+[data-theme='dark'] {
+  /* 侧边栏 */
+  --el-menu-bg-color: var(--gm-bg-secondary);
+  --el-menu-hover-bg-color: var(--gm-bg-tertiary);
+  --el-menu-text-color: var(--gm-text-regular);
+  --el-menu-active-color: var(--el-color-primary);
+
+  /* 卡片 */
+  --el-card-bg-color: var(--gm-bg-primary);
+
+  /* 表格 */
+  --el-table-bg-color: var(--gm-bg-primary);
+  --el-table-tr-bg-color: var(--gm-bg-primary);
+  --el-table-header-bg-color: var(--gm-bg-secondary);
+  --el-table-row-hover-bg-color: var(--gm-bg-tertiary);
+
+  /* 输入框 */
+  --el-input-bg-color: var(--gm-bg-secondary);
+  --el-input-border-color: var(--gm-border-color);
+
+  /* 下拉框 */
+  --el-select-dropdown-bg-color: var(--gm-bg-primary);
+  --el-select-dropdown-border-color: var(--gm-border-color);
+}
