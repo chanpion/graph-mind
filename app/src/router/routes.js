@@ -45,7 +45,7 @@ export const routes = [
         path: 'visualization',
         name: 'GraphVisualization',
         component: () => import('@/views/visualization/GraphVisualView.vue'),
-        meta: { title: '图分析 (D3)', icon: 'Share' }
+        meta: { title: '图查询', icon: 'Share' }
       },
       // 数据建模
       {

@@ -32,7 +32,7 @@ let labelElements = null
 function prepareData(data) {
   const nodes = (data.nodes || []).map((n, i) => ({
     ...n,
-    id: n.id || `node-${i}`,
+    id: n.id || n.uid || `node-${i}`,
     index: undefined,
     x: undefined,
     y: undefined,
@@ -42,13 +42,13 @@ function prepareData(data) {
   const nodeMap = new Map(nodes.map(n => [n.id, n]))
 
   const edges = (data.edges || []).map((e, i) => {
-    const source = typeof e.source === 'object' ? (e.source.id || e.source) : e.source
-    const target = typeof e.target === 'object' ? (e.target.id || e.target) : e.target
+    const sourceVal = typeof e.source === 'object' ? (e.source.id || e.source.uid || e.source) : (e.source || e.startUid || e.sourceUid)
+    const targetVal = typeof e.target === 'object' ? (e.target.id || e.target.uid || e.target) : (e.target || e.endUid || e.targetUid)
     return {
       ...e,
-      id: e.id || `edge-${i}`,
-      source,
-      target
+      id: e.id || e.uid || `edge-${i}`,
+      source: sourceVal,
+      target: targetVal
     }
   }).filter(e => nodeMap.has(e.source) && nodeMap.has(e.target))
 

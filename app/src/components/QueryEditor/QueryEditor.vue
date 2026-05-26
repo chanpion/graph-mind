@@ -173,9 +173,20 @@ const displayedHistory = computed(() => {
   return queryHistory.value.slice(0, 5)
 })
 
+// 监听外部 modelValue 变化，同步更新语法高亮
+watch(() => props.modelValue, () => {
+  nextTick(() => {
+    highlightSyntax()
+  })
+})
+
 // 生命周期
 onMounted(() => {
   loadQueryHistory()
+  // 初始加载时执行语法高亮，确保默认查询语句可见
+  nextTick(() => {
+    highlightSyntax()
+  })
 })
 
 // 方法
@@ -434,6 +445,7 @@ defineExpose({
   word-wrap: break-word;
   pointer-events: none;
   z-index: 1;
+  color: var(--el-text-color-primary);
 }
 
 /* 语法高亮样式 */

@@ -1,5 +1,5 @@
 <template>
-  <div class="graph-visualization-d3">
+  <div class="graph-visualization graph-visualization-d3">
     <el-container>
       <!-- 左侧查询面板 -->
       <el-aside width="300px" class="query-panel">
@@ -212,12 +212,26 @@ const graphType = computed(() => {
 // 布局类型
 const layoutType = ref('force')
 
-// 当图类型变化时，自动填充默认查询语句
-watch(graphType, (val) => {
-  if (val && !queryStatement.value) {
-    queryStatement.value = DEFAULT_QUERIES[val] || ''
-  }
+// 初始化查询语句（在 watch 之前初始化，避免访问顺序错误）
+const graphTypeRaw = graphsStore.currentGraph?.graphType || graphsStore.currentGraph?.databaseType || ''
+const queryStatement = ref(DEFAULT_QUERIES[graphTypeRaw.toLowerCase()] || '')
+const queryLoading = ref(false)
+const graphData = ref({
+  nodes: [],
+  edges: []
 })
+
+// 当图类型变化时，自动填充默认查询语句
+watch(graphType, (val, oldVal) => {
+  if (val) {
+    const defaultQuery = DEFAULT_QUERIES[val] || ''
+    // 如果当前查询语句为空，或是旧的默认查询语句，则更新为新的默认查询语句
+    if (!queryStatement.value ||
+        (oldVal && queryStatement.value === DEFAULT_QUERIES[oldVal])) {
+      queryStatement.value = defaultQuery
+    }
+  }
+}, { immediate: true })
 
 // 当全局切换图时，清除旧数据并重置
 watch(() => graphsStore.currentGraphId, (newId, oldId) => {
@@ -227,14 +241,6 @@ watch(() => graphsStore.currentGraphId, (newId, oldId) => {
     detailDrawerVisible.value = false
     selectedElement.value = null
   }
-})
-
-const graphTypeRaw = graphsStore.currentGraph?.graphType || graphsStore.currentGraph?.databaseType || ''
-const queryStatement = ref(DEFAULT_QUERIES[graphTypeRaw.toLowerCase()] || '')
-const queryLoading = ref(false)
-const graphData = ref({
-  nodes: [],
-  edges: []
 })
 
 const vizContainer = ref(null)
@@ -635,18 +641,18 @@ const transformApiResponseToGraphData = (apiResponse) => {
   // API可能返回不同的数据结构，需要兼容处理
   const rawData = apiResponse.data || apiResponse || []
 
-  // 优先处理 vertices/edges 格式
+  // 优先处理 vertices/edges 格式（API 实际返回 startUid/endUid）
   if (rawData.vertices && rawData.edges) {
     return {
       nodes: rawData.vertices.map(v => ({
-        id: v.uid,
+        id: v.uid || v.id,
         label: v.label,
         properties: v.properties || {}
       })),
       edges: rawData.edges.map(e => ({
-        id: e.uid,
-        source: e.sourceUid,
-        target: e.targetUid,
+        id: e.uid || e.id,
+        source: e.startUid || e.sourceUid || e.source,
+        target: e.endUid || e.targetUid || e.target,
         label: e.label,
         properties: e.properties || {}
       }))
@@ -816,9 +822,9 @@ const transformApiResponseToGraphData = (apiResponse) => {
 .detail-panel {
   position: absolute;
   top: 20px;
-  right: 0;
+  right: 12px;
   width: 180px;
-  max-height: 90%;
+  max-height: calc(100% - 80px);
   background: #fff;
   border-radius: 6px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
@@ -950,6 +956,8 @@ const transformApiResponseToGraphData = (apiResponse) => {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
   z-index: 100;
   flex-wrap: nowrap;
+  max-width: calc(100% - 24px);
+  overflow-x: auto;
 }
 
 .toolbar-divider {
@@ -967,14 +975,16 @@ const transformApiResponseToGraphData = (apiResponse) => {
   position: absolute;
   bottom: 12px;
   left: 12px;
+  max-width: calc(100% - 120px);
   padding: 10px 14px;
   background: var(--el-bg-color-overlay);
   border: 1px solid var(--el-border-color-light);
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
   z-index: 100;
-  max-height: 60%;
+  max-height: min(60%, 300px);
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .legend-title {
@@ -1061,6 +1071,7 @@ const transformApiResponseToGraphData = (apiResponse) => {
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
   z-index: 100;
+  max-width: calc(100% - 24px);
 }
 
 .stat-item {
