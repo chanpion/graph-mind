@@ -1,8 +1,10 @@
 package com.chenpp.graph.janus;
 
 import com.chenpp.graph.core.GraphOperations;
+import com.chenpp.graph.core.constant.GraphConstants;
 import com.chenpp.graph.core.exception.GraphException;
 import com.chenpp.graph.core.model.GraphConf;
+import com.chenpp.graph.core.schema.DataType;
 import com.chenpp.graph.core.schema.Graph;
 import com.chenpp.graph.core.schema.GraphEntity;
 import com.chenpp.graph.core.schema.GraphIndex;
@@ -23,12 +25,11 @@ import org.janusgraph.core.EdgeLabel;
 import org.janusgraph.core.JanusGraph;
 import org.janusgraph.core.Multiplicity;
 import org.janusgraph.core.PropertyKey;
+import org.janusgraph.core.schema.JanusGraphIndex;
 import org.janusgraph.core.schema.JanusGraphManagement;
-import org.janusgraph.core.schema.Mapping;
-import org.janusgraph.core.schema.Parameter;
-import org.janusgraph.graphdb.types.ParameterType;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -60,12 +61,15 @@ public class JanusGraphOperations implements GraphOperations {
                 log.error("JanusGraph instance is not available");
                 throw new GraphException("JanusGraph instance is not available");
             }
-            CassandraClient cassandraClient = new CassandraClient(janusConf.getCassandraConf());
-            if (!cassandraClient.keyspaceExists(janusConf.getGraphCode())) {
-                cassandraClient.createKeyspace(janusConf.getGraphCode(),
-                        "SimpleStrategy",
-                        Map.of("replication_factor", 1),
-                        true);
+            if (janusConf.getCassandraConf() != null && janusConf.getHBaseConf() == null) {
+                CassandraClient cassandraClient = new CassandraClient(janusConf.getCassandraConf());
+                if (!cassandraClient.keyspaceExists(janusConf.getGraphCode())) {
+                    // 创建图对应的Cassandra keyspace
+                    cassandraClient.createKeyspace(janusConf.getGraphCode(),
+                            "SimpleStrategy",
+                            Map.of("replication_factor", 1),
+                            true);
+                }
             }
             log.info("JanusGraph instance is ready for graph: {}", graphConf.getGraphCode());
         } catch (Exception e) {
@@ -150,11 +154,12 @@ public class JanusGraphOperations implements GraphOperations {
             List<GraphRelation> relations = getEdgeLabels(management);
             schema.setRelations(relations);
 
+            getPropertyKeys(management);
             // 获取索引
             List<GraphIndex> indexes = getIndices(management);
             schema.setIndexes(indexes);
 
-            log.debug("Retrieved published schema for graph: {}, entities: {}, relations: {}, indexes: {}", 
+            log.debug("Retrieved published schema for graph: {}, entities: {}, relations: {}, indexes: {}",
                     graphConf.getGraphCode(), entities.size(), relations.size(), indexes.size());
             return schema;
         } catch (Exception e) {
@@ -199,11 +204,34 @@ public class JanusGraphOperations implements GraphOperations {
         return relations;
     }
 
-    private List<GraphIndex> getIndices(JanusGraphManagement management) {
-        // 注意：由于JanusGraph API限制，我们无法直接获取所有索引信息
-        // 实际应用中可以通过其他方式获取索引信息，这里返回空列表
+    public List<GraphProperty> getPropertyKeys(JanusGraphManagement management) {
+        Iterable<PropertyKey> propertyKeys = management.getRelationTypes(PropertyKey.class);
+        List<GraphProperty> properties = new ArrayList<>();
+        propertyKeys.forEach(key -> {
+            GraphProperty property = new GraphProperty();
+            property.setCode(key.name());
+            property.setDataType(DataType.instanceOf(key.dataType().getSimpleName()));
+            properties.add(property);
+        });
+        return properties;
+    }
+
+    private List<GraphIndex> getIndices(JanusGraphManagement mgmt) {
         log.debug("Retrieved indices (currently returning empty list due to API limitations)");
-        return new ArrayList<>();
+        Iterable<JanusGraphIndex> indexes = mgmt.getGraphIndexes(Vertex.class);
+        List<GraphIndex> graphIndices = new ArrayList<>();
+        indexes.forEach(index -> {
+            GraphIndex graphIndex = new GraphIndex();
+            graphIndex.setName(index.name());
+            graphIndex.setSchemaType(GraphConstants.VERTEX);
+            String type = index.isMixedIndex() ? "MIXED" : "COMPOSITE";
+            graphIndex.setType(type);
+            List<String> propertyNames = Arrays.stream(index.getFieldKeys()).map(PropertyKey::name).toList();
+            graphIndex.setPropertyNames(propertyNames);
+            graphIndices.add(graphIndex);
+        });
+
+        return graphIndices;
     }
 
     /**
@@ -287,7 +315,7 @@ public class JanusGraphOperations implements GraphOperations {
         for (GraphProperty property : allProperties) {
             if (!management.containsPropertyKey(property.getCode())) {
                 Class<?> clazz = JanusUtil.getJanusDataType(property.getDataType());
-                if (clazz == null){
+                if (clazz == null) {
                     log.info("property ({}) data type ({}) is not supported, skip.", property.getCode(), property.getDataType());
                     continue;
                 }
@@ -314,7 +342,7 @@ public class JanusGraphOperations implements GraphOperations {
             log.info("No indices to create");
             return;
         }
-        
+
         int createdCount = 0;
         for (GraphIndex index : indexes) {
             if (CollectionUtils.isEmpty(index.getPropertyNames())) {
@@ -344,9 +372,9 @@ public class JanusGraphOperations implements GraphOperations {
         }
 
         JanusGraphManagement.IndexBuilder builder;
-        if (Objects.equals(index.getSchemaType(), "vertex")) {
+        if (Objects.equals(index.getSchemaType(), GraphConstants.VERTEX)) {
             builder = mgmt.buildIndex(name, Vertex.class);
-        } else if (Objects.equals(index.getSchemaType(), "edge")) {
+        } else if (Objects.equals(index.getSchemaType(), GraphConstants.EDGE)) {
             builder = mgmt.buildIndex(name, Edge.class);
         } else {
             // never happen
@@ -364,22 +392,14 @@ public class JanusGraphOperations implements GraphOperations {
         if (isCompositeIndex(index.getType())) {
             builder.buildCompositeIndex();
         }
-        if (IndexType.MIX.equals(index.getType())) {
-            builder.buildMixedIndex(BACKING_INDEX);
-        }
-        
+
         log.info("Created vertex index: {}", name);
     }
 
     private static void addPropertyKeyForIndex(JanusGraphManagement.IndexBuilder builder, GraphIndex index, JanusGraphManagement mgmt) {
         for (String propName : index.getPropertyNames()) {
             PropertyKey propertyKey = mgmt.getPropertyKey(propName);
-            if (IndexType.MIX.equals(index.getType())) {
-                // 如果是混合索引（用于支持模糊查找）
-                builder.addKey(propertyKey, Mapping.STRING.asParameter(), Parameter.of(ParameterType.STRING_ANALYZER.getName(), "ik_max_word"));
-            } else {
-                builder.addKey(propertyKey);
-            }
+            builder.addKey(propertyKey);
         }
     }
 

@@ -3,12 +3,15 @@ package com.chenpp.graph.nebula;
 import com.chenpp.graph.core.model.GraphConf;
 import lombok.Data;
 
+import java.io.Serial;
+
 /**
  * @author April.Chen
  * @date 2024/5/15 10:25
  */
 @Data
 public class NebulaConf extends GraphConf {
+    @Serial
     private static final long serialVersionUID = -8700103886209913425L;
 
     private String hosts;

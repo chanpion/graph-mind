@@ -130,6 +130,17 @@
                   <el-input v-model="analysisForm.targetValue" placeholder="请输入终点值"/>
                 </el-form-item>
 
+                <!-- 路径长度 -->
+                <el-form-item label="最大路径长度" prop="maxLength">
+                  <el-input-number
+                      v-model="analysisForm.maxLength"
+                      :min="1"
+                      :max="100"
+                      placeholder="请输入最大路径长度"
+                      style="width: 100%"
+                  />
+                </el-form-item>
+
                 <!-- 其他相关参数配置 -->
                 <!-- 根据需求添加其他参数配置 -->
 
@@ -148,77 +159,6 @@
               </el-form>
             </el-tab-pane>
 
-            <!-- 算法分析Tab -->
-            <el-tab-pane label="算法分析" name="algorithm">
-              <el-form
-                  ref="analysisFormRef"
-                  :model="analysisForm"
-                  :rules="analysisRules"
-                  label-position="top"
-              >
-                <el-form-item label="分析算法" prop="algorithm">
-                  <el-select
-                      v-model="analysisForm.algorithm"
-                      placeholder="请选择分析算法"
-                      style="width: 100%"
-                      @change="handleAlgorithmChange"
-                  >
-                    <el-option
-                        v-for="algo in algorithmAlgorithms"
-                        :key="algo.value"
-                        :label="algo.label"
-                        :value="algo.value"
-                    />
-                  </el-select>
-                </el-form-item>
-
-                <!-- 算法参数配置 -->
-                <div v-if="analysisForm.algorithm">
-                  <el-divider>参数配置</el-divider>
-
-                  <!-- PageRank参数 -->
-                  <div v-if="analysisForm.algorithm === 'pageRank'">
-                    <el-form-item label="迭代次数" prop="iterations">
-                      <el-input-number
-                          v-model="analysisForm.iterations"
-                          :min="1"
-                          :max="100"
-                          style="width: 100%"
-                      />
-                    </el-form-item>
-                    <el-form-item label="阻尼系数" prop="dampingFactor">
-                      <el-slider
-                          v-model="analysisForm.dampingFactor"
-                          :min="0.1"
-                          :max="0.9"
-                          :step="0.05"
-                          show-input
-                      />
-                    </el-form-item>
-                  </div>
-
-                  <!-- 社区发现参数 -->
-                  <div v-else-if="analysisForm.algorithm === 'community'">
-                    <el-form-item label="分辨率" prop="resolution">
-                      <el-slider
-                          v-model="analysisForm.resolution"
-                          :min="0.1"
-                          :max="2"
-                          :step="0.1"
-                          show-input
-                      />
-                    </el-form-item>
-                  </div>
-
-                  <!-- 连通分量参数 -->
-                  <div v-else-if="analysisForm.algorithm === 'connectedComponents'">
-                    <el-form-item label="弱连通分量" prop="weakly">
-                      <el-switch v-model="analysisForm.weakly"/>
-                    </el-form-item>
-                  </div>
-                </div>
-              </el-form>
-            </el-tab-pane>
           </el-tabs>
 
           <!-- 分析结果展示 -->
@@ -244,25 +184,6 @@
                 >
                   高亮显示路径
                 </el-button>
-              </template>
-              
-              <template v-else-if="analysisForm.algorithm === 'pageRank'">
-                <h4>PageRank结果</h4>
-                <p>处理节点数: {{ analysisResult.nodeCount }}</p>
-                <p>最高得分节点: {{ analysisResult.topNode }}</p>
-                <p>最高得分: {{ analysisResult.topScore }}</p>
-              </template>
-              
-              <template v-else-if="analysisForm.algorithm === 'community'">
-                <h4>社区发现</h4>
-                <p>社区数量: {{ analysisResult.communityCount }}</p>
-                <p>最大社区节点数: {{ analysisResult.maxCommunitySize }}</p>
-              </template>
-              
-              <template v-else-if="analysisForm.algorithm === 'connectedComponents'">
-                <h4>连通分量</h4>
-                <p>连通分量数量: {{ analysisResult.componentCount }}</p>
-                <p>最大连通分量大小: {{ analysisResult.maxComponentSize }}</p>
               </template>
             </div>
           </div>
@@ -295,6 +216,70 @@
         </div>
       </el-col>
     </el-row>
+    
+    <!-- 节点详情抽屉 -->
+    <el-drawer
+      v-model="nodeDrawerVisible"
+      title="节点详情"
+      direction="rtl"
+      size="40%"
+    >
+      <div class="drawer-content">
+        <el-descriptions
+          v-if="selectedNode"
+          :column="1"
+          border
+        >
+          <el-descriptions-item label="ID">
+            {{ selectedNode.id }}
+          </el-descriptions-item>
+          <el-descriptions-item label="标签">
+            {{ selectedNode.label }}
+          </el-descriptions-item>
+          <el-descriptions-item label="分组">
+            {{ selectedNode.group }}
+          </el-descriptions-item>
+          <el-descriptions-item label="属性">
+            <div v-for="(value, key) in selectedNode.properties" :key="key">
+              {{ key }}: {{ value }}
+            </div>
+          </el-descriptions-item>
+        </el-descriptions>
+        <el-empty v-else description="暂无数据" />
+      </div>
+    </el-drawer>
+    
+    <!-- 边详情抽屉 -->
+    <el-drawer
+      v-model="edgeDrawerVisible"
+      title="边详情"
+      direction="rtl"
+      size="40%"
+    >
+      <div class="drawer-content">
+        <el-descriptions
+          v-if="selectedEdge"
+          :column="1"
+          border
+        >
+          <el-descriptions-item label="源节点">
+            {{ selectedEdge.source.id || selectedEdge.source }}
+          </el-descriptions-item>
+          <el-descriptions-item label="目标节点">
+            {{ selectedEdge.target.id || selectedEdge.target }}
+          </el-descriptions-item>
+          <el-descriptions-item label="值">
+            {{ selectedEdge.value }}
+          </el-descriptions-item>
+          <el-descriptions-item label="属性">
+            <div v-for="(value, key) in selectedEdge.properties" :key="key">
+              {{ key }}: {{ value }}
+            </div>
+          </el-descriptions-item>
+        </el-descriptions>
+        <el-empty v-else description="暂无数据" />
+      </div>
+    </el-drawer>
   </div>
 </template>
 
@@ -337,8 +322,15 @@ const analysisForm = reactive({
   // 路径查询相关字段
   sourceEntity: [],
   sourceValue: '',
-  targetValue: ''
+  targetValue: '',
+  maxLength: 10
 })
+
+// 抽屉相关数据
+const nodeDrawerVisible = ref(false)
+const edgeDrawerVisible = ref(false)
+const selectedNode = ref(null)
+const selectedEdge = ref(null)
 
 // 实体选项（用于级联选择）
 const entityOptions = computed(() => {
@@ -428,6 +420,9 @@ const analysisRules = {
   ],
   targetValue: [
     {required: true, message: '请输入终点值', trigger: 'blur'}
+  ],
+  maxLength: [
+    {required: true, message: '请输入最大路径长度', trigger: 'blur'}
   ]
 }
 
@@ -454,6 +449,9 @@ const pathQueryRules = {
   ],
   targetValue: [
     {required: true, message: '请输入终点值', trigger: 'blur'}
+  ],
+  maxLength: [
+    {required: true, message: '请输入最大路径长度', trigger: 'blur'}
   ]
 }
 
@@ -535,8 +533,19 @@ const executePathQuery = async () => {
     analysisLoading.value = true
     analysisResult.value = null
 
-    // 模拟API调用
+    // 调用实际API进行路径查询，传递maxLength参数
+    // TODO: 这里需要根据实际API调整参数传递方式
+    // 目前使用模拟数据
     await new Promise(resolve => setTimeout(resolve, 1500))
+    
+    // 示例：调用更新后的API
+    // const res = await graphApi.findPath(
+    //   graphStore.currentGraph.id, 
+    //   analysisForm.sourceValue, 
+    //   analysisForm.targetValue, 
+    //   5,  // maxDepth
+    //   analysisForm.maxLength  // maxLength
+    // )
 
     // 模拟路径查询结果
     analysisResult.value = {
@@ -883,6 +892,12 @@ const drawGraph = () => {
       .attr('stroke', d => d.source.group === 'path' && d.target.group === 'path' ? '#f56c6c' : '#999')
       .attr('stroke-width', d => d.source.group === 'path' && d.target.group === 'path' ? 3 : 2)
       .attr("marker-end", (d, i) => `url(#arrow-${i})`)
+      // 添加边点击事件
+      .on('click', (event, d) => {
+        selectedEdge.value = d;
+        edgeDrawerVisible.value = true;
+        event.stopPropagation();
+      })
 
   // 绘制节点
   const node = g.append('g')
@@ -906,6 +921,12 @@ const drawGraph = () => {
           .on('drag', dragged)
           .on('end', dragended)
       )
+      // 添加节点点击事件
+      .on('click', (event, d) => {
+        selectedNode.value = d;
+        nodeDrawerVisible.value = true;
+        event.stopPropagation();
+      })
 
   // 节点标签
   const text = g.append('g')
@@ -1194,5 +1215,13 @@ const handleResize = () => {
 
 :deep(.algorithm-tabs .el-form-item) {
   margin-bottom: 18px;
+}
+
+.drawer-content {
+  padding: 20px;
+}
+
+.drawer-content .el-descriptions {
+  margin-bottom: 20px;
 }
 </style>

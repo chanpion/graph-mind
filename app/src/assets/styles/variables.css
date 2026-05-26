@@ -1,0 +1,31 @@
+:root {
+  /* 亮色主题 */
+  --gm-bg-primary: #ffffff;
+  --gm-bg-secondary: #f5f7fa;
+  --gm-bg-tertiary: #ebeef5;
+  --gm-text-primary: #303133;
+  --gm-text-regular: #606266;
+  --gm-text-secondary: #909399;
+  --gm-border-color: #dcdfe6;
+  --gm-border-color-light: #e4e7ed;
+  --gm-border-color-lighter: #ebeef5;
+  --gm-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  --gm-shadow-light: 0 2px 4px rgba(0, 0, 0, 0.05);
+  --gm-header-height: 48px;
+  --gm-sidebar-width: 220px;
+  --gm-sidebar-collapsed-width: 64px;
+}
+
+[data-theme='dark'] {
+  --gm-bg-primary: #1d1e1f;
+  --gm-bg-secondary: #141414;
+  --gm-bg-tertiary: #2c2c2c;
+  --gm-text-primary: #e5eaf3;
+  --gm-text-regular: #cfd3dc;
+  --gm-text-secondary: #a3a6ad;
+  --gm-border-color: #4c4d4f;
+  --gm-border-color-light: #363637;
+  --gm-border-color-lighter: #2c2c2c;
+  --gm-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  --gm-shadow-light: 0 2px 4px rgba(0, 0, 0, 0.2);
+}

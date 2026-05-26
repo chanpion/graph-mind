@@ -6,6 +6,7 @@ import com.chenpp.graph.admin.model.Result;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
 import com.chenpp.graph.admin.service.GraphNodeDefService;
 import com.chenpp.graph.admin.service.GraphSchemaService;
+import com.chenpp.graph.core.schema.GraphSchema;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -185,5 +186,10 @@ public class GraphSchemaController {
     public Result<String> publishSchema(@PathVariable Long graphId) {
         graphSchemaService.publishSchema(graphId);
         return Result.success(null);
+    }
+
+    @GetMapping("/schema")
+    public Result<GraphSchema> getSchema(@PathVariable Long graphId) {
+        return Result.success(graphSchemaService.getGraphSchema(graphId));
     }
 }

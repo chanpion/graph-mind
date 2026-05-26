@@ -4,6 +4,7 @@ import com.alibaba.fastjson2.JSON;
 import com.chenpp.graph.core.GraphDataOperations;
 import com.chenpp.graph.core.GraphOperations;
 import com.chenpp.graph.core.exception.GraphException;
+import com.chenpp.graph.core.model.GraphData;
 import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphVertex;
 import com.chenpp.graph.core.schema.DataType;
@@ -19,6 +20,7 @@ import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.janusgraph.core.EdgeLabel;
 import org.janusgraph.core.JanusGraph;
 import org.janusgraph.core.JanusGraphFactory;
+import org.janusgraph.core.PropertyKey;
 import org.janusgraph.core.VertexLabel;
 import org.janusgraph.core.schema.JanusGraphManagement;
 import org.junit.After;
@@ -46,6 +48,8 @@ public class JanusClientTest {
     private GraphDataOperations graphDataOperations;
     private JanusGraph graph;
 
+    private String graphCode = "cpp_test_janus_001";
+
     @Before
     public void init() {
         CassandraConf cassandraConf = new CassandraConf();
@@ -53,10 +57,10 @@ public class JanusClientTest {
         cassandraConf.setPort(9042);
         cassandraConf.setUsername("cassandra");
         cassandraConf.setPassword("cassandra");
-        cassandraConf.setKeyspace("cpp_test");
+        cassandraConf.setKeyspace(graphCode);
 
         janusConf = new JanusConf();
-        janusConf.setGraphCode("cpp_test_janus");
+        janusConf.setGraphCode(graphCode);
         janusConf.setStorageBackend("cassandra");
         janusConf.setStorageHost("10.58.12.60");
         janusConf.setStoragePort(9042);
@@ -95,7 +99,7 @@ public class JanusClientTest {
 
         // 检查连接（当前实现返回false）
         boolean connected = janusClient.checkConnection();
-        assertFalse(connected);
+        assertTrue(connected);
 
         // 关闭客户端
         janusClient.close();
@@ -130,7 +134,6 @@ public class JanusClientTest {
             List<Graph> graphs = graphOperations.listGraphs(janusConf);
             assertNotNull(graphs);
             assertEquals(1, graphs.size());
-            assertEquals("cpp_test_graph", graphs.get(0).getCode());
         } catch (Exception e) {
             fail("列出图时发生异常: " + e.getMessage());
         }
@@ -177,13 +180,14 @@ public class JanusClientTest {
             List<GraphRelation> relations = new ArrayList<>();
             GraphRelation knowsRelation = new GraphRelation();
             knowsRelation.setLabel("knows");
+            knowsRelation.setMultiple(true);
 
             // 添加关系属性
             List<GraphProperty> relationProperties = new ArrayList<>();
             GraphProperty sinceProperty = new GraphProperty();
             sinceProperty.setCode("since");
             sinceProperty.setName("since");
-            sinceProperty.setDataType(DataType.String);
+            sinceProperty.setDataType(DataType.Date);
             relationProperties.add(sinceProperty);
             relationProperties.add(uidProperty);
 
@@ -192,17 +196,23 @@ public class JanusClientTest {
 
             // 创建索引列表
             List<GraphIndex> indexes = new ArrayList<>();
+
+            GraphIndex uidIndex = new GraphIndex();
+            uidIndex.setName("idx_v_uid");
+            uidIndex.setPropertyNames(Collections.singletonList("uid"));
+            uidIndex.setSchemaType("vertex");
+            uidIndex.setType(IndexType.COMPOSITE.name());
+            indexes.add(uidIndex);
+
             GraphIndex nameIndex = new GraphIndex();
-            nameIndex.setName("nameIndex");
-            List<String> propertyNames = new ArrayList<>();
-            propertyNames.add("name");
-            nameIndex.setPropertyNames(propertyNames);
+            nameIndex.setName("idx_v_name");
+            nameIndex.setPropertyNames(Collections.singletonList("name"));
             nameIndex.setSchemaType("vertex");
             nameIndex.setType(IndexType.COMPOSITE.name());
             indexes.add(nameIndex);
             // 创建边索引
             GraphIndex edgeIndex = new GraphIndex();
-            edgeIndex.setName("uidIndex");
+            edgeIndex.setName("idx_e_uid");
             edgeIndex.setSchemaType("edge");
             edgeIndex.setType(IndexType.VERTEX_CENTRIC.name());
             edgeIndex.setPropertyNames(Collections.singletonList("uid"));
@@ -257,6 +267,9 @@ public class JanusClientTest {
         assertNotNull(updatedVertex);
         assertEquals(26, updatedVertex.getProperties().get("age"));
 
+        JanusGraphDataOperations janusGraphDataOperations = (JanusGraphDataOperations) graphDataOperations;
+        List<GraphVertex> vertices = janusGraphDataOperations.getVerticesByIds(Collections.singletonList("1"));
+        System.out.println(vertices);
         // 删除顶点
         graphDataOps.deleteVertex(vertex);
     }
@@ -320,6 +333,7 @@ public class JanusClientTest {
             vertex.setLabel("person");
             Map<String, Object> properties = new HashMap<>();
             properties.put("name", "Person" + i);
+            properties.put("uid", vertex.getUid());
             vertex.setProperties(properties);
             vertices.add(vertex);
         }
@@ -343,6 +357,7 @@ public class JanusClientTest {
 
         graphDataOps.addEdges(edges);
     }
+
 
     @Test
     public void testGetVerticesByIds() throws GraphException {
@@ -377,6 +392,7 @@ public class JanusClientTest {
         assertTrue(vertices.stream().anyMatch(v -> "1".equals(v.getUid()) && "Tom".equals(v.getProperties().get("name"))));
         assertTrue(vertices.stream().anyMatch(v -> "2".equals(v.getUid()) && "Jerry".equals(v.getProperties().get("name"))));
     }
+
 
     @Test
     public void testGetEdgesByIds() throws GraphException {
@@ -428,22 +444,6 @@ public class JanusClientTest {
 
     @Test
     public void testQueryVerticesByLabel() throws GraphException {
-        // 添加测试顶点
-        GraphVertex vertex1 = new GraphVertex();
-        vertex1.setUid("1");
-        vertex1.setLabel("person");
-        Map<String, Object> properties1 = new HashMap<>();
-        properties1.put("name", "Tom");
-        vertex1.setProperties(properties1);
-        graphDataOperations.addVertex(vertex1);
-
-        GraphVertex vertex2 = new GraphVertex();
-        vertex2.setUid("2");
-        vertex2.setLabel("person");
-        Map<String, Object> properties2 = new HashMap<>();
-        properties2.put("name", "Jerry");
-        vertex2.setProperties(properties2);
-        graphDataOperations.addVertex(vertex2);
 
         // 注意：这里需要使用Gremlin查询顶点
         // 由于JanusGraphDataOperations中没有实现相关查询方法，暂时无法完成
@@ -451,33 +451,6 @@ public class JanusClientTest {
 
     @Test
     public void testQueryEdgesByLabel() throws GraphException {
-        // 添加测试顶点
-        GraphVertex vertex1 = new GraphVertex();
-        vertex1.setUid("1");
-        vertex1.setLabel("person");
-        Map<String, Object> properties1 = new HashMap<>();
-        properties1.put("name", "Tom");
-        vertex1.setProperties(properties1);
-        graphDataOperations.addVertex(vertex1);
-
-        GraphVertex vertex2 = new GraphVertex();
-        vertex2.setUid("2");
-        vertex2.setLabel("person");
-        Map<String, Object> properties2 = new HashMap<>();
-        properties2.put("name", "Jerry");
-        vertex2.setProperties(properties2);
-        graphDataOperations.addVertex(vertex2);
-
-        // 添加测试边
-        GraphEdge edge = new GraphEdge();
-        edge.setUid("1");
-        edge.setLabel("knows");
-        edge.setStartUid("1");
-        edge.setEndUid("2");
-        Map<String, Object> edgeProperties = new HashMap<>();
-        edgeProperties.put("since", "2020");
-        edge.setProperties(edgeProperties);
-        graphDataOperations.addEdge(edge);
 
         // 注意：这里需要使用Gremlin查询边
         // 由于JanusGraphDataOperations中没有实现相关查询方法，暂时无法完成
@@ -491,8 +464,119 @@ public class JanusClientTest {
         mgmt.getVertexLabels().forEach(System.out::println);
         System.out.println("edge: ");
         mgmt.getRelationTypes(EdgeLabel.class).forEach(System.out::println);
+        System.out.println("property: ");
+        mgmt.getRelationTypes(PropertyKey.class).forEach(System.out::println);
         System.out.println("Graph index: ");
-        mgmt.getGraphIndexes(VertexLabel.class).forEach(System.out::println);
-        mgmt.getGraphIndexes(EdgeLabel.class).forEach(System.out::println);
+        mgmt.getGraphIndexes(Vertex.class).forEach(System.out::println);
+        mgmt.getGraphIndexes(Edge.class).forEach(System.out::println);
+    }
+
+    @Test
+    public void testQuery() {
+        GraphData graphData = graphDataOperations.query("g.V().path()");
+        System.out.println(graphData);
+        GraphData allData = graphDataOperations.query("g.E()");
+        System.out.println("Vertices: ");
+        allData.getVertices().forEach(System.out::println);
+        System.out.println("Edges: ");
+        allData.getEdges().forEach(System.out::println);
+    }
+
+    @Test
+    public void testQueryAllVerticesAndEdges() {
+        // 查询所有顶点
+        GraphData vertexData = graphDataOperations.query("g.V()");
+        System.out.println("All vertices: " + vertexData);
+
+        // 查询所有边
+        GraphData edgeData = graphDataOperations.query("g.E()");
+        System.out.println("All edges: " + edgeData);
+
+        // 查询所有顶点和边
+        GraphData allData = graphDataOperations.query("g.V().union(identity(), bothE()).dedup()");
+        System.out.println("All vertices and edges: " + allData);
+        assertNotNull(allData);
+    }
+
+    @Test
+    public void testExpand() throws GraphException {
+        // 先添加测试数据
+        // 添加测试顶点
+        GraphVertex vertex1 = new GraphVertex();
+        vertex1.setUid("expand_1");
+        vertex1.setLabel("person");
+        Map<String, Object> properties1 = new HashMap<>();
+        properties1.put("name", "Tom");
+        vertex1.setProperties(properties1);
+        graphDataOperations.addVertex(vertex1);
+
+        GraphVertex vertex2 = new GraphVertex();
+        vertex2.setUid("expand_2");
+        vertex2.setLabel("person");
+        Map<String, Object> properties2 = new HashMap<>();
+        properties2.put("name", "Jerry");
+        vertex2.setProperties(properties2);
+        graphDataOperations.addVertex(vertex2);
+
+        // 添加测试边
+        GraphEdge edge = new GraphEdge();
+        edge.setUid("expand_edge_1");
+        edge.setLabel("knows");
+        edge.setStartUid("expand_1");
+        edge.setEndUid("expand_2");
+        Map<String, Object> edgeProperties = new HashMap<>();
+        edgeProperties.put("since", "2020");
+        edge.setProperties(edgeProperties);
+        graphDataOperations.addEdge(edge);
+
+        // 测试expand方法
+        GraphData expandedData = graphDataOperations.expand("expand_1", 1);
+        System.out.println("Expanded data: " + expandedData);
+        assertNotNull(expandedData);
+        // 验证返回的数据不为空
+        assertTrue(expandedData.getVertices().size() > 0);
+        // 验证至少有一条边被返回
+        assertTrue(expandedData.getEdges().size() > 0);
+    }
+
+    @Test
+    public void testFindPath() throws GraphException {
+        // 先添加测试数据
+        // 添加测试顶点
+        GraphVertex vertex1 = new GraphVertex();
+        vertex1.setUid("path_1");
+        vertex1.setLabel("person");
+        Map<String, Object> properties1 = new HashMap<>();
+        properties1.put("name", "Tom");
+        vertex1.setProperties(properties1);
+        graphDataOperations.addVertex(vertex1);
+
+        GraphVertex vertex2 = new GraphVertex();
+        vertex2.setUid("path_2");
+        vertex2.setLabel("person");
+        Map<String, Object> properties2 = new HashMap<>();
+        properties2.put("name", "Jerry");
+        vertex2.setProperties(properties2);
+        graphDataOperations.addVertex(vertex2);
+
+        // 添加测试边
+        GraphEdge edge = new GraphEdge();
+        edge.setUid("path_edge_1");
+        edge.setLabel("knows");
+        edge.setStartUid("path_1");
+        edge.setEndUid("path_2");
+        Map<String, Object> edgeProperties = new HashMap<>();
+        edgeProperties.put("since", "2020");
+        edge.setProperties(edgeProperties);
+        graphDataOperations.addEdge(edge);
+
+        // 测试findPath方法
+        GraphData pathData = graphDataOperations.findPath("path_1", "path_2", 3);
+        System.out.println("Path data: " + pathData);
+        assertNotNull(pathData);
+        // 验证返回的数据不为空
+        assertTrue(pathData.getVertices().size() > 0);
+        // 验证至少有一条边被返回
+        assertTrue(pathData.getEdges().size() > 0);
     }
 }

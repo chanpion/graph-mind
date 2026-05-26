@@ -49,6 +49,15 @@ public enum NebulaDataType {
     /**
      * 包含日期和时间
      */
-    TIMESTAMP
+    TIMESTAMP;
 
+
+    public static NebulaDataType getDataType(String type) {
+        for (NebulaDataType value : NebulaDataType.values()) {
+            if (value.name().equalsIgnoreCase(type)) {
+                return value;
+            }
+        }
+        return STRING;
+    }
 }
