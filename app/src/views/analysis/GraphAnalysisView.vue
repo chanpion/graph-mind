@@ -192,153 +192,135 @@
 
       <!-- 右侧图可视化区 -->
       <el-col :span="18" class="visualization-panel">
-        <!-- 画布操作栏 -->
-        <div class="canvas-toolbar">
-          <div class="toolbar-left">
-            <span class="graph-type-tag">
-              <el-tag size="small" :type="graphTypeTagType" effect="plain">
-                {{ graphTypeLabel }}
-              </el-tag>
-            </span>
-            <span class="default-query-hint" v-if="defaultQuery">
-              默认查询: <code>{{ defaultQuery }}</code>
-            </span>
-          </div>
-          <div class="toolbar-right">
-            <el-tooltip content="放大" placement="top">
-              <el-button text size="small" @click="zoomIn">
-                <template #icon><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></template>
-              </el-button>
-            </el-tooltip>
-            <el-tooltip content="缩小" placement="top">
-              <el-button text size="small" @click="zoomOut">
-                <template #icon><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 13H5v-2h14v2z"/></svg></template>
-              </el-button>
-            </el-tooltip>
-            <el-tooltip content="适应画布" placement="top">
-              <el-button text size="small" @click="resetView">
-                <template #icon><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M21 15v4c0 .55-.45 1-1 1h-4M21 9V5c0-.55-.45-1-1-1h-4M3 15v4c0 .55.45 1 1 1h4M3 9V5c0-.55.45-1 1-1h4"/></svg></template>
-              </el-button>
-            </el-tooltip>
-            <el-divider direction="vertical" />
-            <span class="node-edge-count">
-              <span class="count-item"><el-tag size="small" round>点 {{ nodes.length }}</el-tag></span>
-              <span class="count-item"><el-tag size="small" round type="warning">边 {{ edges.length }}</el-tag></span>
-            </span>
-          </div>
-        </div>
-
         <div class="visualization-content">
           <!-- 图可视化区域 -->
-          <div ref="graphContainerRef" class="graph-container">
-            <svg ref="svgRef" class="graph-svg"></svg>
+          <div ref="graphContainerRef" class="viz-canvas-container">
+            <div class="graph-container">
+              <svg ref="svgRef" class="graph-svg"></svg>
+              
+              <!-- 画布工具栏 -->
+              <div class="canvas-toolbar">
+                <el-tag size="small" :type="graphTypeTagType" effect="dark" v-if="graphTypeLabel">
+                  {{ graphTypeLabel }}
+                </el-tag>
+                <div class="toolbar-divider"></div>
+                <el-button-group size="small">
+                  <el-button size="small" @click="zoomIn" title="放大">
+                    <el-icon><ZoomIn /></el-icon>
+                  </el-button>
+                  <el-button size="small" @click="zoomOut" title="缩小">
+                    <el-icon><ZoomOut /></el-icon>
+                  </el-button>
+                  <el-button size="small" @click="resetView" title="适应画布">
+                    <el-icon><FullScreen /></el-icon>
+                  </el-button>
+                </el-button-group>
+                <div class="toolbar-divider"></div>
+                <el-dropdown trigger="click" @command="handleExport">
+                  <el-button size="small">
+                    导出 <el-icon><Download /></el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="png">导出 PNG</el-dropdown-item>
+                      <el-dropdown-item command="svg">导出 SVG</el-dropdown-item>
+                      <el-dropdown-item command="json">导出 JSON</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
 
-            <!-- 图例 -->
-            <div v-if="nodes.length > 0" class="canvas-legend">
-              <div class="legend-title">图例</div>
-              <div class="legend-items">
-                <div v-for="item in legendItems" :key="item.label" class="legend-item">
-                  <span class="legend-color" :style="{ background: item.color }"></span>
-                  <span class="legend-label">{{ item.label }}</span>
-                  <span class="legend-count">{{ item.count }}</span>
+              <!-- 图例 -->
+              <div v-if="legendItems.nodes.length > 0 || legendItems.edges.length > 0" class="canvas-legend">
+                <div class="legend-title">图例</div>
+                <div class="legend-items">
+                  <div class="legend-group" v-if="legendItems.nodes.length > 0">
+                    <div class="legend-group-title">节点</div>
+                    <div v-for="item in legendItems.nodes" :key="'node-'+item.label" class="legend-item">
+                      <span class="legend-node-dot" :style="{ background: item.color }"></span>
+                      <span class="legend-label">{{ item.label }}</span>
+                    </div>
+                  </div>
+                  <div class="legend-group" v-if="legendItems.edges.length > 0">
+                    <div class="legend-group-title">边</div>
+                    <div v-for="item in legendItems.edges" :key="'edge-'+item.label" class="legend-item">
+                      <span class="legend-edge-line" :style="{ background: item.color, borderColor: item.color }"></span>
+                      <span class="legend-label">{{ item.label }}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <!-- 点边统计 -->
-            <div v-if="nodes.length > 0" class="canvas-stats">
-              <div class="stats-item">
-                <span class="stats-dot" style="background: #409EFF"></span>
-                <span>点: {{ nodes.length }}</span>
+              <!-- 点边统计 -->
+              <div v-if="nodes.length > 0" class="canvas-stats">
+                <div class="stat-item">
+                  <span class="stat-label">节点</span>
+                  <span class="stat-value">{{ nodes.length }}</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                  <span class="stat-label">边</span>
+                  <span class="stat-value">{{ edges.length }}</span>
+                </div>
               </div>
-              <div class="stats-item">
-                <span class="stats-dot" style="background: #E6A23C"></span>
-                <span>边: {{ edges.length }}</span>
-              </div>
-            </div>
 
-            <!-- 加载提示 -->
-            <div v-if="analysisLoading" class="loading-overlay">
-              <div class="loading-content">
-                <el-icon class="is-loading" color="#409EFF" size="30">
-                  <Loading/>
-                </el-icon>
-                <p>分析中...</p>
+              <!-- 节点/边详情浮动面板 -->
+              <div v-if="detailDrawerVisible && selectedElement" class="detail-panel">
+                <div class="detail-header">
+                  <h3>{{ selectedElement.type === 'node' ? '节点详情' : '边详情' }}</h3>
+                  <el-button
+                    type="text"
+                    size="small"
+                    @click="closeDetailPanel"
+                    class="close-btn"
+                  >
+                    <el-icon><Close /></el-icon>
+                  </el-button>
+                </div>
+                <div class="detail-content">
+                  <div class="detail-section">
+                    <h4>基础信息</h4>
+                    <el-descriptions :column="1" border size="small" class="compact-descriptions">
+                      <el-descriptions-item label="ID">{{ selectedElement.id }}</el-descriptions-item>
+                      <el-descriptions-item label="标签" v-if="selectedElement.type === 'node'">{{ selectedElement.label }}</el-descriptions-item>
+                      <el-descriptions-item label="类型" v-if="selectedElement.type === 'edge'">{{ selectedElement.label }}</el-descriptions-item>
+                    </el-descriptions>
+                  </div>
+                  <div class="detail-section" v-if="selectedElement.properties && Object.keys(selectedElement.properties).length > 0">
+                    <h4>属性</h4>
+                    <div class="property-list">
+                      <div
+                        v-for="(value, key) in selectedElement.properties"
+                        :key="key"
+                        class="property-item"
+                      >
+                        <span class="property-key">{{ key }}:</span>
+                        <span class="property-value">{{ value }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <!-- 空状态 -->
-            <div v-else-if="!analysisLoading && nodes.length === 0" class="empty-state">
-              <el-empty description="暂无图数据，请选择分析算法并执行分析"/>
+              <!-- 加载提示 -->
+              <div v-if="analysisLoading" class="loading-overlay">
+                <div class="loading-content">
+                  <el-icon class="is-loading" color="#409EFF" size="30">
+                    <Loading/>
+                  </el-icon>
+                  <p>分析中...</p>
+                </div>
+              </div>
+
+              <!-- 空状态 -->
+              <div v-else-if="!analysisLoading && nodes.length === 0" class="empty-state">
+                <el-empty description="暂无图数据，请选择分析算法并执行分析"/>
+              </div>
             </div>
           </div>
         </div>
       </el-col>
     </el-row>
-    
-    <!-- 节点详情抽屉 -->
-    <el-drawer
-      v-model="nodeDrawerVisible"
-      title="节点详情"
-      direction="rtl"
-      size="40%"
-    >
-      <div class="drawer-content">
-        <el-descriptions
-          v-if="selectedNode"
-          :column="1"
-          border
-        >
-          <el-descriptions-item label="ID">
-            {{ selectedNode.id }}
-          </el-descriptions-item>
-          <el-descriptions-item label="标签">
-            {{ selectedNode.label }}
-          </el-descriptions-item>
-          <el-descriptions-item label="分组">
-            {{ selectedNode.group }}
-          </el-descriptions-item>
-          <el-descriptions-item label="属性">
-            <div v-for="(value, key) in selectedNode.properties" :key="key">
-              {{ key }}: {{ value }}
-            </div>
-          </el-descriptions-item>
-        </el-descriptions>
-        <el-empty v-else description="暂无数据" />
-      </div>
-    </el-drawer>
-    
-    <!-- 边详情抽屉 -->
-    <el-drawer
-      v-model="edgeDrawerVisible"
-      title="边详情"
-      direction="rtl"
-      size="40%"
-    >
-      <div class="drawer-content">
-        <el-descriptions
-          v-if="selectedEdge"
-          :column="1"
-          border
-        >
-          <el-descriptions-item label="源节点">
-            {{ selectedEdge.source.id || selectedEdge.source }}
-          </el-descriptions-item>
-          <el-descriptions-item label="目标节点">
-            {{ selectedEdge.target.id || selectedEdge.target }}
-          </el-descriptions-item>
-          <el-descriptions-item label="值">
-            {{ selectedEdge.value }}
-          </el-descriptions-item>
-          <el-descriptions-item label="属性">
-            <div v-for="(value, key) in selectedEdge.properties" :key="key">
-              {{ key }}: {{ value }}
-            </div>
-          </el-descriptions-item>
-        </el-descriptions>
-        <el-empty v-else description="暂无数据" />
-      </div>
-    </el-drawer>
   </div>
 </template>
 
@@ -347,7 +329,7 @@ import { ref, reactive, onMounted, onUnmounted, nextTick, watch, computed } from
 import * as d3 from 'd3'
 import {ElMessage} from 'element-plus'
 import { useGraphsStore } from '@/views/graphs/stores/useGraphsStore'
-import { Loading } from '@element-plus/icons-vue'
+import { Loading, ZoomIn, ZoomOut, FullScreen, Download, Close } from '@element-plus/icons-vue'
 import { graphApi } from '@/views/graphs/api/graph'
 
 // 响应式数据
@@ -377,21 +359,74 @@ const defaultQuery = computed(() => {
 
 // 图例数据
 const legendItems = computed(() => {
-  const groups = {}
-  nodes.value.forEach(n => {
-    const g = n.group || 'default'
-    if (!groups[g]) groups[g] = { label: g, count: 0, color: '#409EFF' }
-    groups[g].count++
+  const legendNodes = []
+  const legendEdges = []
+  const nodeLabels = new Set()
+  const edgeLabels = new Set()
+
+  ;(nodes.value || []).forEach(n => {
+    const label = n.label || 'Unknown'
+    if (!nodeLabels.has(label)) {
+      nodeLabels.add(label)
+      legendNodes.push({ label, color: getNodeColor(label) })
+    }
   })
-  const colorMap = {
-    center: '#e6a23c', layer1: '#409EFF', layer2: '#67c23a',
-    path: '#f56c6c', normal: '#909399', default: '#409EFF'
-  }
-  Object.keys(groups).forEach(k => {
-    if (colorMap[k]) groups[k].color = colorMap[k]
+
+  ;(edges.value || []).forEach(e => {
+    const label = e.label || 'Unknown'
+    if (!edgeLabels.has(label)) {
+      edgeLabels.add(label)
+      legendEdges.push({ label, color: getEdgeColor(label) })
+    }
   })
-  return Object.values(groups)
+
+  return { nodes: legendNodes, edges: legendEdges }
 })
+
+// 节点颜色映射
+const NODE_COLORS = {
+  center: '#e6a23c',
+  layer1: '#409EFF',
+  layer2: '#67c23a',
+  path: '#f56c6c',
+  normal: '#909399',
+  person: '#6366f1',
+  people: '#6366f1',
+  company: '#f59e0b',
+  org: '#f59e0b',
+  place: '#10b981',
+  location: '#10b981'
+}
+
+function getNodeColor(label) {
+  if (!label) return '#6366f1'
+  const key = label.toLowerCase()
+  return NODE_COLORS[key] || stringToColor(key)
+}
+
+// 边颜色映射
+const EDGE_COLORS = {
+  knows: '#94a3b8',
+  works_at: '#f59e0b',
+  works_for: '#f59e0b',
+  located_in: '#10b981'
+}
+
+function getEdgeColor(label) {
+  if (!label) return '#94a3b8'
+  const key = label.toLowerCase()
+  return EDGE_COLORS[key] || stringToColor(key, 60)
+}
+
+// 基于哈希的颜色生成
+function stringToColor(str, saturation = 70) {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const hue = Math.abs(hash % 360)
+  return `hsl(${hue}, ${saturation}%, 55%)`
+}
 
 // 点类型和边类型
 const nodeTypes = ref([])
@@ -423,11 +458,9 @@ const analysisForm = reactive({
   maxLength: 10
 })
 
-// 抽屉相关数据
-const nodeDrawerVisible = ref(false)
-const edgeDrawerVisible = ref(false)
-const selectedNode = ref(null)
-const selectedEdge = ref(null)
+// 详情面板相关
+const detailDrawerVisible = ref(false)
+const selectedElement = ref(null)
 
 // 实体选项（用于级联选择）
 const entityOptions = computed(() => {
@@ -999,8 +1032,15 @@ const drawGraph = () => {
       .attr("marker-end", (d, i) => `url(#arrow-${i})`)
       // 添加边点击事件
       .on('click', (event, d) => {
-        selectedEdge.value = d;
-        edgeDrawerVisible.value = true;
+        selectedElement.value = {
+          type: 'edge',
+          id: d.id,
+          label: d.label,
+          properties: d.properties,
+          source: d.source,
+          target: d.target
+        };
+        detailDrawerVisible.value = true;
         event.stopPropagation();
       })
 
@@ -1021,15 +1061,19 @@ const drawGraph = () => {
         if (d.id === analysisForm.targetId) return '#e6a23c'
         return '#409EFF'
       })
-      .call(d3.drag()
+      .call(d3.drag())
           .on('start', dragstarted)
           .on('drag', dragged)
           .on('end', dragended)
-      )
       // 添加节点点击事件
       .on('click', (event, d) => {
-        selectedNode.value = d;
-        nodeDrawerVisible.value = true;
+        selectedElement.value = {
+          type: 'node',
+          id: d.id,
+          label: d.label,
+          properties: d.properties
+        };
+        detailDrawerVisible.value = true;
         event.stopPropagation();
       })
 
@@ -1128,8 +1172,13 @@ const highlightPath = () => {
   ElMessage.info('高亮显示路径功能待实现')
 }
 
+// 关闭详情面板
+const closeDetailPanel = () => {
+  detailDrawerVisible.value = false
+  selectedElement.value = null
+}
 
-// 缩放功能
+// 缩放控制
 const zoomIn = () => {
   if (svg && zoom) {
     svg.transition().call(zoom.scaleBy, 1.2)
@@ -1146,6 +1195,78 @@ const resetView = () => {
   if (svg && zoom) {
     svg.transition().call(zoom.transform, d3.zoomIdentity)
   }
+}
+
+// 导出功能
+const handleExport = (format) => {
+  if (format === 'png') exportAsPNG()
+  else if (format === 'svg') exportAsSVG()
+  else if (format === 'json') exportAsJSON()
+}
+
+const exportAsPNG = () => {
+  const svgEl = document.querySelector('.graph-container svg')
+  if (!svgEl) { ElMessage.warning('没有可导出的内容'); return }
+  
+  const svgData = new XMLSerializer().serializeToString(svgEl)
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  const img = new Image()
+  
+  const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
+  const url = URL.createObjectURL(svgBlob)
+  
+  img.onload = () => {
+    canvas.width = svgEl.clientWidth * 2
+    canvas.height = svgEl.clientHeight * 2
+    ctx.scale(2, 2)
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--el-bg-color').trim() || '#ffffff'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.drawImage(img, 0, 0)
+    URL.revokeObjectURL(url)
+    
+    const link = document.createElement('a')
+    link.download = 'graph-export.png'
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+    ElMessage.success('已导出为 PNG')
+  }
+  
+  img.src = url
+}
+
+const exportAsSVG = () => {
+  const svgEl = document.querySelector('.graph-container svg')
+  if (!svgEl) { ElMessage.warning('没有可导出的内容'); return }
+  
+  const svgData = new XMLSerializer().serializeToString(svgEl)
+  const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  
+  const link = document.createElement('a')
+  link.download = 'graph-export.svg'
+  link.href = url
+  link.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('已导出为 SVG')
+}
+
+const exportAsJSON = () => {
+  const data = { nodes: nodes.value, edges: edges.value }
+  if (!data.nodes || data.nodes.length === 0) {
+    ElMessage.warning('没有可导出的数据')
+    return
+  }
+  
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  
+  const link = document.createElement('a')
+  link.download = 'graph-export.json'
+  link.href = url
+  link.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('已导出为 JSON')
 }
 
 // 组件挂载时的处理
@@ -1219,7 +1340,7 @@ const handleResize = () => {
 <style scoped>
 .graph-analysis-container {
   padding: 0px;
-  height: calc(100vh - 120px);
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -1251,15 +1372,36 @@ const handleResize = () => {
   position: relative;
 }
 
+.visualization-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.viz-canvas-container {
+  flex: 1;
+  padding: 0;
+  overflow: hidden;
+  background-color: #ffffff;
+  background-image: 
+    linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+  background-size: 20px 20px;
+  position: relative;
+}
+
+.dark .viz-canvas-container {
+  background-color: #1a1a2e;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+}
+
 .graph-container {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
-  background: #fff;
   overflow: hidden;
 }
 
@@ -1344,161 +1486,282 @@ const handleResize = () => {
   margin-bottom: 18px;
 }
 
-.drawer-content {
-  padding: 20px;
+/* 详情浮动面板样式 */
+.detail-panel {
+  position: absolute;
+  top: 20px;
+  right: 12px;
+  width: 180px;
+  max-height: calc(100% - 80px);
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.drawer-content .el-descriptions {
-  margin-bottom: 20px;
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e8e8e8;
 }
 
-	/* ====== 画布操作栏 ====== */
-	.canvas-toolbar {
-	  display: flex;
-	  align-items: center;
-	  justify-content: space-between;
-	  padding: 6px 12px;
-	  background: var(--el-bg-color);
-	  border: 1px solid var(--el-border-color-light);
-	  border-bottom: none;
-	  border-radius: 4px 4px 0 0;
-	  flex-shrink: 0;
-	  min-height: 36px;
-	}
+.detail-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2d3d;
+}
 
-	.toolbar-left,
-	.toolbar-right {
-	  display: flex;
-	  align-items: center;
-	  gap: 8px;
-	}
+.close-btn {
+  padding: 2px;
+  color: #909399;
+  transition: color 0.2s ease;
+}
 
-	.graph-type-tag {
-	  flex-shrink: 0;
-	}
+.close-btn:hover {
+  color: #f56c6c;
+}
 
-	.default-query-hint {
-	  font-size: 12px;
-	  color: var(--el-text-color-secondary);
-	  white-space: nowrap;
-	  overflow: hidden;
-	  text-overflow: ellipsis;
-	  max-width: 400px;
-	}
+.detail-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 16px 16px 16px;
+}
 
-	.default-query-hint code {
-	  background: var(--el-fill-color-light);
-	  padding: 1px 6px;
-	  border-radius: 3px;
-	  font-size: 12px;
-	  color: var(--el-color-primary);
-	}
+.detail-section {
+  margin-top: 16px;
+}
 
-	.node-edge-count {
-	  display: flex;
-	  align-items: center;
-	  gap: 6px;
-	}
+.detail-section:first-child {
+  margin-top: 0;
+}
 
-	.count-item {
-	  font-size: 12px;
-	}
+.detail-section h4 {
+  margin: 0 0 6px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #606266;
+}
 
-	/* ====== 画布容器 ====== */
-	.graph-container {
-	  position: absolute;
-	  top: 0;
-	  left: 0;
-	  right: 0;
-	  bottom: 0;
-	  border: 1px solid var(--el-border-color-light);
-	  border-radius: 0 0 4px 4px;
-	  background: var(--el-fill-color-light);
-	  overflow: hidden;
-	}
+.property-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
-	/* ====== 图例 ====== */
-	.canvas-legend {
-	  position: absolute;
-	  bottom: 16px;
-	  left: 16px;
-	  background: var(--el-bg-color-overlay);
-	  border: 1px solid var(--el-border-color-light);
-	  border-radius: 6px;
-	  padding: 10px 14px;
-	  min-width: 110px;
-	  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-	  z-index: 5;
-	}
+.property-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: #f8f9fa;
+  border-radius: 3px;
+  border-left: 3px solid #6366F1;
+}
 
-	.legend-title {
-	  font-size: 12px;
-	  font-weight: 600;
-	  color: var(--el-text-color-primary);
-	  margin-bottom: 6px;
-	  padding-bottom: 4px;
-	  border-bottom: 1px solid var(--el-border-color-lighter);
-	}
+.property-key {
+  font-weight: 500;
+  color: #333;
+  font-size: 12px;
+}
 
-	.legend-items {
-	  display: flex;
-	  flex-direction: column;
-	  gap: 4px;
-	}
+.property-value {
+  color: #666;
+  max-width: 90px;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
-	.legend-item {
-	  display: flex;
-	  align-items: center;
-	  gap: 6px;
-	  font-size: 12px;
-	  color: var(--el-text-color-regular);
-	}
+/* 紧凑型描述列表样式 */
+.compact-descriptions :deep(.el-descriptions__label) {
+  font-size: 12px !important;
+  padding: 6px 8px !important;
+}
 
-	.legend-color {
-	  width: 10px;
-	  height: 10px;
-	  border-radius: 50%;
-	  flex-shrink: 0;
-	}
+.compact-descriptions :deep(.el-descriptions__content) {
+  font-size: 12px !important;
+  padding: 6px 8px !important;
+}
 
-	.legend-label {
-	  flex: 1;
-	}
+.compact-descriptions :deep(.el-descriptions__cell) {
+  padding: 0 !important;
+}
 
-	.legend-count {
-	  color: var(--el-text-color-secondary);
-	  font-size: 11px;
-	}
+.compact-descriptions :deep(.el-descriptions__label.el-descriptions__cell.is-bordered-label) {
+  padding: 6px 8px !important;
+}
 
-	/* ====== 点边统计 ====== */
-	.canvas-stats {
-	  position: absolute;
-	  bottom: 16px;
-	  right: 16px;
-	  background: var(--el-bg-color-overlay);
-	  border: 1px solid var(--el-border-color-light);
-	  border-radius: 6px;
-	  padding: 8px 14px;
-	  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-	  z-index: 5;
-	  display: flex;
-	  flex-direction: column;
-	  gap: 4px;
-	}
+.compact-descriptions :deep(.el-descriptions__body .el-descriptions__table .el-descriptions__cell) {
+  padding: 6px 8px !important;
+}
 
-	.stats-item {
-	  display: flex;
-	  align-items: center;
-	  gap: 6px;
-	  font-size: 12px;
-	  color: var(--el-text-color-regular);
-	}
+/* 画布工具栏 */
+.canvas-toolbar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--el-bg-color-overlay);
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  flex-wrap: nowrap;
+  max-width: calc(100% - 24px);
+  overflow-x: auto;
+}
 
-	.stats-dot {
-	  width: 8px;
-	  height: 8px;
-	  border-radius: 50%;
-	  flex-shrink: 0;
-	}
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--el-border-color-light);
+}
 
+.zoom-group .el-button {
+  padding: 5px 8px;
+}
+
+/* 图例 */
+.canvas-legend {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  max-width: calc(100% - 120px);
+  padding: 10px 14px;
+  background: var(--el-bg-color-overlay);
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  max-height: min(60%, 300px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.legend-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--el-border-color-light);
+}
+
+.legend-group {
+  margin-bottom: 8px;
+}
+
+.legend-group:last-child {
+  margin-bottom: 0;
+}
+
+.legend-group-title {
+  font-size: 11px;
+  color: var(--el-text-color-secondary);
+  margin-bottom: 4px;
+}
+
+.legend-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.legend-node-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legend-edge-line {
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.legend-edge-line::after {
+  content: '';
+  position: absolute;
+  right: -5px;
+  top: -3px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left-color: inherit;
+}
+
+.legend-label {
+  font-size: 11px;
+  color: var(--el-text-color-regular);
+  white-space: nowrap;
+}
+
+/* 统计 */
+.canvas-stats {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: var(--el-bg-color-overlay);
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  max-width: calc(100% - 24px);
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: var(--el-text-color-secondary);
+}
+
+.stat-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.stat-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--el-border-color-light);
+}
+
+/* 暗色模式覆盖 */
+.dark .canvas-toolbar,
+.dark .canvas-legend,
+.dark .canvas-stats {
+  border-color: var(--el-border-color-light);
+}
 </style>
