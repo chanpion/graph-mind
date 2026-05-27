@@ -36,17 +36,10 @@
       <el-icon><PieChart /></el-icon>
       <template #title>图统计</template>
     </el-menu-item>
-    <el-sub-menu index="admin">
-      <template #title>
-        <el-icon><Setting /></el-icon>
-        <span>系统管理</span>
-      </template>
-      <el-menu-item index="/home/admin/user" @click="go('/home/admin/user')">用户管理</el-menu-item>
-      <el-menu-item index="/home/admin/role" @click="go('/home/admin/role')">角色管理</el-menu-item>
-      <el-menu-item index="/home/admin/permission" @click="go('/home/admin/permission')">权限管理</el-menu-item>
-      <el-menu-item index="/home/admin/config" @click="go('/home/admin/config')">系统配置</el-menu-item>
-      <el-menu-item index="/home/admin/profile" @click="go('/home/admin/profile')">个人中心</el-menu-item>
-    </el-sub-menu>
+    <el-menu-item index="/home/user" @click="go('/home/user')">
+      <el-icon><User /></el-icon>
+      <template #title>用户管理</template>
+    </el-menu-item>
   </el-menu>
 </template>
 

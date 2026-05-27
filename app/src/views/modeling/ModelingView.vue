@@ -12,9 +12,10 @@
       </div>
     </div>
 
+    <div class="content-card">
     <template v-if="viewMode === 'list'">
       <div class="tabs-with-action">
-      <el-tabs v-model="activeTab" @tab-change="handleTabChange" class="flex-tabs">
+        <el-tabs v-model="activeTab" @tab-change="handleTabChange" class="flex-tabs">
         <el-tab-pane label="点定义" name="nodes">
           <el-table :data="nodeDefs" style="width: 100%" row-key="id" v-loading="loading">
           <el-table-column prop="label" label="标签" min-width="120" />
@@ -97,9 +98,9 @@
           </el-table-column>
         </el-table>
       </el-tab-pane>
-    </el-tabs>
-    <el-button type="primary" :icon="Plus" @click="handleAdd" class="tab-action-btn">新增</el-button>
-  </div>
+        </el-tabs>
+        <el-button type="primary" :icon="Plus" @click="handleAdd" class="tab-action-btn">新增</el-button>
+      </div>
 
     <!-- 点定义弹窗 -->
     <el-dialog v-model="nodeDialogVisible" :title="nodeDialogTitle" width="800px">
@@ -241,6 +242,7 @@
     <div v-else class="graph-view-wrapper">
       <GraphModelingView :node-defs="nodeDefs" :edge-defs="edgeDefs" />
     </div>
+    </div> <!-- end content-card -->
 
   </div>
 </template>
@@ -495,9 +497,7 @@ onMounted(async () => {
 
 <style scoped>
 .data-modeling {
-  padding: 20px;
-  background: var(--el-bg-color);
-  border-radius: 4px;
+  padding: 5px;
   position: relative;
 }
 
@@ -570,6 +570,14 @@ onMounted(async () => {
 }
 
 .graph-view-wrapper {
-  margin-top: 16px;
+  height: 500px;
+}
+
+.content-card {
+  border-radius: 8px;
+  padding: 20px;
+  background: var(--el-bg-color);
+  border: 1px solid var(--el-border-color-light);
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05);
 }
 </style>

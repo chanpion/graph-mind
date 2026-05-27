@@ -399,7 +399,7 @@ defineExpose({
   position: relative;
   border: 1px solid var(--el-border-color);
   border-radius: 4px;
-  background: var(--el-bg-color-page);
+  background: var(--el-bg-color);
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 14px;
   line-height: 1.5;

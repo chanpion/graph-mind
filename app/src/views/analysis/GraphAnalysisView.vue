@@ -1,9 +1,15 @@
 <template>
   <div class="graph-analysis-container">
 
-    <el-row :gutter="20" class="main-content">
+    <el-row :gutter="20" class="main-content analysis-layout">
       <!-- 左侧操作区 -->
       <el-col :span="6" class="operation-panel">
+        <!-- 侧边栏头部 -->
+        <div class="sidebar-header">
+          <div class="sidebar-header-top">
+            <h3>图分析</h3>
+          </div>
+        </div>
         <div class="operation-content">
           <!-- 算法分类Tab -->
           <el-tabs v-model="activeAlgorithmTab" class="algorithm-tabs">
@@ -1005,7 +1011,7 @@ const drawGraph = () => {
   // 为每条边创建独立的箭头标记，以适应不同颜色和大小
   edges.value.forEach((d, i) => {
     const isPath = d.source.group === 'path' && d.target.group === 'path';
-    const color = isPath ? '#f56c6c' : '#999';
+    const color = isPath ? 'var(--el-color-danger)' : 'var(--el-text-color-secondary)';
     const size = isPath ? 17 : 12; // 节点半径 + 2
     
     defs.append("marker")
@@ -1027,7 +1033,7 @@ const drawGraph = () => {
       .data(edges.value)
       .enter()
       .append('line')
-      .attr('stroke', d => d.source.group === 'path' && d.target.group === 'path' ? '#f56c6c' : '#999')
+      .attr('stroke', d => d.source.group === 'path' && d.target.group === 'path' ? 'var(--el-color-danger)' : 'var(--el-text-color-secondary)')
       .attr('stroke-width', d => d.source.group === 'path' && d.target.group === 'path' ? 3 : 2)
       .attr("marker-end", (d, i) => `url(#arrow-${i})`)
       // 添加边点击事件
@@ -1053,13 +1059,13 @@ const drawGraph = () => {
       .append('circle')
       .attr('r', d => d.group === 'path' ? 15 : 10)
       .attr('fill', d => {
-        if (d.group === 'path') return '#f56c6c'
-        if (d.group === 'center') return '#e6a23c'
-        if (d.group === 'layer1') return '#409EFF'
-        if (d.group === 'layer2') return '#67c23a'
-        if (d.id === analysisForm.sourceId) return '#67c23a'
-        if (d.id === analysisForm.targetId) return '#e6a23c'
-        return '#409EFF'
+        if (d.group === 'path') return 'var(--el-color-danger)'
+        if (d.group === 'center') return 'var(--el-color-warning)'
+        if (d.group === 'layer1') return 'var(--el-color-primary)'
+        if (d.group === 'layer2') return 'var(--el-color-success)'
+        if (d.id === analysisForm.sourceId) return 'var(--el-color-success)'
+        if (d.id === analysisForm.targetId) return 'var(--el-color-warning)'
+        return 'var(--el-color-primary)'
       })
       .call(d3.drag())
           .on('start', dragstarted)
@@ -1087,7 +1093,7 @@ const drawGraph = () => {
       .text(d => d.label)
       .attr('text-anchor', 'middle')
       .attr('dy', 25)
-      .attr('fill', '#333')
+      .attr('fill', 'var(--el-text-color-primary)')
       .attr('font-size', '12px')
 
   // 力导向模拟tick函数 - 使用requestAnimationFrame批量化DOM更新
@@ -1340,7 +1346,8 @@ const handleResize = () => {
 <style scoped>
 .graph-analysis-container {
   padding: 0px;
-  height: 100%;
+  height: calc(100vh - 60px);
+  background: var(--el-bg-color-page);
   display: flex;
   flex-direction: column;
 }
@@ -1350,11 +1357,57 @@ const handleResize = () => {
   overflow: hidden;
 }
 
+.analysis-layout {
+  background: var(--el-bg-color-page);
+}
+
 .operation-panel {
+  background: var(--el-bg-color);
+  border-right: 1px solid var(--el-border-color-light);
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+}
+
+/* 侧边栏头部 */
+.sidebar-header {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--el-border-color-light);
+  background: var(--el-bg-color);
+  flex-shrink: 0;
+  gap: 10px;
+}
+.sidebar-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  letter-spacing: 0.5px;
+}
+
+/* 操作内容区 - 可滚动 */
+.operation-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+.operation-content::-webkit-scrollbar {
+  width: 4px;
+}
+.operation-content::-webkit-scrollbar-thumb {
+  background: var(--el-border-color);
+  border-radius: 2px;
+}
+.operation-content::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .visualization-panel {
@@ -1364,15 +1417,13 @@ const handleResize = () => {
   overflow: hidden;
 }
 
-
-.operation-content,
-.visualization-content {
-  flex: 1;
-  overflow: hidden;
-  position: relative;
+.sidebar-header {
+  flex-shrink: 0;
 }
 
+
 .visualization-content {
+  flex: 1;
   display: flex;
   flex-direction: column;
 }
@@ -1381,19 +1432,13 @@ const handleResize = () => {
   flex: 1;
   padding: 0;
   overflow: hidden;
-  background-color: #ffffff;
-  background-image: 
-    linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+  background-color: var(--el-bg-color);
+  background-image:
+    linear-gradient(var(--el-border-color-lighter) 1px, transparent 1px),
+    linear-gradient(90deg, var(--el-border-color-lighter) 1px, transparent 1px);
   background-size: 20px 20px;
   position: relative;
-}
-
-.dark .viz-canvas-container {
-  background-color: #1a1a2e;
-  background-image:
-    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+  border-radius: 0;
 }
 
 .graph-container {
@@ -1416,7 +1461,8 @@ const handleResize = () => {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--el-bg-color-overlay);
+  opacity: 0.8;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1439,30 +1485,55 @@ const handleResize = () => {
 }
 
 .result-section {
-  margin-top: 20px;
+  padding: 14px 16px;
+  border-top: 1px solid var(--el-border-color-lighter);
+  margin: 0;
+}
+
+.result-section :deep(.el-divider) {
+  margin: 0 0 12px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--el-text-color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.result-section :deep(.el-divider__text) {
+  padding: 0;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--el-text-color-secondary);
 }
 
 .result-content h4 {
   margin: 10px 0 5px 0;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 
 .result-content p {
   margin: 5px 0;
-  color: #606266;
+  color: var(--el-text-color-regular);
   font-size: 14px;
 }
 
 .config-item {
   padding: 10px;
-  background-color: #f5f7fa;
+  background-color: var(--el-fill-color-light);
+  border: 1px solid var(--el-border-color-lighter);
   border-radius: 4px;
-  margin: 10px 0;
+  margin: 8px 0;
 }
 
 :deep(.el-collapse-item__header) {
-  font-weight: 500;
-  color: #303133;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
 :deep(.el-collapse-item__wrap) {
@@ -1471,19 +1542,56 @@ const handleResize = () => {
 
 :deep(.el-collapse-item__content) {
   padding: 10px;
-  background-color: #fff;
+  background-color: var(--el-bg-color);
 }
 
 .algorithm-tabs {
-  margin-bottom: 20px;
+  padding: 12px 16px;
 }
 
-:deep(.algorithm-tabs .el-tabs__content) {
-  padding: 10px 0;
+.algorithm-tabs :deep(.el-tabs__header) {
+  margin: 0 0 16px 0;
 }
 
-:deep(.algorithm-tabs .el-form-item) {
-  margin-bottom: 18px;
+.algorithm-tabs :deep(.el-tabs__nav-wrap) {
+  padding: 0;
+}
+
+.algorithm-tabs :deep(.el-tabs__active-bar) {
+  height: 2px;
+  border-radius: 1px;
+}
+
+.algorithm-tabs :deep(.el-tabs__item) {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--el-text-color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 0 12px 8px;
+  height: auto;
+  line-height: 1.5;
+}
+
+.algorithm-tabs :deep(.el-tabs__item.is-active) {
+  color: var(--el-color-primary);
+}
+
+.algorithm-tabs :deep(.el-tabs__content) {
+  padding: 0;
+}
+
+.algorithm-tabs :deep(.el-form-item) {
+  margin-bottom: 16px;
+}
+
+.algorithm-tabs :deep(.el-form-item__label) {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--el-text-color-secondary);
+  padding-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* 详情浮动面板样式 */
@@ -1493,7 +1601,7 @@ const handleResize = () => {
   right: 12px;
   width: 180px;
   max-height: calc(100% - 80px);
-  background: #fff;
+  background: var(--el-bg-color-overlay);
   border-radius: 6px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   z-index: 1000;
@@ -1507,25 +1615,25 @@ const handleResize = () => {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: #f8f9fa;
-  border-bottom: 1px solid #e8e8e8;
+  background: var(--el-fill-color-light);
+  border-bottom: 1px solid var(--el-border-color-light);
 }
 
 .detail-header h3 {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: #1f2d3d;
+  color: var(--el-text-color-primary);
 }
 
 .close-btn {
   padding: 2px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
   transition: color 0.2s ease;
 }
 
 .close-btn:hover {
-  color: #f56c6c;
+  color: var(--el-color-danger);
 }
 
 .detail-content {
@@ -1546,7 +1654,7 @@ const handleResize = () => {
   margin: 0 0 6px 0;
   font-size: 13px;
   font-weight: 600;
-  color: #606266;
+  color: var(--el-text-color-secondary);
 }
 
 .property-list {
@@ -1559,19 +1667,19 @@ const handleResize = () => {
   display: flex;
   justify-content: space-between;
   padding: 6px 10px;
-  background: #f8f9fa;
+  background: var(--el-fill-color-light);
   border-radius: 3px;
-  border-left: 3px solid #6366F1;
+  border-left: 3px solid var(--el-color-primary);
 }
 
 .property-key {
   font-weight: 500;
-  color: #333;
+  color: var(--el-text-color-primary);
   font-size: 12px;
 }
 
 .property-value {
-  color: #666;
+  color: var(--el-text-color-regular);
   max-width: 90px;
   font-size: 12px;
   overflow: hidden;

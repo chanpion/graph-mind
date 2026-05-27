@@ -11,22 +11,59 @@
         <span class="app-title">Graph Mind</span>
       </div>
       <div class="header-right">
-        <el-select
-          :model-value="currentGraphId"
-          placeholder="选择图"
-          size="small"
-          clearable
-          filterable
-          class="global-graph-selector"
-          @update:model-value="handleGraphChange"
-        >
-          <el-option
-            v-for="g in graphs"
-            :key="g.id"
-            :label="g.graphName || g.name"
-            :value="g.id"
-          />
-        </el-select>
+        <div class="connection-selector-wrapper">
+          <el-icon class="selector-icon"><Connection /></el-icon>
+          <el-select
+            v-model="selectedConnectionId"
+            placeholder="选择连接"
+            size="small"
+            clearable
+            filterable
+            class="header-selector"
+            @update:model-value="handleConnectionChange"
+          >
+            <el-option
+              v-for="conn in connections"
+              :key="conn.id"
+              :label="conn.name || conn.alias"
+              :value="conn.id"
+            >
+              <div class="conn-option">
+                <span class="conn-option-name">{{ conn.name || conn.alias }}</span>
+                <el-tag :type="connTagType(conn)" size="small" effect="plain" class="conn-option-tag">
+                  {{ connLabel(conn) }}
+                </el-tag>
+              </div>
+            </el-option>
+          </el-select>
+        </div>
+        <div class="graph-selector-wrapper">
+          <el-icon class="selector-icon"><Grid /></el-icon>
+          <el-select
+            :model-value="currentGraphId"
+            :disabled="!selectedConnectionId"
+            placeholder="选择图"
+            size="small"
+            clearable
+            filterable
+            class="header-selector"
+            @update:model-value="handleGraphChange"
+          >
+            <el-option
+              v-for="g in graphs"
+              :key="g.id"
+              :label="g.graphName || g.name"
+              :value="g.id"
+            >
+              <div class="graph-option">
+                <span class="graph-option-name">{{ g.graphName || g.name }}</span>
+                <el-tag :type="dbTagType(g)" size="small" effect="plain" class="graph-option-tag">
+                  {{ dbLabel(g) }}
+                </el-tag>
+              </div>
+            </el-option>
+          </el-select>
+        </div>
         <el-button text circle @click="toggleTheme">
           <el-icon :size="18">
             <Moon v-if="!isDark" />
@@ -61,7 +98,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/views/auth/stores/useAuthStore'
@@ -69,6 +106,8 @@ import { useGraphsStore } from '@/views/graphs/stores/useGraphsStore'
 import { useTheme } from '@/shared/composables/useTheme'
 import { storeToRefs } from 'pinia'
 import SidebarNav from './components/SidebarNav.vue'
+import { Grid, Connection } from '@element-plus/icons-vue'
+import { connectionApi } from '@/views/connections/api/connection'
 
 const router = useRouter()
 const appStore = useAppStore()
@@ -78,6 +117,38 @@ const { currentGraphId, graphs } = storeToRefs(graphsStore)
 const { toggleTheme, isDark } = useTheme()
 
 const sidebarCollapsed = computed(() => appStore.sidebarCollapsed)
+
+// 连接列表
+const connections = ref([])
+const selectedConnectionId = ref('')
+
+// 数据库类型标签映射
+const DB_TAG_MAP = {
+  neo4j: { label: 'Neo4j', type: 'primary' },
+  nebula: { label: 'Nebula', type: 'success' },
+  janusgraph: { label: 'JanusGraph', type: 'warning' },
+  janus: { label: 'JanusGraph', type: 'warning' }
+}
+
+function connLabel(conn) {
+  const raw = (conn.databaseType || '').toLowerCase()
+  return DB_TAG_MAP[raw]?.label || raw.toUpperCase()
+}
+
+function connTagType(conn) {
+  const raw = (conn.databaseType || '').toLowerCase()
+  return DB_TAG_MAP[raw]?.type || 'info'
+}
+
+function dbLabel(graph) {
+  const raw = (graph.graphType || graph.databaseType || '').toLowerCase()
+  return DB_TAG_MAP[raw]?.label || raw.toUpperCase()
+}
+
+function dbTagType(graph) {
+  const raw = (graph.graphType || graph.databaseType || '').toLowerCase()
+  return DB_TAG_MAP[raw]?.type || 'info'
+}
 
 function toggleSidebar() {
   appStore.toggleSidebar()
@@ -95,14 +166,33 @@ function handleUserCommand(cmd) {
   }
 }
 
+async function handleConnectionChange(connectionId) {
+  selectedConnectionId.value = connectionId
+  graphsStore.setCurrentGraph(null)
+  if (connectionId) {
+    await graphsStore.fetchGraphsByConnection(connectionId)
+  } else {
+    graphs.value = []
+  }
+}
+
 function handleGraphChange(graphId) {
   const graph = graphs.value.find(g => g.id === graphId)
   if (graph) {
     graphsStore.setCurrentGraph(graph)
+  } else {
+    graphsStore.setCurrentGraph(null)
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  try {
+    const res = await connectionApi.list()
+    const data = res?.data || res
+    connections.value = Array.isArray(data) ? data : data?.records || []
+  } catch (err) {
+    console.error('加载连接列表失败:', err)
+  }
   if (graphs.value.length === 0) {
     graphsStore.fetchGraphs()
   }
@@ -138,8 +228,56 @@ onMounted(() => {
   justify-content: center;
 }
 
-.global-graph-selector {
-  width: 280px;
+.connection-selector-wrapper,
+.graph-selector-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.selector-icon {
+  font-size: 16px;
+  color: var(--el-text-color-secondary);
+  flex-shrink: 0;
+}
+
+.header-selector {
+  width: 200px;
+}
+
+.header-selector :deep(.el-select__wrapper) {
+  border-radius: 6px;
+  min-height: 30px;
+  padding: 0 8px;
+}
+
+.header-selector :deep(.el-select__placeholder) {
+  font-size: 13px;
+}
+
+.conn-option,
+.graph-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.conn-option-name,
+.graph-option-name {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+  margin-right: 8px;
+}
+
+.conn-option-tag,
+.graph-option-tag {
+  flex-shrink: 0;
+  font-size: 11px;
 }
 
 .app-title {
@@ -180,7 +318,7 @@ onMounted(() => {
 .app-content {
   flex: 1;
   overflow: auto;
-  padding: 16px;
+  padding: 5px;
   background: var(--el-bg-color-page);
 }
 </style>

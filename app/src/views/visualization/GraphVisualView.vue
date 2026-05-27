@@ -751,8 +751,8 @@ const transformApiResponseToGraphData = (apiResponse) => {
 }
 
 .query-panel {
-  background: #f8f9fa;
-  border-right: 1px solid #e8e8e8;
+  background: var(--el-fill-color-light);
+  border-right: 1px solid var(--el-border-color-light);
   padding: 16px;
   height: 100%;
   overflow-y: auto;
@@ -765,14 +765,14 @@ const transformApiResponseToGraphData = (apiResponse) => {
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid var(--el-border-color-light);
 }
 
 .panel-header h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: #1f2d3d;
+  color: var(--el-text-color-primary);
 }
 
 .section {
@@ -791,19 +791,12 @@ const transformApiResponseToGraphData = (apiResponse) => {
   flex: 1;
   padding: 0;
   overflow: hidden;
-  background-color: #ffffff;
+  background-color: var(--el-bg-color);
   background-image:
-    linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+    linear-gradient(var(--el-border-color-lighter) 1px, transparent 1px),
+    linear-gradient(90deg, var(--el-border-color-lighter) 1px, transparent 1px);
   background-size: 20px 20px;
   position: relative;
-}
-
-.dark .viz-canvas-container {
-  background-color: #1a1a2e;
-  background-image:
-    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
 }
 
 .graph-container {
@@ -825,7 +818,7 @@ const transformApiResponseToGraphData = (apiResponse) => {
   right: 12px;
   width: 180px;
   max-height: calc(100% - 80px);
-  background: #fff;
+  background: var(--el-bg-color-overlay);
   border-radius: 6px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   z-index: 1000;
@@ -839,25 +832,25 @@ const transformApiResponseToGraphData = (apiResponse) => {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: #f8f9fa;
-  border-bottom: 1px solid #e8e8e8;
+  background: var(--el-fill-color-light);
+  border-bottom: 1px solid var(--el-border-color-light);
 }
 
 .detail-header h3 {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: #1f2d3d;
+  color: var(--el-text-color-primary);
 }
 
 .close-btn {
   padding: 2px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
   transition: color 0.2s ease;
 }
 
 .close-btn:hover {
-  color: #f56c6c;
+  color: var(--el-color-danger);
 }
 
 .detail-content {
@@ -878,7 +871,7 @@ const transformApiResponseToGraphData = (apiResponse) => {
   margin: 0 0 6px 0;
   font-size: 13px;
   font-weight: 600;
-  color: #606266;
+  color: var(--el-text-color-secondary);
 }
 
 .property-list {
@@ -891,19 +884,19 @@ const transformApiResponseToGraphData = (apiResponse) => {
   display: flex;
   justify-content: space-between;
   padding: 6px 10px;
-  background: #f8f9fa;
+  background: var(--el-fill-color-light);
   border-radius: 3px;
-  border-left: 3px solid #6366F1;
+  border-left: 3px solid var(--el-color-primary);
 }
 
 .property-key {
   font-weight: 500;
-  color: #333;
+  color: var(--el-text-color-primary);
   font-size: 12px;
 }
 
 .property-value {
-  color: #666;
+  color: var(--el-text-color-regular);
   max-width: 90px;
   font-size: 12px;
   overflow: hidden;
@@ -1109,7 +1102,7 @@ const transformApiResponseToGraphData = (apiResponse) => {
     width: 100%;
     height: auto;
     border-right: none;
-    border-bottom: 1px solid #e8e8e8;
+    border-bottom: 1px solid var(--el-border-color-light);
   }
 
   .graph-visualization {

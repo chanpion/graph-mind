@@ -467,15 +467,13 @@ register('put', '/api/roles/:roleId/dataScope', async (config, params) => {
 
 // ====== 权限菜单管理 ======
 const mockPermissions = [
-  { menuId: 1, menuName: '系统管理', parentId: 0, orderNum: 1, path: '/home/admin', component: '', menuType: 'M', perms: '', icon: 'Setting', status: '0', createTime: '2024-01-01', visible: '0', isCache: '0', isFrame: '1', children: [
-    { menuId: 2, menuName: '用户管理', parentId: 1, orderNum: 1, path: '/home/admin/user', component: 'system/user', menuType: 'C', perms: 'system:user:list', icon: 'User', status: '0', createTime: '2024-01-01', visible: '0', isCache: '0', isFrame: '1', children: [
-      { menuId: 3, menuName: '用户新增', parentId: 2, orderNum: 1, path: '', component: '', menuType: 'F', perms: 'system:user:add', icon: '', status: '0', createTime: '2024-01-01', visible: '0', isCache: '0', isFrame: '1' },
-      { menuId: 4, menuName: '用户修改', parentId: 2, orderNum: 2, path: '', component: '', menuType: 'F', perms: 'system:user:edit', icon: '', status: '0', createTime: '2024-01-01', visible: '0', isCache: '0', isFrame: '1' },
-      { menuId: 5, menuName: '用户删除', parentId: 2, orderNum: 3, path: '', component: '', menuType: 'F', perms: 'system:user:delete', icon: '', status: '0', createTime: '2024-01-01', visible: '0', isCache: '0', isFrame: '1' }
-    ]},
-    { menuId: 6, menuName: '角色管理', parentId: 1, orderNum: 2, path: '/home/admin/role', component: 'system/role', menuType: 'C', perms: 'system:role:list', icon: 'UserFilled', status: '0', createTime: '2024-01-01', visible: '0', isCache: '0', isFrame: '1' },
-    { menuId: 7, menuName: '权限管理', parentId: 1, orderNum: 3, path: '/home/admin/permission', component: 'system/permission', menuType: 'C', perms: 'system:permission:list', icon: 'Lock', status: '0', createTime: '2024-01-01', visible: '0', isCache: '0', isFrame: '1' },
-    { menuId: 8, menuName: '系统配置', parentId: 1, orderNum: 4, path: '/home/admin/config', component: 'system/config', menuType: 'C', perms: 'system:config:list', icon: 'Tools', status: '0', createTime: '2024-01-01', visible: '0', isCache: '0', isFrame: '1' }
+  { menuId: 1, menuName: '用户管理', parentId: 0, orderNum: 1, path: '/home/user', component: 'system/user', menuType: 'C', perms: 'system:user:list', icon: 'User', status: '0', createTime: '2024-01-01', visible: '0', isCache: '0', isFrame: '1', children: [
+    { menuId: 2, menuName: '用户新增', parentId: 1, orderNum: 1, path: '', component: '', menuType: 'F', perms: 'system:user:add', icon: '', status: '0', createTime: '2024-01-01', visible: '0', isCache: '0', isFrame: '1' },
+    { menuId: 3, menuName: '用户修改', parentId: 1, orderNum: 2, path: '', component: '', menuType: 'F', perms: 'system:user:edit', icon: '', status: '0', createTime: '2024-01-01', visible: '0', isCache: '0', isFrame: '1' },
+    { menuId: 4, menuName: '用户删除', parentId: 1, orderNum: 3, path: '', component: '', menuType: 'F', perms: 'system:user:delete', icon: '', status: '0', createTime: '2024-01-01', visible: '0', isCache: '0', isFrame: '1' }
+  ]},
+  { menuId: 5, menuName: '系统设置', parentId: 0, orderNum: 2, path: '/home/admin', component: '', menuType: 'M', perms: '', icon: 'Setting', status: '0', createTime: '2024-01-01', visible: '0', isCache: '0', isFrame: '1', children: [
+    { menuId: 6, menuName: '系统配置', parentId: 5, orderNum: 1, path: '/home/admin/config', component: 'system/config', menuType: 'C', perms: 'system:config:list', icon: 'Tools', status: '0', createTime: '2024-01-01', visible: '0', isCache: '0', isFrame: '1' }
   ]}
 ]
 

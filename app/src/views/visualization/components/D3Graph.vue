@@ -199,9 +199,10 @@ function render() {
     .data(edges)
     .join('line')
     .attr('stroke', '#94a3b8')
-    .attr('stroke-width', 1.5)
+    .attr('stroke-width', 3)
     .attr('stroke-opacity', 0.6)
     .attr('marker-end', 'url(#arrowhead)')
+    .style('cursor', 'pointer')
     .on('click', (event, d) => {
       event.stopPropagation()
       emit('edge-click', d)
@@ -250,7 +251,7 @@ function render() {
 
   // 节点圆形
   nodeElements = nodeGroup.append('circle')
-    .attr('r', 8)
+    .attr('r', 16)
     .attr('fill', d => {
       const label = (d.label || '').toLowerCase()
       if (label.includes('person') || label.includes('people')) return '#6366f1'

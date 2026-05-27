@@ -105,13 +105,13 @@
               <circle
                 v-if="draggedNode?.id === node.id"
                 :r="getNodeRadius(node) + 7"
-                fill="rgba(59, 130, 246, 0.2)"
+                fill="rgba(var(--el-color-primary-rgb), 0.2)"
                 class="drag-halo"
               />
               <circle
                 v-if="isNodeSelected(node.id)"
                 :r="getNodeRadius(node) + 5"
-                fill="rgba(59, 130, 246, 0.3)"
+                fill="rgba(var(--el-color-primary-rgb), 0.3)"
                 class="select-halo"
               />
               <circle
@@ -124,7 +124,7 @@
               <text
                 text-anchor="middle"
                 dy="3"
-                fill="white"
+                fill="var(--el-color-white)"
                 font-size="11"
                 font-weight="600"
                 class="node-label"
@@ -145,7 +145,7 @@
                 :cx="getNodeRadius(node) - 10"
                 :cy="-getNodeRadius(node) + 10"
                 r="12"
-                fill="#10b981"
+                fill="var(--el-color-success)"
                 class="property-badge"
               />
               <text
@@ -173,7 +173,7 @@
             orient="auto"
             markerUnits="userSpaceOnUse"
           >
-            <polygon points="0 0, 12 4, 0 8" fill="#909399" />
+            <polygon points="0 0, 12 4, 0 8" fill="var(--el-text-color-secondary)" />
           </marker>
         </defs>
       </svg>
@@ -336,7 +336,16 @@ const mergedEdgeProperties = computed(() => {
   return (selectedEdge.value.properties || []).map(p => ({ ...p, isBuiltIn: false }))
 })
 
-const colorMap = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16']
+const colorMap = [
+  'var(--el-color-primary)',
+  'var(--el-color-success)',
+  'var(--el-color-warning)',
+  'var(--el-color-danger)',
+  '#8B5CF6',
+  '#EC4899',
+  '#06B6D4',
+  '#84CC16'
+]
 
 function getNodeColor(node) {
   const index = nodes.value.findIndex(n => n.id === node.id)
@@ -560,10 +569,11 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 600px;
+  height: 100%;
+  min-height: 400px;
   background: var(--el-bg-color);
   border: 1px solid var(--el-border-color);
-  border-radius: 4px;
+  border-radius: 8px;
   position: relative;
   overflow: hidden;
 }

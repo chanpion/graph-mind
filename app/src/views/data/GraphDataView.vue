@@ -798,8 +798,8 @@ watch(() => graphId.value, (newId) => {
 }
 
 .section-icon.edge-icon {
-  background: #f0f9f0;
-  color: #67c23a;
+  background: var(--el-color-success-light-9);
+  color: var(--el-color-success);
 }
 
 .section-header h4 {
@@ -870,18 +870,18 @@ watch(() => graphId.value, (newId) => {
 
 /* 边标签 */
 .edge-tag {
-  border-color: #67c23a;
+  border-color: var(--el-color-success);
 }
 
 .edge-tag:hover {
-  border-color: #67c23a;
-  background: #f0f9f0;
+  border-color: var(--el-color-success);
+  background: var(--el-color-success-light-9);
   transform: translateY(-1px);
 }
 
 .edge-tag.active {
-  border-color: #67c23a;
-  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  border-color: var(--el-color-success);
+  background: linear-gradient(135deg, var(--el-color-success), var(--el-color-success-light-3));
   color: #fff;
 }
 
@@ -890,13 +890,16 @@ watch(() => graphId.value, (newId) => {
   padding: 0;
   background: var(--el-bg-color-page);
   overflow: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .data-content {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 2px 20px 0;
+  padding: 0 5px 5px 5px;
 }
 
 /* 统一数据卡片 */
@@ -1058,24 +1061,12 @@ watch(() => graphId.value, (newId) => {
   flex-shrink: 0;
 }
 
-.data-card {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: var(--el-bg-color);
-  border-radius: 8px;
-  border: 1px solid var(--el-border-color-light);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  overflow: hidden;
-}
-
 /* ===== 空状态 ===== */
 .empty-hint {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  flex: 1;
   padding: 0;
 }
 

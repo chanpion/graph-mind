@@ -2,7 +2,6 @@
   <div class="connection-container">
     <div class="page-header">
       <h2 class="page-title">用户管理</h2>
-      <p class="page-description">管理系统用户，包括添加、编辑、删除用户以及分配角色和岗位</p>
     </div>
 
     <div class="content-card">
@@ -485,7 +484,7 @@ onMounted(() => {
 
 <style scoped>
 .connection-container {
-  padding: 20px;
+  padding: 5px;
 }
 
 .page-header {

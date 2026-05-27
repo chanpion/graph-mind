@@ -212,13 +212,16 @@ const currentPage = ref(1)
 const hasMore = ref(true)
 const loadingMore = ref(false)
 
-const pageSize = computed(() => {
+// 响应式分页大小
+const pageSize = ref(getPageSize())
+
+function getPageSize() {
   const width = window.innerWidth
   if (width >= 1400) return 8
   if (width >= 1024) return 6
   if (width >= 768) return 4
   return 2
-})
+}
 
 const sourceTypes = [
   { label: '平台创建', value: 'PLATFORM', tagType: 'success' },
@@ -260,6 +263,9 @@ const displayGraphs = computed(() => {
   return filtered.slice(0, end)
 })
 
+// ====== 窗口大小变化重新计算分页 ======
+let resizeHandler = null
+
 // ====== 防抖滚动加载 ======
 function debounce(fn, delay) {
   let timer = null
@@ -270,9 +276,11 @@ function debounce(fn, delay) {
 }
 
 const handleScroll = debounce(() => {
-  const scrollTop = window.pageYOffset || document.documentElement.scrollTop
-  const scrollHeight = document.documentElement.scrollHeight
-  const clientHeight = window.innerHeight
+  const el = document.querySelector('.app-content')
+  if (!el) return
+  const scrollTop = el.scrollTop
+  const scrollHeight = el.scrollHeight
+  const clientHeight = el.clientHeight
   if (!loadingMore.value && hasMore.value && scrollHeight - scrollTop - clientHeight < 100) {
     loadMore()
   }
@@ -447,18 +455,23 @@ async function init() {
   }
   await loadGraphs()
   await nextTick()
-  window.addEventListener('scroll', handleScroll)
+  const el = document.querySelector('.app-content')
+  if (el) el.addEventListener('scroll', handleScroll)
+  resizeHandler = () => { pageSize.value = getPageSize() }
+  window.addEventListener('resize', resizeHandler)
 }
 
 onMounted(init)
 
 onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll)
+  const el = document.querySelector('.app-content')
+  if (el) el.removeEventListener('scroll', handleScroll)
+  if (resizeHandler) window.removeEventListener('resize', resizeHandler)
 })
 </script>
 
 <style scoped>
-.graph-management { padding: 20px; }
+.graph-management { padding: 5px; }
 
 .header {
   display: flex;

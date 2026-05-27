@@ -75,30 +75,19 @@ export const routes = [
         component: () => import('@/views/summary/GraphSummaryView.vue'),
         meta: { title: '图统计', icon: 'PieChart' }
       },
-      // 系统管理
+      // 用户管理
+      {
+        path: 'user',
+        name: 'User',
+        component: () => import('@/views/system/UserView.vue'),
+        meta: { title: '用户管理', icon: 'User', roles: ['admin'] }
+      },
+      // 系统设置
       {
         path: 'admin',
         name: 'Admin',
-        meta: { title: '系统管理', icon: 'Setting' },
+        meta: { title: '系统设置', icon: 'Setting' },
         children: [
-          {
-            path: 'user',
-            name: 'User',
-            component: () => import('@/views/system/UserView.vue'),
-            meta: { title: '用户管理', icon: 'User', roles: ['admin'] }
-          },
-          {
-            path: 'role',
-            name: 'Role',
-            component: () => import('@/views/system/RoleView.vue'),
-            meta: { title: '角色管理', icon: 'UserFilled', roles: ['admin'] }
-          },
-          {
-            path: 'permission',
-            name: 'Permission',
-            component: () => import('@/views/system/PermissionView.vue'),
-            meta: { title: '权限管理', icon: 'Lock', roles: ['admin'] }
-          },
           {
             path: 'config',
             name: 'AppConfig',

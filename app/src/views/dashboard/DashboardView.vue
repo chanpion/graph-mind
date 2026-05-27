@@ -180,23 +180,26 @@ onMounted(() => {
 
 <style scoped>
 .dashboard-container {
-  padding: 24px;
+  padding: 5px 24px;
   max-width: 1400px;
   margin: 0 auto;
-  min-height: calc(100vh - 64px);
   height: 100%;
   box-sizing: border-box;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 /* 欢迎区域 */
 .welcome-section {
-  margin-bottom: 32px;
+  flex-shrink: 0;
 }
 
 .tech-gradient {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 16px;
-  padding: 40px 48px;
+  border-radius: 14px;
+  padding: 32px 40px;
   color: white;
   box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
   position: relative;
@@ -215,9 +218,9 @@ onMounted(() => {
 }
 
 .welcome-title {
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   position: relative;
   z-index: 1;
 }
@@ -235,13 +238,13 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 20px;
-  margin-bottom: 32px;
+  flex-shrink: 0;
 }
 
 .stats-card {
   background: var(--el-bg-color);
   border-radius: 12px;
-  padding: 20px;
+  padding: 18px 22px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1px solid var(--el-border-color-light);
@@ -276,16 +279,17 @@ onMounted(() => {
 }
 
 .stats-icon {
-  width: 48px;
-  height: 48px;
+  width: 46px;
+  height: 46px;
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-right: 16px;
   color: white;
-  font-size: 22px;
+  font-size: 20px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
 }
 
 .connection-icon { 
@@ -321,28 +325,32 @@ onMounted(() => {
 
 /* 快速操作区域 */
 .quick-actions-section {
-  margin-bottom: 32px;
+  flex: 1;
+  display: flex;
 }
 
 .quick-actions-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 20px;
+  width: 100%;
 }
 
 .quick-actions-panel {
   background: var(--el-bg-color);
   border-radius: 12px;
-  padding: 24px;
+  padding: 20px 24px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
   border: 1px solid var(--el-border-color-light);
+  height: 100%;
+  box-sizing: border-box;
 }
 
 .panel-title {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--el-text-color-primary);
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   padding-bottom: 12px;
   border-bottom: 2px solid var(--el-border-color-light);
 }
@@ -375,21 +383,22 @@ onMounted(() => {
 .supported-dbs-section {
   background: var(--el-bg-color);
   border-radius: 12px;
-  padding: 24px;
+  padding: 20px 24px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
   border: 1px solid var(--el-border-color-light);
+  flex-shrink: 0;
 }
 
 .dbs-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  gap: 14px;
 }
 
 .db-item {
   display: flex;
   align-items: center;
-  padding: 16px;
+  padding: 14px 16px;
   border: 1px solid var(--el-border-color);
   border-radius: 10px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -468,7 +477,7 @@ onMounted(() => {
   .welcome-title {
     font-size: 24px;
   }
-  
+
   .welcome-subtitle {
     font-size: 14px;
   }

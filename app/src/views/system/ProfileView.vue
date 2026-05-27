@@ -290,7 +290,7 @@ onMounted(() => {
 
 <style scoped>
 .connection-container {
-  padding: 20px;
+  padding: 5px;
 }
 
 .page-header {

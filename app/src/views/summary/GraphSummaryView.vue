@@ -2,7 +2,6 @@
   <div class="graph-statistics-container">
     <div class="page-header">
       <h2 class="page-title">图统计信息</h2>
-      <p class="page-description">查看图的统计信息，包括节点数、边数等</p>
     </div>
 
     <el-card class="statistics-card">
@@ -62,7 +61,7 @@
                 <span>节点标签统计</span>
               </div>
             </template>
-            <el-table :data="vertexLabelStats" style="width: 100%">
+            <el-table :data="vertexLabelStats" class="full-width-table">
               <el-table-column prop="label" label="标签名称" />
               <el-table-column prop="count" label="节点数" />
             </el-table>
@@ -75,7 +74,7 @@
                 <span>边类型统计</span>
               </div>
             </template>
-            <el-table :data="edgeLabelStats" style="width: 100%">
+            <el-table :data="edgeLabelStats" class="full-width-table">
               <el-table-column prop="label" label="边类型" />
               <el-table-column prop="count" label="边数" />
             </el-table>
@@ -178,7 +177,7 @@ watch(() => graphsStore.currentGraph, (newGraph) => {
 
 <style scoped>
 .graph-statistics-container {
-  padding: 20px;
+  padding: 5px;
 }
 
 .page-header {
@@ -187,7 +186,7 @@ watch(() => graphsStore.currentGraph, (newGraph) => {
 
 .page-title {
   font-size: 24px;
-  font-weight: bold;
+  font-weight: 600;
   margin-bottom: 10px;
   color: var(--el-text-color-primary);
 }
@@ -208,7 +207,7 @@ watch(() => graphsStore.currentGraph, (newGraph) => {
 }
 
 .basic-stats {
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 }
 
 .stat-item {
@@ -242,5 +241,9 @@ watch(() => graphsStore.currentGraph, (newGraph) => {
 .empty-placeholder {
   text-align: center;
   padding: 40px 0;
+}
+
+.full-width-table {
+  width: 100%;
 }
 </style>
