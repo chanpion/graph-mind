@@ -220,11 +220,11 @@ register('post', '/api/graphs/:graphId/data/nodes/:nodeTypeId', async (config, p
 })
 
 register('post', '/api/graphs/:graphId/data/edges/:edgeTypeId', async (config, params) => {
-  // 将 UI 的 sourceUid/targetUid 转为 mock 内部字段 source/target
+  // 将 UI 的 startUid/endUid 转为 mock 内部字段 source/target
   const data = {
     ...config.data,
-    source: config.data.sourceUid,
-    target: config.data.targetUid
+    source: config.data.startUid,
+    target: config.data.endUid
   }
   const schema = mockSchemas[params.graphId]
   const edgeLabel = schema?.edgeLabels?.find(e => e.id == params.edgeTypeId)?.label || config.data.label || params.edgeTypeId

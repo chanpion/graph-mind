@@ -108,8 +108,8 @@
             v-loading="loading"
           >
             <el-table-column prop="uid" label="UID" width="180" show-overflow-tooltip />
-            <el-table-column v-if="selectedType === 'edge'" prop="sourceUid" label="起点" width="180" show-overflow-tooltip />
-            <el-table-column v-if="selectedType === 'edge'" prop="targetUid" label="终点" width="180" show-overflow-tooltip />
+            <el-table-column v-if="selectedType === 'edge'" prop="startUid" label="起点" width="180" show-overflow-tooltip />
+            <el-table-column v-if="selectedType === 'edge'" prop="endUid" label="终点" width="180" show-overflow-tooltip />
             <el-table-column label="属性" min-width="400">
               <template #default="{ row }">
                 <div class="props-display">
@@ -199,10 +199,10 @@
           </el-select>
         </el-form-item>
         <el-form-item label="起点UID" required>
-          <el-input v-model="edgeForm.sourceUid" placeholder="输入起点UID" />
+          <el-input v-model="edgeForm.startUid" placeholder="输入起点UID" />
         </el-form-item>
         <el-form-item label="终点UID" required>
-          <el-input v-model="edgeForm.targetUid" placeholder="输入终点UID" />
+          <el-input v-model="edgeForm.endUid" placeholder="输入终点UID" />
         </el-form-item>
         <el-form-item label="属性">
           <div class="props-editor">
@@ -344,8 +344,8 @@ async function loadData() {
       tableData.value = items.filter(d =>
         (d.uid || '').toLowerCase().includes(kw) ||
         JSON.stringify(d.properties || {}).toLowerCase().includes(kw) ||
-        (d.sourceUid || '').toLowerCase().includes(kw) ||
-        (d.targetUid || '').toLowerCase().includes(kw)
+        (d.startUid || '').toLowerCase().includes(kw) ||
+        (d.endUid || '').toLowerCase().includes(kw)
       )
     } else {
       tableData.value = items
@@ -407,7 +407,7 @@ function showCreateDialog() {
     nodeDialogTitle.value = '新增节点'
     nodeDialogVisible.value = true
   } else {
-    edgeForm.value = { label: '', sourceUid: '', targetUid: '', properties: {} }
+    edgeForm.value = { label: '', startUid: '', endUid: '', properties: {} }
     edgePropKeys.value = []
     edgePropVals.value = []
     edgeDialogTitle.value = '新增边'
@@ -424,7 +424,7 @@ function showEditDialog(row) {
     nodeDialogTitle.value = '编辑节点'
     nodeDialogVisible.value = true
   } else {
-    edgeForm.value = { uid: row.uid, label: row.label, sourceUid: row.sourceUid, targetUid: row.targetUid, properties: { ...props } }
+    edgeForm.value = { uid: row.uid, label: row.label, startUid: row.startUid, endUid: row.endUid, properties: { ...props } }
     edgePropKeys.value = Object.keys(props)
     edgePropVals.value = Object.values(props)
     edgeDialogTitle.value = '编辑边'
@@ -468,7 +468,7 @@ async function saveNode() {
 // ---- 新增/编辑 边 ----
 const edgeDialogVisible = ref(false)
 const edgeDialogTitle = ref('')
-const edgeForm = ref({ label: '', sourceUid: '', targetUid: '', properties: {} })
+const edgeForm = ref({ label: '', startUid: '', endUid: '', properties: {} })
 const edgePropKeys = ref([])
 const edgePropVals = ref([])
 
@@ -480,8 +480,8 @@ async function saveEdge() {
   try {
     const data = {
       label: edgeForm.value.label,
-      sourceUid: edgeForm.value.sourceUid,
-      targetUid: edgeForm.value.targetUid,
+      startUid: edgeForm.value.startUid,
+      endUid: edgeForm.value.endUid,
       properties: buildProperties(edgePropKeys.value, edgePropVals.value)
     }
     if (edgeForm.value.uid) {
@@ -534,8 +534,8 @@ function exportJson(items) {
   const data = items.map(d => ({
     uid: d.uid,
     label: d.label,
-    ...(d.sourceUid ? { sourceUid: d.sourceUid } : {}),
-    ...(d.targetUid ? { targetUid: d.targetUid } : {}),
+    ...(d.startUid ? { startUid: d.startUid } : {}),
+    ...(d.endUid ? { endUid: d.endUid } : {}),
     ...(d.properties || {})
   }))
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
@@ -555,8 +555,8 @@ function exportCsv(items) {
     return fields.map(f => {
       if (f === 'uid') return d.uid || ''
       if (f === 'label') return d.label || ''
-      if (f === 'sourceUid') return d.sourceUid || ''
-      if (f === 'targetUid') return d.targetUid || ''
+      if (f === 'startUid') return d.startUid || ''
+      if (f === 'endUid') return d.endUid || ''
       // 属性字段
       const val = d.properties?.[f]
       return val != null ? String(val) : ''
@@ -584,7 +584,7 @@ const importing = ref(false)
 const baseFields = computed(() => {
   const cols = ['uid', 'label']
   if (selectedType.value === 'edge') {
-    cols.push('sourceUid', 'targetUid')
+    cols.push('startUid', 'endUid')
   }
   // 从 schema 获取属性列
   const typeDefs = selectedType.value === 'node' ? nodeTypes.value : edgeTypes.value

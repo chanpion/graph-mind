@@ -93,8 +93,8 @@ export const mockQueryEdges = async (connectionId, graphName, params) => {
   const pagedEdges = edges.slice(start, end).map(e => ({
     ...e,
     uid: e.id,
-    sourceUid: e.source,
-    targetUid: e.target
+    startUid: e.source,
+    endUid: e.target
   }))
   return mockSuccess({ list: pagedEdges, total: edges.length, pageNum, pageSize })
 }

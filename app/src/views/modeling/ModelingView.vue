@@ -476,6 +476,9 @@ watch(() => graphsStore.currentGraphId, (newId, oldId) => {
     nodeDefs.value = []
     edgeDefs.value = []
     fetchNodeDefs()
+    if (viewMode.value === 'graph') {
+      fetchEdgeDefs()
+    }
   }
 })
 
@@ -483,7 +486,7 @@ watch(viewMode, (mode) => {
   if (mode === 'graph') {
     fetchEdgeDefs()
   }
-})
+}, { immediate: true })
 
 onMounted(async () => {
   if (graphsStore.graphs.length === 0) {
