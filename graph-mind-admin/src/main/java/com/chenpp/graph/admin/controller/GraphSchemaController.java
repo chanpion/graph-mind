@@ -2,12 +2,18 @@ package com.chenpp.graph.admin.controller;
 
 import com.chenpp.graph.admin.model.GraphEdgeDef;
 import com.chenpp.graph.admin.model.GraphNodeDef;
+import com.chenpp.graph.admin.model.GraphPropertyDef;
 import com.chenpp.graph.admin.model.Result;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
 import com.chenpp.graph.admin.service.GraphNodeDefService;
 import com.chenpp.graph.admin.service.GraphSchemaService;
+import com.chenpp.graph.core.schema.GraphEntity;
+import com.chenpp.graph.core.schema.GraphProperty;
+import com.chenpp.graph.core.schema.GraphRelation;
 import com.chenpp.graph.core.schema.GraphSchema;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,7 +24,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /**
  * 图Schema管理控制器
@@ -42,6 +53,7 @@ public class GraphSchemaController {
 
     /**
      * 获取节点定义列表
+     * 如果元数据为空，自动从图数据库发现已有的点类型
      *
      * @param graphId 图ID
      * @param status  节点状态
@@ -50,6 +62,17 @@ public class GraphSchemaController {
     @GetMapping("/nodes")
     public Result<List<GraphNodeDef>> getNodeDefs(@PathVariable Long graphId, Integer status) {
         List<GraphNodeDef> nodeDefs = nodeDefService.getNodeDefsByGraphId(graphId, status);
+        // 元数据为空时，从图数据库发现
+        if (nodeDefs == null || nodeDefs.isEmpty()) {
+            nodeDefs = discoverNodeDefs(graphId);
+        } else {
+            // 有定义但属性为空时，尝试从图数据库发现并合并属性
+            boolean hasEmptyProperties = nodeDefs.stream()
+                .anyMatch(n -> n.getProperties() == null || n.getProperties().isEmpty());
+            if (hasEmptyProperties) {
+                mergeDiscoveredNodeProperties(nodeDefs, graphId);
+            }
+        }
         return Result.success(nodeDefs);
     }
 
@@ -118,6 +141,17 @@ public class GraphSchemaController {
     @GetMapping("/edges")
     public Result<List<GraphEdgeDef>> getEdgeDefs(@PathVariable Long graphId, Integer status) {
         List<GraphEdgeDef> edgeDefs = edgeDefService.getEdgeDefsByGraphId(graphId, status);
+        // 元数据为空时，从图数据库发现
+        if (edgeDefs == null || edgeDefs.isEmpty()) {
+            edgeDefs = discoverEdgeDefs(graphId);
+        } else {
+            // 有定义但属性为空时，尝试从图数据库发现并合并属性
+            boolean hasEmptyProperties = edgeDefs.stream()
+                .anyMatch(e -> e.getProperties() == null || e.getProperties().isEmpty());
+            if (hasEmptyProperties) {
+                mergeDiscoveredEdgeProperties(edgeDefs, graphId);
+            }
+        }
         return Result.success(edgeDefs);
     }
 
@@ -191,5 +225,86 @@ public class GraphSchemaController {
     @GetMapping("/schema")
     public Result<GraphSchema> getSchema(@PathVariable Long graphId) {
         return Result.success(graphSchemaService.getGraphSchema(graphId));
+    }
+
+    /**
+     * 从图数据库发现节点定义
+     */
+    private List<GraphNodeDef> discoverNodeDefs(Long graphId) {
+        GraphSchema schema = graphSchemaService.discoverSchema(graphId);
+        if (schema == null || schema.getEntities() == null || schema.getEntities().isEmpty()) {
+            return new ArrayList<>();
+        }
+        AtomicLong idCounter = new AtomicLong(-1);
+        return schema.getEntities().stream().map(entity -> {
+            GraphNodeDef nodeDef = new GraphNodeDef();
+            nodeDef.setId(idCounter.decrementAndGet());
+            nodeDef.setGraphId(graphId);
+            nodeDef.setLabel(entity.getLabel());
+            nodeDef.setName(entity.getLabel());
+            nodeDef.setDescription("从图数据库发现");
+            nodeDef.setStatus(1);
+            if (entity.getProperties() != null) {
+                List<GraphPropertyDef> props = entity.getProperties().stream()
+                    .map(p -> buildPropertyDef(p))
+                    .collect(Collectors.toList());
+                nodeDef.setProperties(props);
+            }
+            return nodeDef;
+        }).collect(Collectors.toList());
+    }
+
+    /**
+     * 从图数据库发现边定义
+     */
+    private List<GraphEdgeDef> discoverEdgeDefs(Long graphId) {
+        GraphSchema schema = graphSchemaService.discoverSchema(graphId);
+        if (schema == null || schema.getRelations() == null || schema.getRelations().isEmpty()) {
+            return new ArrayList<>();
+        }
+        // 构建节点标签→ID映射（使用负ID，与discoverNodeDefs一致）
+        Map<String, Long> labelIdMap = new HashMap<>();
+        if (schema.getEntities() != null) {
+            AtomicLong counter = new AtomicLong(-1);
+            for (GraphEntity entity : schema.getEntities()) {
+                labelIdMap.put(entity.getLabel(), counter.decrementAndGet());
+            }
+        }
+        AtomicLong idCounter = new AtomicLong(-1000);
+        return schema.getRelations().stream().map(relation -> {
+            GraphEdgeDef edgeDef = new GraphEdgeDef();
+            edgeDef.setId(idCounter.decrementAndGet());
+            edgeDef.setGraphId(graphId);
+            edgeDef.setLabel(relation.getLabel());
+            edgeDef.setName(relation.getLabel());
+            edgeDef.setDescription("从图数据库发现");
+            edgeDef.setStatus(1);
+            edgeDef.setMultiple(relation.getMultiple());
+            // 通过标签映射设置起点/终点节点ID
+            Long fromId = labelIdMap.get(relation.getSourceLabel());
+            edgeDef.setFrom(fromId != null ? String.valueOf(fromId) : relation.getSourceLabel());
+            Long toId = labelIdMap.get(relation.getTargetLabel());
+            edgeDef.setTo(toId != null ? String.valueOf(toId) : relation.getTargetLabel());
+            if (relation.getProperties() != null) {
+                List<GraphPropertyDef> props = relation.getProperties().stream()
+                    .map(p -> buildPropertyDef(p))
+                    .collect(Collectors.toList());
+                edgeDef.setProperties(props);
+            }
+            return edgeDef;
+        }).collect(Collectors.toList());
+    }
+
+    /**
+     * 将 GraphProperty 转换为 GraphPropertyDef
+     */
+    private GraphPropertyDef buildPropertyDef(GraphProperty p) {
+        GraphPropertyDef prop = new GraphPropertyDef();
+        prop.setCode(p.getCode());
+        prop.setName(p.getName());
+        prop.setType(p.getDataType() != null ? p.getDataType().name() : "String");
+        prop.setStatus(1);
+        prop.setIndexed(false);
+        return prop;
     }
 }

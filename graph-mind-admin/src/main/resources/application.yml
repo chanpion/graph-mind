@@ -26,7 +26,7 @@ spring:
       on-profile: h2
   
   datasource:
-    url: jdbc:h2:mem:testdb
+    url: jdbc:h2:mem:testdb;MODE=MySQL;
     username: sa
     password: 
     driver-class-name: org.h2.Driver

@@ -164,8 +164,8 @@
           <el-descriptions-item label="节点数">{{ currentGraphDetail.vertexCount || 0 }}</el-descriptions-item>
           <el-descriptions-item label="边数">{{ currentGraphDetail.edgeCount || 0 }}</el-descriptions-item>
           <el-descriptions-item label="状态">
-            <el-tag :type="currentGraphDetail.status === 'NORMAL' || currentGraphDetail.status === 1 ? 'success' : 'warning'">
-              {{ currentGraphDetail.status === 'NORMAL' || currentGraphDetail.status === 1 ? '正常' : '归档' }}
+            <el-tag :type="currentGraphDetail.status === 'NORMAL' || currentGraphDetail.status === 0 ? 'success' : currentGraphDetail.status === 'ABNORMAL' || currentGraphDetail.status === 1 ? 'danger' : 'info'">
+              {{ currentGraphDetail.status === 'NORMAL' || currentGraphDetail.status === 0 ? '正常' : currentGraphDetail.status === 'ABNORMAL' || currentGraphDetail.status === 1 ? '异常' : '未知' }}
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="创建时间">
@@ -344,9 +344,9 @@ async function handleCreate() {
   creating.value = true
   try {
     await graphsStore.createGraph({
-      connectionId: createForm.connectionId,
-      graphName: createForm.graphName,
-      graphDisplayName: createForm.graphDisplayName
+      connectionId: Number(createForm.connectionId),
+      code: createForm.graphName,
+      name: createForm.graphDisplayName
     })
     ElMessage.success('图创建成功')
     createDialogVisible.value = false
@@ -376,7 +376,7 @@ async function handleUpdateEdit() {
   editing.value = true
   try {
     await graphsStore.updateGraph(id, {
-      graphName: editForm.graphName,
+      name: editForm.graphName,
       description: editForm.description
     })
     ElMessage.success('图信息更新成功')

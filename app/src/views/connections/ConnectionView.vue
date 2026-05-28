@@ -114,7 +114,7 @@
       </el-table>
 
       <!-- 分页 -->
-      <div class="pagination-wrapper" v-if="total > pageSize">
+      <div class="pagination-wrapper">
         <el-pagination
           v-model:current-page="currentPage"
           v-model:page-size="pageSize"

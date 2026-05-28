@@ -55,9 +55,11 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
         }
         queryWrapper.orderByDesc("create_time");
         Page<Graph> pageResult = this.page(page, queryWrapper);
-        // 填充 databaseType（图列表前端展示用）
+        // 填充 databaseType、节点类型数、边类型数（图列表前端展示用）
         for (Graph graph : pageResult.getRecords()) {
             graph.setDatabaseType(graph.getGraphType());
+            graph.setNodeTypeCount((int) nodeDefService.count(new QueryWrapper<GraphNodeDef>().eq("graph_id", graph.getId()).eq("status", 1)));
+            graph.setEdgeTypeCount((int) edgeDefService.count(new QueryWrapper<GraphEdgeDef>().eq("graph_id", graph.getId()).eq("status", 1)));
         }
         return pageResult;
     }
@@ -68,9 +70,11 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
         queryWrapper.eq("connection_id", connectionId);
         queryWrapper.orderByDesc("create_time");
         Page<Graph> pageResult = this.page(page, queryWrapper);
-        // 填充 databaseType（图列表前端展示用）
+        // 填充 databaseType、节点类型数、边类型数（图列表前端展示用）
         for (Graph graph : pageResult.getRecords()) {
             graph.setDatabaseType(graph.getGraphType());
+            graph.setNodeTypeCount((int) nodeDefService.count(new QueryWrapper<GraphNodeDef>().eq("graph_id", graph.getId()).eq("status", 1)));
+            graph.setEdgeTypeCount((int) edgeDefService.count(new QueryWrapper<GraphEdgeDef>().eq("graph_id", graph.getId()).eq("status", 1)));
         }
         return pageResult;
     }

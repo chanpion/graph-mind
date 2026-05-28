@@ -356,7 +356,7 @@ const graphTypeTagType = computed(() => {
 })
 const defaultQuery = computed(() => {
   const map = {
-    neo4j: 'MATCH (n) RETURN n LIMIT 10',
+    neo4j: 'MATCH p=(n)-[r]->() RETURN p LIMIT 10',
     nebula: 'FETCH PROP ON * LIMIT 10',
     janusgraph: 'g.V().limit(10)'
   }

@@ -55,6 +55,7 @@ INSERT INTO graph (id, name, code, description, status, connection_id, graph_typ
 INSERT INTO graph (id, name, code, description, status, connection_id, graph_type, creator, create_time, update_time) VALUES (2, '商品知识图谱', 'product_kg', '商品相关的知识图谱', 1, 2, 'NEBULA', 'admin', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
 INSERT INTO graph (id, name, code, description, status, connection_id, graph_type, creator, create_time, update_time) VALUES (3, '企业图谱', 'company_graph', '企业相关信息图谱', 1, 3, 'JANUS', 'admin', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
 COMMIT;
+ALTER TABLE graph ALTER COLUMN id RESTART WITH 4;
 
 -- ----------------------------
 -- Records of sys_role_permission
@@ -75,3 +76,27 @@ INSERT INTO sys_role_permission VALUES (1, 11);
 INSERT INTO sys_role_permission VALUES (1, 12);
 INSERT INTO sys_role_permission VALUES (1, 13);
 COMMIT;
+
+-- ----------------------------
+-- 初始化节点定义数据
+-- ----------------------------
+BEGIN;
+INSERT INTO graph_node_def (id, graph_id, name, label, description, status, create_time, update_time) VALUES (1, 1, '用户', 'user', '用户节点', 1, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO graph_node_def (id, graph_id, name, label, description, status, create_time, update_time) VALUES (2, 1, '组织', 'org', '组织节点', 1, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO graph_node_def (id, graph_id, name, label, description, status, create_time, update_time) VALUES (3, 2, '商品', 'product', '商品节点', 1, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO graph_node_def (id, graph_id, name, label, description, status, create_time, update_time) VALUES (4, 2, '分类', 'category', '分类节点', 1, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+COMMIT;
+ALTER TABLE graph_node_def ALTER COLUMN id RESTART WITH 5;
+
+-- ----------------------------
+-- 初始化边定义数据
+-- ----------------------------
+BEGIN;
+INSERT INTO graph_edge_def (id, graph_id, name, label, `from`, `to`, description, status, multiple, create_time, update_time) VALUES (1, 1, '属于', 'belongs_to', 'user', 'org', '用户属于组织', 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO graph_edge_def (id, graph_id, name, label, `from`, `to`, description, status, multiple, create_time, update_time) VALUES (2, 2, '属于分类', 'in_category', 'product', 'category', '商品属于分类', 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+COMMIT;
+ALTER TABLE graph_edge_def ALTER COLUMN id RESTART WITH 3;
+ALTER TABLE sys_user ALTER COLUMN user_id RESTART WITH 2;
+ALTER TABLE sys_role ALTER COLUMN role_id RESTART WITH 3;
+ALTER TABLE sys_permission ALTER COLUMN permission_id RESTART WITH 14;
+ALTER TABLE graph_database_connection ALTER COLUMN id RESTART WITH 4;

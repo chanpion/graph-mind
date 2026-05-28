@@ -59,6 +59,27 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
     private GraphPropertyDefService graphPropertyDefService;
 
     @Override
+    public GraphSchema discoverSchema(Long graphId) {
+        // 获取图信息
+        Graph graph = graphService.getById(graphId);
+        if (graph == null) {
+            throw new GraphException("图不存在");
+        }
+        // 获取图数据库连接信息
+        GraphDatabaseConnection connection = connectionService.getById(graph.getConnectionId());
+        if (connection == null) {
+            throw new GraphException("图数据库连接不存在");
+        }
+
+        // 创建图客户端并查询图数据库
+        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
+        GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+        GraphOperations graphOperations = graphClient.opsForGraph();
+
+        return graphOperations.getPublishedSchema(graphConf);
+    }
+
+    @Override
     public GraphSchema getGraphSchema(Long graphId) {
         // 获取图信息
         Graph graph = graphService.getById(graphId);
