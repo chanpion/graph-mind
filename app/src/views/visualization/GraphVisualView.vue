@@ -194,7 +194,7 @@ import {
 
 // 默认查询语句
 const DEFAULT_QUERIES = {
-  neo4j: 'MATCH (n) RETURN n LIMIT 10',
+  neo4j: 'MATCH p=(n)-[r]->() RETURN p LIMIT 10',
   nebula: 'FETCH PROP ON * LIMIT 10',
   janusgraph: 'g.V().limit(10)',
   janus: 'g.V().limit(10)'

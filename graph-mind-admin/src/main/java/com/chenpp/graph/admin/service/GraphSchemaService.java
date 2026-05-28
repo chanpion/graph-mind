@@ -22,4 +22,12 @@ public interface GraphSchemaService {
      * @return 图Schema
      */
     GraphSchema getGraphSchema(Long graphId);
+
+    /**
+     * 从图数据库发现Schema（获取图数据库中实际的点边类型）
+     *
+     * @param graphId 图id
+     * @return 图Schema
+     */
+    GraphSchema discoverSchema(Long graphId);
 }

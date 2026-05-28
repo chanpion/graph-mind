@@ -12,19 +12,20 @@
         <div class="graph-tags">
           <el-tag size="small" :type="statusTagType">{{ statusText }}</el-tag>
           <el-tag v-if="graph.sourceType" size="small" :type="sourceTagType">{{ sourceText }}</el-tag>
+          <el-tag size="small" :type="dbTagType" class="db-tag">{{ dbTypeLabel }}</el-tag>
         </div>
       </div>
     </div>
 
     <div class="card-stats">
       <div class="stat-item">
-        <div class="stat-value">{{ graph.vertexCount != null ? formatNumber(graph.vertexCount) : '--' }}</div>
-        <div class="stat-label">节点</div>
+        <div class="stat-value">{{ graph.nodeTypeCount != null ? graph.nodeTypeCount : '--' }}</div>
+        <div class="stat-label">节点类型</div>
       </div>
       <el-divider direction="vertical" />
       <div class="stat-item">
-        <div class="stat-value">{{ graph.edgeCount != null ? formatNumber(graph.edgeCount) : '--' }}</div>
-        <div class="stat-label">边</div>
+        <div class="stat-value">{{ graph.edgeTypeCount != null ? graph.edgeTypeCount : '--' }}</div>
+        <div class="stat-label">边类型</div>
       </div>
     </div>
 
@@ -78,11 +79,17 @@ const dbTypeClass = computed(() => {
 })
 
 const statusTagType = computed(() => {
-  return props.graph.status === 'NORMAL' || props.graph.status === 1 ? 'success' : 'info'
+  const s = props.graph.status
+  if (s === 'NORMAL' || s === 0) return 'success'
+  if (s === 'ABNORMAL' || s === 1) return 'danger'
+  return 'info'
 })
 
 const statusText = computed(() => {
-  return props.graph.status === 'NORMAL' || props.graph.status === 1 ? '正常' : '归档'
+  const s = props.graph.status
+  if (s === 'NORMAL' || s === 0) return '正常'
+  if (s === 'ABNORMAL' || s === 1) return '异常'
+  return '未知'
 })
 
 const sourceTagType = computed(() => {
@@ -91,6 +98,16 @@ const sourceTagType = computed(() => {
 
 const sourceText = computed(() => {
   return props.graph.sourceType === 'PLATFORM' ? '平台创建' : '已有'
+})
+
+const dbTypeLabel = computed(() => {
+  const labels = { neo4j: 'Neo4j', nebula: 'Nebula', janus: 'JanusGraph' }
+  return labels[dbType.value.toLowerCase()] || dbType.value || '未知'
+})
+
+const dbTagType = computed(() => {
+  const types = { neo4j: 'warning', nebula: 'success', janus: 'danger' }
+  return types[dbType.value.toLowerCase()] || 'info'
 })
 
 function formatNumber(num) {

@@ -27,8 +27,9 @@ public class Graph {
 
     /**
      * 状态
-     * 0: 未发布
-     * 1: 已发布
+     * 0: 正常
+     * 1: 异常
+     * 2: 未知
      */
     private Integer status;
 
@@ -63,4 +64,12 @@ public class Graph {
     /** 边数量（展示用，来自图数据库统计） */
     @TableField(exist = false)
     private Integer edgeCount;
+
+    /** 节点类型数量（展示用，来自 graph_node_def 统计） */
+    @TableField(exist = false)
+    private Integer nodeTypeCount;
+
+    /** 边类型数量（展示用，来自 graph_edge_def 统计） */
+    @TableField(exist = false)
+    private Integer edgeTypeCount;
 }

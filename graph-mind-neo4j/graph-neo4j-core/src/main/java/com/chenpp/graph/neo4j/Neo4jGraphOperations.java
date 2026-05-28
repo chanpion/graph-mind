@@ -3,20 +3,25 @@ package com.chenpp.graph.neo4j;
 import com.chenpp.graph.core.GraphOperations;
 import com.chenpp.graph.core.exception.GraphException;
 import com.chenpp.graph.core.model.GraphConf;
+import com.chenpp.graph.core.schema.DataType;
 import com.chenpp.graph.core.schema.Graph;
 import com.chenpp.graph.core.schema.GraphEntity;
 import com.chenpp.graph.core.schema.GraphIndex;
+import com.chenpp.graph.core.schema.GraphProperty;
 import com.chenpp.graph.core.schema.GraphRelation;
 import com.chenpp.graph.core.schema.GraphSchema;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.neo4j.driver.Driver;
+import org.neo4j.driver.Record;
 import org.neo4j.driver.Result;
 import org.neo4j.driver.Session;
 import org.neo4j.driver.SessionConfig;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author April.Chen
@@ -89,7 +94,7 @@ public class Neo4jGraphOperations implements GraphOperations {
 
     public List<GraphEntity> getNodeLabels() throws GraphException {
         String cypher = "CALL db.labels()";
-        List<GraphEntity> entities = new ArrayList<>();
+        Map<String, GraphEntity> entityMap = new LinkedHashMap<>();
 
         try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
             Result result = session.run(cypher);
@@ -97,20 +102,51 @@ public class Neo4jGraphOperations implements GraphOperations {
                 String label = result.next().get(0).asString();
                 GraphEntity entity = new GraphEntity();
                 entity.setLabel(label);
-                entities.add(entity);
+                entityMap.put(label, entity);
             }
         } catch (Exception e) {
             log.error("Failed to get node labels from Neo4j", e);
             throw new GraphException("Failed to get node labels", e);
         }
 
-        log.debug("Retrieved {} node labels from Neo4j", entities.size());
-        return entities;
+        // 查询节点属性元数据
+        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+            Result result = session.run("CALL db.schema.nodeTypeProperties()");
+            while (result.hasNext()) {
+                Record record = result.next();
+                List<String> nodeLabels = record.get("nodeLabels").asList(v -> v.asString());
+                if (nodeLabels == null || nodeLabels.isEmpty()) continue;
+                String label = nodeLabels.get(0);
+                GraphEntity entity = entityMap.get(label);
+                if (entity == null) continue;
+
+                String propertyName = record.get("propertyName").asString();
+                if (propertyName == null) continue;
+
+                List<String> propertyTypes = record.get("propertyTypes").asList(v -> v.asString());
+                String typeStr = (propertyTypes != null && !propertyTypes.isEmpty()) ? propertyTypes.get(0) : "String";
+
+                GraphProperty prop = new GraphProperty();
+                prop.setCode(propertyName);
+                prop.setName(propertyName);
+                prop.setDataType(DataType.instanceOf(typeStr));
+
+                if (entity.getProperties() == null) {
+                    entity.setProperties(new ArrayList<>());
+                }
+                entity.getProperties().add(prop);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to get node property metadata from Neo4j (may not be supported in this version)", e);
+        }
+
+        log.debug("Retrieved {} node labels from Neo4j", entityMap.size());
+        return new ArrayList<>(entityMap.values());
     }
 
     public List<GraphRelation> getRelationshipTypes() throws GraphException {
         String cypher = "CALL db.relationshipTypes()";
-        List<GraphRelation> relations = new ArrayList<>();
+        Map<String, GraphRelation> relationMap = new LinkedHashMap<>();
 
         try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
             Result result = session.run(cypher);
@@ -118,15 +154,47 @@ public class Neo4jGraphOperations implements GraphOperations {
                 String type = result.next().get(0).asString();
                 GraphRelation relation = new GraphRelation();
                 relation.setLabel(type);
-                relations.add(relation);
+                relationMap.put(type, relation);
             }
         } catch (Exception e) {
             log.error("Failed to get relationship types from Neo4j", e);
             throw new GraphException("Failed to get relationship types", e);
         }
 
-        log.debug("Retrieved {} relationship types from Neo4j", relations.size());
-        return relations;
+        // 查询关系属性元数据
+        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+            Result result = session.run("CALL db.schema.relTypeProperties()");
+            while (result.hasNext()) {
+                Record record = result.next();
+                String rawRelType = record.get("relType").asString();
+                if (rawRelType == null) continue;
+                // relType 格式为 :`ACTED_IN`（带冒号和反引号），需要清理为纯名称
+                String relType = rawRelType.replaceAll("[:`]", "");
+                GraphRelation relation = relationMap.get(relType);
+                if (relation == null) continue;
+
+                String propertyName = record.get("propertyName").asString();
+                if (propertyName == null) continue;
+
+                List<String> propertyTypes = record.get("propertyTypes").asList(v -> v.asString());
+                String typeStr = (propertyTypes != null && !propertyTypes.isEmpty()) ? propertyTypes.get(0) : "String";
+
+                GraphProperty prop = new GraphProperty();
+                prop.setCode(propertyName);
+                prop.setName(propertyName);
+                prop.setDataType(DataType.instanceOf(typeStr));
+
+                if (relation.getProperties() == null) {
+                    relation.setProperties(new ArrayList<>());
+                }
+                relation.getProperties().add(prop);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to get relationship property metadata from Neo4j (may not be supported in this version)", e);
+        }
+
+        log.debug("Retrieved {} relationship types from Neo4j", relationMap.size());
+        return new ArrayList<>(relationMap.values());
     }
 
     public List<GraphIndex> getIndexes() throws GraphException {

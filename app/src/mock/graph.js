@@ -14,7 +14,7 @@ const mockGraphs = [
     vertexCount: 12580,
     edgeCount: 34256,
     sourceType: 'PLATFORM',
-    status: 'NORMAL',
+    status: 0,
     createTime: new Date('2024-01-15T10:30:00').toISOString(),
     createdAt: new Date('2024-01-15T10:30:00').toISOString(),
     description: '社交网络图'
@@ -28,7 +28,7 @@ const mockGraphs = [
     vertexCount: 8432,
     edgeCount: 15678,
     sourceType: 'PLATFORM',
-    status: 'NORMAL',
+    status: 0,
     createTime: new Date('2024-02-20T14:20:00').toISOString(),
     createdAt: new Date('2024-02-20T14:20:00').toISOString(),
     description: '产品关系图'
@@ -42,7 +42,7 @@ const mockGraphs = [
     vertexCount: 45210,
     edgeCount: 78932,
     sourceType: 'EXISTING',
-    status: 'NORMAL',
+    status: 0,
     createTime: new Date('2024-03-10T09:15:00').toISOString(),
     createdAt: new Date('2024-03-10T09:15:00').toISOString(),
     description: '知识库图'
@@ -56,7 +56,7 @@ const mockGraphs = [
     vertexCount: 5620,
     edgeCount: 9843,
     sourceType: 'PLATFORM',
-    status: 'ARCHIVED',
+    status: 2,
     createTime: new Date('2023-12-05T16:45:00').toISOString(),
     createdAt: new Date('2023-12-05T16:45:00').toISOString(),
     description: '已归档的图'
@@ -186,7 +186,7 @@ export const mockCreateGraph = async (connectionId, data) => {
     vertexCount: 0,
     edgeCount: 0,
     sourceType: 'PLATFORM',
-    status: 'NORMAL',
+    status: 0,
     createTime: new Date().toISOString(),
     createdAt: new Date().toISOString(),
     description: data.description || data.graphDisplayName || '新建图'

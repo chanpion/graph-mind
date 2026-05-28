@@ -445,8 +445,8 @@ function transformData() {
 
   // Map edgeDefs to D3 edges using from/to IDs
   edges.value = (props.edgeDefs || []).map(et => {
-    const sourceNode = nodes.value.find(n => n.id === et.from)
-    const targetNode = nodes.value.find(n => n.id === et.to)
+    const sourceNode = nodes.value.find(n => n.id == et.from)
+    const targetNode = nodes.value.find(n => n.id == et.to)
     return {
       id: et.id,
       label: et.label || et.name,
