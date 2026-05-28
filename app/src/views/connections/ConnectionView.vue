@@ -235,18 +235,7 @@ const rules = {
 }
 
 const filteredConnections = computed(() => {
-  let result = connections.value
-  if (searchKeyword.value) {
-    const kw = searchKeyword.value.toLowerCase()
-    result = result.filter(item =>
-      item.name.toLowerCase().includes(kw) ||
-      (item.host || '').toLowerCase().includes(kw)
-    )
-  }
-  if (searchType.value) {
-    result = result.filter(item => item.type === searchType.value)
-  }
-  return result
+  return connections.value
 })
 
 const dialogTitle = computed(() => (form.id ? '编辑连接' : '新增连接'))
@@ -266,20 +255,25 @@ const getStatusLabel = (status) => {
   return labels[status] || '未知'
 }
 
+const normalizeType = (type) => (type || '').toUpperCase()
+
 const getTypeTagType = (type) => {
   const types = { NEO4J: 'primary', NEBULA: 'success', JANUS: 'warning' }
-  return types[type] || 'info'
+  return types[normalizeType(type)] || 'info'
 }
 
 const getTypeLabel = (type) => {
   const labels = { NEO4J: 'Neo4j', NEBULA: 'Nebula Graph', JANUS: 'JanusGraph' }
-  return labels[type] || type
+  return labels[normalizeType(type)] || type
 }
 
 async function fetchConnections() {
   loading.value = true
   try {
-    const res = await connectionApi.list({ page: currentPage.value, pageSize: pageSize.value })
+    const params = { page: currentPage.value, pageSize: pageSize.value }
+    if (searchKeyword.value) params.keyword = searchKeyword.value
+    if (searchType.value) params.type = searchType.value
+    const res = await connectionApi.list(params)
     const data = Array.isArray(res) ? { records: res, total: res.length } : (res?.data || { records: [], total: 0 })
     connections.value = data.records || data.list || []
     total.value = data.total || connections.value.length
@@ -310,9 +304,9 @@ function handleEdit(row) {
   const editRow = JSON.parse(JSON.stringify(row))
   form.id = editRow.id
   form.name = editRow.name
-  form.type = editRow.type || 'NEO4J'
+  form.type = normalizeType(editRow.type) || 'NEO4J'
   form.host = editRow.host || ''
-    form.port = editRow.port ?? (defaultPorts[editRow.type] || 7687)
+    form.port = editRow.port ?? (defaultPorts[normalizeType(editRow.type)] || 7687)
   form.username = editRow.username || ''
   form.password = ''
   form.description = editRow.description || ''
@@ -360,7 +354,21 @@ async function handleSubmit() {
   try {
     await formRef.value.validate()
     submitLoading.value = true
+    // 将前端表单字段打包到 params JSON 字段中，匹配后端 GraphDatabaseConnection 模型
     const data = { ...form }
+    const params = {}
+    if (data.username) params.username = data.username
+    if (data.password) params.password = data.password
+    if (data.storageBackend) params.storageBackend = data.storageBackend
+    if (data.storageHost) params.storageHost = data.storageHost
+    data.params = JSON.stringify(params)
+    // 确保 type 存为大写
+    data.type = normalizeType(data.type)
+    // 清理不存在的字段，避免后端报错
+    delete data.username
+    delete data.password
+    delete data.storageBackend
+    delete data.storageHost
     if (form.id) {
       await connectionApi.update(form.id, data)
       ElMessage.success('更新成功')

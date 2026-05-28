@@ -68,13 +68,14 @@
       <div v-else-if="selectedEntityType === 'edge' && selectedEntityTypeId">
         <el-table :data="entityData" style="width: 100%" v-loading="loading">
           <el-table-column prop="uid" label="唯一标识" width="180"></el-table-column>
-          <el-table-column prop="startUid" label="起点ID" width="180"></el-table-column>
-          <el-table-column prop="endUid" label="终点ID" width="180"></el-table-column>
+          <el-table-column prop="startUid" label="起点ID" width="200"></el-table-column>
+          <el-table-column prop="endUid" label="终点ID" width="200"></el-table-column>
           <el-table-column 
             v-for="prop in currentEntityTypeProperties" 
             :key="prop.code"
             :prop="prop.code"
             :label="prop.name"
+            min-width="200"
             :formatter="propertyFormatter">
           </el-table-column>
           <el-table-column label="操作" width="120" align="center" fixed="right">

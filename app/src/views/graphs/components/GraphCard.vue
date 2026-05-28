@@ -18,12 +18,12 @@
 
     <div class="card-stats">
       <div class="stat-item">
-        <div class="stat-value">{{ formatNumber(graph.vertexCount || 0) }}</div>
+        <div class="stat-value">{{ graph.vertexCount != null ? formatNumber(graph.vertexCount) : '--' }}</div>
         <div class="stat-label">节点</div>
       </div>
       <el-divider direction="vertical" />
       <div class="stat-item">
-        <div class="stat-value">{{ formatNumber(graph.edgeCount || 0) }}</div>
+        <div class="stat-value">{{ graph.edgeCount != null ? formatNumber(graph.edgeCount) : '--' }}</div>
         <div class="stat-label">边</div>
       </div>
     </div>
@@ -68,7 +68,7 @@ const props = defineProps({
 
 defineEmits(['click', 'open', 'edit', 'detail', 'delete', 'browse'])
 
-const dbType = computed(() => props.graph.databaseType || props.graph.type || '')
+const dbType = computed(() => props.graph.databaseType || props.graph.graphType || props.graph.type || '')
 const dbTypeClass = computed(() => {
   const t = dbType.value.toLowerCase()
   if (t.includes('neo4j')) return 'neo4j'

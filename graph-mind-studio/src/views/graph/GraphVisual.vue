@@ -321,8 +321,8 @@ const handleQuery = async () => {
       uid: vertex.uid,
       label: vertex.label,
       properties: vertex.properties,
-      x: 0,
-      y: 0
+      x: Math.random() * width, // 添加初始位置
+      y: Math.random() * height
     }))
     
     // 转换边数据格式以适配可视化，并为每条边添加唯一ID
@@ -345,6 +345,7 @@ const handleQuery = async () => {
     // 自动为不同类型的节点和边分配颜色
     autoAssignColors()
     
+    // 绘制图形
     drawGraph()
   } catch (e) {
     ElMessage.error('查询失败: ' + (e.message || '未知错误'))
@@ -399,14 +400,14 @@ const processEdgesData = () => {
   
   // 更新边的source和target引用
   edges.value.forEach(edge => {
-    // 如果source是字符串ID，则替换为节点对象
-    if (typeof edge.source === 'string') {
-      edge.source = nodeMap[edge.source] || edge.source
+    // 如果source是字符串ID，且能找到对应的节点对象，则替换为节点对象
+    if (typeof edge.source === 'string' && nodeMap[edge.source]) {
+      edge.source = nodeMap[edge.source]
     }
     
-    // 如果target是字符串ID，则替换为节点对象
-    if (typeof edge.target === 'string') {
-      edge.target = nodeMap[edge.target] || edge.target
+    // 如果target是字符串ID，且能找到对应的节点对象，则替换为节点对象
+    if (typeof edge.target === 'string' && nodeMap[edge.target]) {
+      edge.target = nodeMap[edge.target]
     }
   })
 }
@@ -544,12 +545,12 @@ const handleExpandNode = async () => {
     vertices.forEach(vertex => {
       if (!existingNodeIds.has(vertex.uid)) {
         nodes.value.push({
-          id: vertex.uid,
+          id: vertex.uid, // 确保id属性正确设置
           uid: vertex.uid,
           label: vertex.label,
           properties: vertex.properties,
-          x: 0,
-          y: 0
+          x: Math.random() * width, // 添加初始位置
+          y: Math.random() * height
         })
       }
     })
@@ -747,8 +748,8 @@ const handleFindPath = async () => {
           uid: vertex.uid,
           label: vertex.label,
           properties: vertex.properties,
-          x: 0,
-          y: 0
+          x: Math.random() * width, // 添加初始位置
+          y: Math.random() * height
         })
       })
       
@@ -843,7 +844,9 @@ const drawGraph = () => {
   zoom.value = d3.zoom()
     .scaleExtent([0.1, 10]) // 设置缩放范围
     .on('zoom', (event) => {
-      gRef.value.attr('transform', event.transform)
+      if (gRef.value) {
+        gRef.value.attr('transform', event.transform)
+      }
     })
   
   // 应用缩放行为到svg
@@ -933,7 +936,8 @@ const drawForceLayout = (container) => {
       .links(edges.value.map((d, i) => ({ ...d, index: i }))) // 为每条边添加唯一索引
     )
     .force('charge', d3.forceManyBody().strength(-300))
-    .force('center', d3.forceCenter(width / 2, height / 2))
+    .force('center', d3.forceCenter(actualWidth / 2, actualHeight / 2))
+    .on('tick', ticked)
 
   // 画边（仅当有边时才绘制）
   let link = null;
@@ -998,40 +1002,39 @@ const drawForceLayout = (container) => {
       showDetail('node', d)
     })
     
-  simulation.on('tick', () => {
+  function ticked() {
     // 只有当有边时才更新连线位置
     if (link && linkText) {
+      // 更新连线位置
       link
         .attr('x1', d => {
-          // 处理source可能是ID字符串的情况
-          const source = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
-          return source ? source.x : 0
+          const sourceNode = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
+          return sourceNode ? sourceNode.x : 0
         })
         .attr('y1', d => {
-          const source = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
-          return source ? source.y : 0
+          const sourceNode = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
+          return sourceNode ? sourceNode.y : 0
         })
         .attr('x2', d => {
-          // 处理target可能是ID字符串的情况
-          const target = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
-          return target ? target.x : 0
+          const targetNode = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
+          return targetNode ? targetNode.x : 0
         })
         .attr('y2', d => {
-          const target = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
-          return target ? target.y : 0
+          const targetNode = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
+          return targetNode ? targetNode.y : 0
         })
       
       // 更新边标签位置
       linkText
         .attr('x', d => {
-          const source = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
-          const target = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
-          return source && target ? (source.x + target.x) / 2 : 0
+          const sourceNode = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
+          const targetNode = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
+          return sourceNode && targetNode ? (sourceNode.x + targetNode.x) / 2 : 0
         })
         .attr('y', d => {
-          const source = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
-          const target = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
-          return source && target ? (source.y + target.y) / 2 : 0
+          const sourceNode = typeof d.source === 'object' ? d.source : nodes.value.find(n => n.id === d.source)
+          const targetNode = typeof d.target === 'object' ? d.target : nodes.value.find(n => n.id === d.target)
+          return sourceNode && targetNode ? (sourceNode.y + targetNode.y) / 2 : 0
         })
     }
     
@@ -1041,7 +1044,7 @@ const drawForceLayout = (container) => {
     text
       .attr('x', d => d.x)
       .attr('y', d => d.y)
-  })
+  }
 }
 
 // 层次布局
@@ -1179,8 +1182,10 @@ const drawHierarchyLayout = (container) => {
 // 层次布局的拖拽处理
 function dragHierarchy() {
   function dragstarted(event, d) {
-    d.fx = d.x
-    d.fy = d.y
+    if (!event.active) {
+      d.fx = d.x
+      d.fy = d.y
+    }
   }
   function dragged(event, d) {
     d.fx = event.x

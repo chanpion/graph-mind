@@ -155,11 +155,11 @@ const request = async (config) => {
   } catch (error) {
     // 请求失败后也从pending map中移除
     pendingRequests.delete(requestKey)
-    // 如果是取消请求的错误，不抛出（已经是重复请求，静默处理）
-    if (error.name === 'AbortError' || error.code === 'ABORT_ERR') {
+    // 如果是取消请求的错误，不抛出（重复请求被取消，静默处理）
+    if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED') {
       console.log(`请求已取消: ${error.message}`)
-      // 返回一个永不resolve的promise，让调用方不处理（或抛出特定错误）
-      return new Promise(() => {}) // 静默处理，不触发catch
+      // 重复请求被取消，返回空数据避免上层报错
+      return { code: 200, data: null, message: 'canceled' }
     }
     throw error
   }

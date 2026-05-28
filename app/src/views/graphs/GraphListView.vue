@@ -187,6 +187,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Plus, Loading, Search } from '@element-plus/icons-vue'
 import GraphCard from './components/GraphCard.vue'
 import { connectionApi } from '@/views/connections/api/connection'
+import { graphApi } from '@/views/graphs/api/graph'
 import { useGraphsStore } from './stores/useGraphsStore'
 import { storeToRefs } from 'pinia'
 
@@ -389,13 +390,29 @@ async function handleUpdateEdit() {
 }
 
 // ====== 详情 ======
-function showDetail(graph) {
-  currentGraphDetail.value = {
+async function showDetail(graph) {
+  const conn = connections.value.find(c => c.id === (graph.connectionId || selectedConnectionId.value))
+  const detail = {
     ...graph,
     connectionId: graph.connectionId || selectedConnectionId.value,
-    databaseType: graph.databaseType || '未知',
+    databaseType: graph.databaseType || graph.graphType || conn?.type || '未知',
+    vertexCount: 0,
+    edgeCount: 0,
     createTime: graph.createTime || graph.createdAt
   }
+  // 从 summary API 获取真实的点边数量
+  try {
+    if (graph.id) {
+      const res = await graphApi.getGraphSummary(graph.id)
+      if (res?.data) {
+        detail.vertexCount = res.data.vertexCount ?? 0
+        detail.edgeCount = res.data.edgeCount ?? 0
+      }
+    }
+  } catch (e) {
+    console.warn('获取图统计信息失败:', e)
+  }
+  currentGraphDetail.value = detail
   detailDialogVisible.value = true
 }
 

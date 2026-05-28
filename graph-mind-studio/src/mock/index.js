@@ -290,6 +290,136 @@ Mock.mock(/\/api\/graphs\/\d+\/import\/execute/, 'post', {
   }
 })
 
+// 图分析相关接口
+Mock.mock(/\/api\/graphs\/\d+\/analysis\/k-layer/, 'post', {
+  code: 200,
+  message: 'K层展开分析完成',
+  data: {
+    result: {
+      expandedNodes: '@integer(10, 100)',
+      expandedEdges: '@integer(20, 200)',
+      pathCount: '@integer(5, 50)'
+    },
+    graph: {
+      vertices: [
+        { id: 'center', label: '中心节点', x: 300, y: 200 },
+        { id: 'n1', label: '节点1', x: 200, y: 150 },
+        { id: 'n2', label: '节点2', x: 400, y: 150 },
+        { id: 'n3', label: '节点3', x: 150, y: 250 },
+        { id: 'n4', label: '节点4', x: 450, y: 250 }
+      ],
+      edges: [
+        { source: 'center', target: 'n1', value: 1.2 },
+        { source: 'center', target: 'n2', value: 1.5 },
+        { source: 'n1', target: 'n3', value: 0.8 },
+        { source: 'n2', target: 'n4', value: 0.7 }
+      ]
+    }
+  }
+})
+
+Mock.mock(/\/api\/graphs\/\d+\/analysis\/path/, 'post', {
+  code: 200,
+  message: '路径查询完成',
+  data: {
+    result: {
+      pathLength: '@float(1, 10, 1, 2)',
+      nodeCount: '@integer(3, 10)'
+    },
+    graph: {
+      vertices: [
+        { id: '1', label: '起点', group: 'path', x: 100, y: 100 },
+        { id: '3', label: '节点3', group: 'path', x: 200, y: 150 },
+        { id: '5', label: '节点5', group: 'path', x: 300, y: 100 },
+        { id: '7', label: '节点7', group: 'path', x: 400, y: 150 },
+        { id: '9', label: '终点', group: 'path', x: 500, y: 100 }
+      ],
+      edges: [
+        { source: '1', target: '3', value: 1.2 },
+        { source: '3', target: '5', value: 1.5 },
+        { source: '5', target: '7', value: 0.8 },
+        { source: '7', target: '9', value: 0.7 }
+      ]
+    }
+  }
+})
+
+Mock.mock(/\/api\/graphs\/\d+\/analysis\/algorithm/, 'post', {
+  code: 200,
+  message: '算法分析完成',
+  data: function() {
+    const algorithm = this.params ? JSON.parse(this.params).algorithm : 'pageRank'
+    let vertices = []
+    let edges = []
+    
+    // 生成示例图数据
+    for (let i = 0; i < 20; i++) {
+      vertices.push({
+        id: `node_${i}`,
+        label: `节点${i}`,
+        x: Math.random() * 600,
+        y: Math.random() * 400
+      })
+    }
+    
+    // 生成示例边数据
+    for (let i = 0; i < 30; i++) {
+      edges.push({
+        source: `node_${Math.floor(Math.random() * 20)}`,
+        target: `node_${Math.floor(Math.random() * 20)}`,
+        value: Math.random() * 5
+      })
+    }
+    
+    switch(algorithm) {
+      case 'pageRank':
+        return {
+          result: {
+            nodeCount: '@integer(50, 200)',
+            topNode: '@word(5, 10)',
+            topScore: '@float(0, 1, 1, 4)'
+          },
+          graph: {
+            vertices: vertices,
+            edges: edges
+          }
+        }
+      case 'community':
+        return {
+          result: {
+            communityCount: '@integer(3, 10)',
+            maxCommunitySize: '@integer(10, 50)'
+          },
+          graph: {
+            vertices: vertices,
+            edges: edges
+          }
+        }
+      case 'connectedComponents':
+        return {
+          result: {
+            componentCount: '@integer(2, 8)',
+            maxComponentSize: '@integer(20, 100)'
+          },
+          graph: {
+            vertices: vertices,
+            edges: edges
+          }
+        }
+      default:
+        return {
+          result: {
+            nodeCount: 0
+          },
+          graph: {
+            vertices: vertices,
+            edges: edges
+          }
+        }
+    }
+  }
+})
+
 // 数据库类型配置
 export const databaseTypes = {
   neo4j: {

@@ -5,7 +5,7 @@
 const CONFIG_KEY = 'graph_mind_api_config'
 
 const defaultConfig = {
-  useMock: true,
+  useMock: false,
   mockDelay: 300,
   realApiUrl: 'http://localhost:18080',
   realApiTimeout: 10000

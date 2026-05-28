@@ -108,9 +108,9 @@
             v-loading="loading"
           >
             <el-table-column prop="uid" label="UID" width="180" show-overflow-tooltip />
-            <el-table-column v-if="selectedType === 'edge'" prop="sourceUid" label="起点" width="150" show-overflow-tooltip />
-            <el-table-column v-if="selectedType === 'edge'" prop="targetUid" label="终点" width="150" show-overflow-tooltip />
-            <el-table-column label="属性" min-width="280">
+            <el-table-column v-if="selectedType === 'edge'" prop="sourceUid" label="起点" width="180" show-overflow-tooltip />
+            <el-table-column v-if="selectedType === 'edge'" prop="targetUid" label="终点" width="180" show-overflow-tooltip />
+            <el-table-column label="属性" min-width="400">
               <template #default="{ row }">
                 <div class="props-display">
                   <span

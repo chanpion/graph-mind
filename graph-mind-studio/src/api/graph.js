@@ -193,7 +193,28 @@ export const graphApi = {
     return request.delete(`/api/graphs/${graphId}/data/edges/${edgeId}`, {
       params: { label }
     })
-  }
+  },
+
+  // K层展开分析
+  kLayerExpand(graphId, params) {
+    return request.post(`/api/graphs/${graphId}/analysis/k-layer`, params)
+  },
+
+  // 路径查询（改进版，支持属性查询）
+  findPathByProperties(graphId, params) {
+    return request.post(`/api/graphs/${graphId}/analysis/path`, params)
+  },
+
+  // 图算法分析
+  graphAlgorithm(graphId, params) {
+    return request.post(`/api/graphs/${graphId}/analysis/algorithm`, params)
+  },
+
+  // 获取已发布的图Schema
+  getPublishedSchema(graphId) {
+    return request.get(`/api/graphs/${graphId}/schema/published`)
+  },
+
 }
 
 export default graphApi

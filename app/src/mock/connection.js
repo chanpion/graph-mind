@@ -67,11 +67,27 @@ export const mockListConnections = async (config) => {
   const params = config?.params || {}
   const page = params.page || 1
   const pageSize = params.pageSize || 10
+  const keyword = params.keyword || ''
+  const type = params.type || ''
+
+  // 按 keyword 和 type 过滤
+  let filtered = mockConnections
+  if (keyword) {
+    const kw = keyword.toLowerCase()
+    filtered = filtered.filter(item =>
+      item.name.toLowerCase().includes(kw) ||
+      (item.host || '').toLowerCase().includes(kw)
+    )
+  }
+  if (type) {
+    filtered = filtered.filter(item => (item.type || '').toUpperCase() === type.toUpperCase())
+  }
+
   const start = (page - 1) * pageSize
-  const paged = mockConnections.slice(start, start + pageSize)
+  const paged = filtered.slice(start, start + pageSize)
   return mockSuccess({
     records: paged,
-    total: mockConnections.length,
+    total: filtered.length,
     current: page,
     size: pageSize
   })
