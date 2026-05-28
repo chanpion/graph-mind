@@ -54,7 +54,12 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
             queryWrapper.like("name", keyword).or().like("code", keyword);
         }
         queryWrapper.orderByDesc("create_time");
-        return this.page(page, queryWrapper);
+        Page<Graph> pageResult = this.page(page, queryWrapper);
+        // 填充 databaseType（图列表前端展示用）
+        for (Graph graph : pageResult.getRecords()) {
+            graph.setDatabaseType(graph.getGraphType());
+        }
+        return pageResult;
     }
 
     @Override
@@ -62,7 +67,12 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
         QueryWrapper<Graph> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("connection_id", connectionId);
         queryWrapper.orderByDesc("create_time");
-        return this.page(page, queryWrapper);
+        Page<Graph> pageResult = this.page(page, queryWrapper);
+        // 填充 databaseType（图列表前端展示用）
+        for (Graph graph : pageResult.getRecords()) {
+            graph.setDatabaseType(graph.getGraphType());
+        }
+        return pageResult;
     }
 
     @Override

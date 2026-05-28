@@ -98,13 +98,9 @@ CREATE TABLE graph_database_connection (
   type VARCHAR(50) NOT NULL COMMENT '数据库类型',
   host VARCHAR(255) NOT NULL COMMENT '主机地址',
   port INT NOT NULL COMMENT '端口号',
-  database VARCHAR(255) DEFAULT NULL COMMENT '数据库名',
-  username VARCHAR(255) DEFAULT NULL COMMENT '用户名',
-  password VARCHAR(255) DEFAULT NULL COMMENT '密码',
   status INT DEFAULT 0 COMMENT '状态（0: disconnected, 1: connected, 2: connecting）',
-  pool_size INT DEFAULT NULL COMMENT '连接池大小',
-  timeout INT DEFAULT NULL COMMENT '超时时间',
   description TEXT COMMENT '描述',
+  params VARCHAR(2000) DEFAULT NULL COMMENT '其他参数',
   create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id)
@@ -121,10 +117,11 @@ CREATE TABLE `graph` (
   `description` text COMMENT '图描述',
   `status` int DEFAULT '1' COMMENT '状态（0: 禁用, 1: 启用）',
   `connection_id` bigint NOT NULL COMMENT '关联的图数据库连接ID',
+  `graph_type` varchar(20) DEFAULT NULL COMMENT '图数据库类型：NEO4J、NEBULA、JANUS',
   `creator` varchar(255) DEFAULT NULL COMMENT '创建人',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_code` (`code`) USING BTREE,
-  KEY `idx_connection_id` (`connection_id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='图信息表';
+  UNIQUE KEY `uniq_code` (`code`),
+  KEY `idx_connection_id` (`connection_id`)
+);

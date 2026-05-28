@@ -2,6 +2,7 @@ package com.chenpp.graph.admin.service;
 
 import com.chenpp.graph.admin.model.ImportResult;
 import com.chenpp.graph.core.model.GraphSummary;
+import com.chenpp.graph.core.model.GraphVertex;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -51,7 +52,7 @@ public interface GraphDataService {
      * @param size       每页大小
      * @return 节点数据列表
      */
-    List<Map<String, Object>> getNodeDataList(Long graphId, Long nodeTypeId, Integer page, Integer size);
+    List<GraphVertex> getNodeDataList(Long graphId, Long nodeTypeId, Integer page, Integer size);
 
     /**
      * 查询边数据列表

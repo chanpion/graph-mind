@@ -80,18 +80,18 @@ COMMIT;
 -- 初始化图数据库连接数据
 -- ----------------------------
 BEGIN;
-INSERT INTO graph_database_connection VALUES (1, 'Neo4j测试环境', 'neo4j', '192.168.1.100', 7687, 'neo4j', 'neo4j', 'password', 1, 10, 30, '用于测试的Neo4j数据库', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-INSERT INTO graph_database_connection VALUES (2, 'Nebula生产环境', 'nebula', '192.168.1.101', 9669, 'nebula', 'root', 'nebula', 0, 20, 60, '生产环境Nebula数据库', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-INSERT INTO graph_database_connection VALUES (3, 'Janus开发环境', 'janus', '192.168.1.102', 8182, 'janus', 'admin', 'admin', 2, 15, 45, '开发环境Janus数据库', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO graph_database_connection (id, name, type, host, port, status, description, params, create_time, update_time) VALUES (1, 'Neo4j测试环境', 'NEO4J', '192.168.1.100', 7687, 1, '用于测试的Neo4j数据库', '{"username":"neo4j","password":"password"}', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO graph_database_connection (id, name, type, host, port, status, description, params, create_time, update_time) VALUES (2, 'Nebula生产环境', 'NEBULA', '192.168.1.101', 9669, 0, '生产环境Nebula数据库', '{"username":"root","password":"nebula"}', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO graph_database_connection (id, name, type, host, port, status, description, params, create_time, update_time) VALUES (3, 'Janus开发环境', 'JANUS', '192.168.1.102', 8182, 2, '开发环境Janus数据库', '{"username":"admin","password":"admin","storageBackend":"cql"}', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
 COMMIT;
 
 -- ----------------------------
 -- 初始化图数据
 -- ----------------------------
 BEGIN;
-INSERT INTO graph VALUES (1, '用户关系图', 'user_relation', '用户之间的关系图谱', 1, 1, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-INSERT INTO graph VALUES (2, '商品知识图谱', 'product_kg', '商品相关的知识图谱', 1, 2, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-INSERT INTO graph VALUES (3, '企业图谱', 'company_graph', '企业相关信息图谱', 1, 3, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO graph (id, name, code, description, status, connection_id, graph_type, creator, create_time, update_time) VALUES (1, '用户关系图', 'user_relation', '用户之间的关系图谱', 1, 1, 'NEO4J', 'admin', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO graph (id, name, code, description, status, connection_id, graph_type, creator, create_time, update_time) VALUES (2, '商品知识图谱', 'product_kg', '商品相关的知识图谱', 1, 2, 'NEBULA', 'admin', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO graph (id, name, code, description, status, connection_id, graph_type, creator, create_time, update_time) VALUES (3, '企业图谱', 'company_graph', '企业相关信息图谱', 1, 3, 'JANUS', 'admin', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
 COMMIT;
 
 -- ----------------------------

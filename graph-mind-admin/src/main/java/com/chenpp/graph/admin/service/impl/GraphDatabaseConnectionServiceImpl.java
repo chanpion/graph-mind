@@ -62,7 +62,7 @@ public class GraphDatabaseConnectionServiceImpl extends ServiceImpl<GraphDatabas
         } catch (Exception e) {
             log.error("连接测试异常", e);
             connection.setStatus(2);
-            throw new BusinessException("test connection error", e);
+            return false;
         } finally {
             this.updateById(connection);
         }

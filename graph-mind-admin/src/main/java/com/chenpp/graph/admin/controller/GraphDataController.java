@@ -4,6 +4,7 @@ import com.chenpp.graph.admin.model.ImportResult;
 import com.chenpp.graph.admin.model.Result;
 import com.chenpp.graph.admin.service.GraphDataService;
 import com.chenpp.graph.core.model.GraphSummary;
+import com.chenpp.graph.core.model.GraphVertex;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -111,7 +112,7 @@ public class GraphDataController {
      * @return 节点数据列表
      */
     @GetMapping("/nodes/{nodeTypeId}")
-    public Result<List<Map<String, Object>>> getNodeDataList(
+    public Result<List<GraphVertex>> getNodeDataList(
             @PathVariable Long graphId,
             @PathVariable Long nodeTypeId,
             @RequestParam(defaultValue = "1") Integer page,
@@ -120,7 +121,7 @@ public class GraphDataController {
             log.info("查询节点数据列表，graphId={}, nodeTypeId={}, page={}, size={}", graphId, nodeTypeId, page, size);
             
             // TODO: 实现查询节点数据列表逻辑
-            List<Map<String, Object>> data = graphDataService.getNodeDataList(graphId, nodeTypeId, page, size);
+            List<GraphVertex> data = graphDataService.getNodeDataList(graphId, nodeTypeId, page, size);
             
             return Result.success(data);
         } catch (Exception e) {

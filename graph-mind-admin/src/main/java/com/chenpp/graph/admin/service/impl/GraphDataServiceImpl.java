@@ -17,6 +17,7 @@ import com.chenpp.graph.admin.util.GraphClientFactory;
 import com.chenpp.graph.core.GraphClient;
 import com.chenpp.graph.core.GraphDataOperations;
 import com.chenpp.graph.core.model.GraphConf;
+import com.chenpp.graph.core.model.GraphData;
 import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphSummary;
 import com.chenpp.graph.core.model.GraphVertex;
@@ -285,51 +286,204 @@ public class GraphDataServiceImpl implements GraphDataService {
     }
 
     @Override
-    public List<Map<String, Object>> getNodeDataList(Long graphId, Long nodeTypeId, Integer page, Integer size) {
-        // TODO: 实现查询节点数据列表逻辑
-        return new ArrayList<>();
+    public List<GraphVertex> getNodeDataList(Long graphId, Long nodeTypeId, Integer page, Integer size) {
+        try {
+            GraphNodeDef nodeDef = nodeDefService.getById(nodeTypeId);
+            if (nodeDef == null) {
+                log.error("节点类型不存在，nodeTypeId={}", nodeTypeId);
+                return new ArrayList<>();
+            }
+
+            GraphDataOperations ops = getGraphDataOperations(graphId);
+            String label = nodeDef.getLabel();
+            int skip = (page - 1) * size;
+
+            // 根据图类型构建不同的查询语句
+            String query = buildLabelQuery(graphId, label, skip, size);
+            GraphData graphData = ops.query(query);
+
+            if (graphData == null || graphData.getVertices() == null) {
+                return new ArrayList<>();
+            }
+
+           return graphData.getVertices();
+        } catch (Exception e) {
+            log.error("查询节点数据列表失败，graphId={}, nodeTypeId={}", graphId, nodeTypeId, e);
+            return new ArrayList<>();
+        }
     }
 
     @Override
     public List<Map<String, Object>> getEdgeDataList(Long graphId, Long edgeTypeId, Integer page, Integer size) {
-        // TODO: 实现查询边数据列表逻辑
-        return new ArrayList<>();
+        try {
+            GraphEdgeDef edgeDef = edgeDefService.getById(edgeTypeId);
+            if (edgeDef == null) {
+                log.error("边类型不存在，edgeTypeId={}", edgeTypeId);
+                return new ArrayList<>();
+            }
+
+            GraphDataOperations ops = getGraphDataOperations(graphId);
+            String label = edgeDef.getLabel();
+            int skip = (page - 1) * size;
+
+            String query = buildEdgeLabelQuery(graphId, label, skip, size);
+            GraphData graphData = ops.query(query);
+
+            if (graphData == null || graphData.getEdges() == null) {
+                return new ArrayList<>();
+            }
+
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (GraphEdge edge : graphData.getEdges()) {
+                result.add(edgeToMap(edge));
+            }
+            return result;
+        } catch (Exception e) {
+            log.error("查询边数据列表失败，graphId={}, edgeTypeId={}", graphId, edgeTypeId, e);
+            return new ArrayList<>();
+        }
     }
 
     @Override
     public Map<String, Object> getNodeData(Long graphId, String nodeId) {
-        // TODO: 实现获取节点数据详情逻辑
-        return new HashMap<>();
+        try {
+            GraphDataOperations ops = getGraphDataOperations(graphId);
+            String query = buildFindVertexQuery(graphId, nodeId);
+            GraphData graphData = ops.query(query);
+
+            if (graphData != null && graphData.getVertices() != null && !graphData.getVertices().isEmpty()) {
+                return vertexToMap(graphData.getVertices().get(0));
+            }
+            return new HashMap<>();
+        } catch (Exception e) {
+            log.error("获取节点数据详情失败，graphId={}, nodeId={}", graphId, nodeId, e);
+            return new HashMap<>();
+        }
     }
 
     @Override
     public Map<String, Object> getEdgeData(Long graphId, String edgeId) {
-        // TODO: 实现获取边数据详情逻辑
-        return new HashMap<>();
+        try {
+            GraphDataOperations ops = getGraphDataOperations(graphId);
+            String query = buildFindEdgeQuery(graphId, edgeId);
+            GraphData graphData = ops.query(query);
+
+            if (graphData != null && graphData.getEdges() != null && !graphData.getEdges().isEmpty()) {
+                return edgeToMap(graphData.getEdges().get(0));
+            }
+            return new HashMap<>();
+        } catch (Exception e) {
+            log.error("获取边数据详情失败，graphId={}, edgeId={}", graphId, edgeId, e);
+            return new HashMap<>();
+        }
     }
 
     @Override
     public boolean addNodeData(Long graphId, Long nodeTypeId, Map<String, Object> data) {
-        // TODO: 实现新增节点数据逻辑
-        return true;
+        try {
+            GraphNodeDef nodeDef = nodeDefService.getById(nodeTypeId);
+            if (nodeDef == null) {
+                log.error("节点类型不存在，nodeTypeId={}", nodeTypeId);
+                return false;
+            }
+
+            GraphDataOperations ops = getGraphDataOperations(graphId);
+
+            GraphVertex vertex = new GraphVertex();
+            vertex.setLabel(nodeDef.getLabel());
+            vertex.setProperties(data);
+            if (data.containsKey("uid")) {
+                vertex.setUid(data.get("uid").toString());
+            }
+
+            ops.addVertex(vertex);
+            log.info("新增节点成功，label={}, uid={}", nodeDef.getLabel(), vertex.getUid());
+            return true;
+        } catch (Exception e) {
+            log.error("新增节点数据失败，graphId={}, nodeTypeId={}", graphId, nodeTypeId, e);
+            return false;
+        }
     }
 
     @Override
     public boolean addEdgeData(Long graphId, Long edgeTypeId, Map<String, Object> data) {
-        // TODO: 实现新增边数据逻辑
-        return true;
+        try {
+            GraphEdgeDef edgeDef = edgeDefService.getById(edgeTypeId);
+            if (edgeDef == null) {
+                log.error("边类型不存在，edgeTypeId={}", edgeTypeId);
+                return false;
+            }
+
+            GraphDataOperations ops = getGraphDataOperations(graphId);
+
+            GraphEdge edge = new GraphEdge();
+            edge.setLabel(edgeDef.getLabel());
+            edge.setProperties(data);
+            if (data.containsKey("uid")) {
+                edge.setUid(data.get("uid").toString());
+            }
+            if (data.containsKey("startUid")) {
+                edge.setStartUid(data.get("startUid").toString());
+            }
+            if (data.containsKey("endUid")) {
+                edge.setEndUid(data.get("endUid").toString());
+            }
+            if (data.containsKey("startLabel")) {
+                edge.setStartLabel(data.get("startLabel").toString());
+            }
+            if (data.containsKey("endLabel")) {
+                edge.setEndLabel(data.get("endLabel").toString());
+            }
+
+            ops.addEdge(edge);
+            log.info("新增边成功，label={}, uid={}", edgeDef.getLabel(), edge.getUid());
+            return true;
+        } catch (Exception e) {
+            log.error("新增边数据失败，graphId={}, edgeTypeId={}", graphId, edgeTypeId, e);
+            return false;
+        }
     }
 
     @Override
     public boolean updateNodeData(Long graphId, String nodeId, Map<String, Object> data) {
-        // TODO: 实现更新节点数据逻辑
-        return true;
+        try {
+            GraphDataOperations ops = getGraphDataOperations(graphId);
+
+            GraphVertex vertex = new GraphVertex();
+            vertex.setUid(nodeId);
+            if (data.containsKey("label")) {
+                vertex.setLabel(data.get("label").toString());
+            }
+            vertex.setProperties(data);
+
+            ops.updateVertex(vertex);
+            log.info("更新节点成功，nodeId={}", nodeId);
+            return true;
+        } catch (Exception e) {
+            log.error("更新节点数据失败，graphId={}, nodeId={}", graphId, nodeId, e);
+            return false;
+        }
     }
 
     @Override
     public boolean updateEdgeData(Long graphId, String edgeId, Map<String, Object> data) {
-        // TODO: 实现更新边数据逻辑
-        return true;
+        try {
+            GraphDataOperations ops = getGraphDataOperations(graphId);
+
+            GraphEdge edge = new GraphEdge();
+            edge.setUid(edgeId);
+            if (data.containsKey("label")) {
+                edge.setLabel(data.get("label").toString());
+            }
+            edge.setProperties(data);
+
+            ops.updateEdge(edge);
+            log.info("更新边成功，edgeId={}", edgeId);
+            return true;
+        } catch (Exception e) {
+            log.error("更新边数据失败，graphId={}, edgeId={}", graphId, edgeId, e);
+            return false;
+        }
     }
 
     @Override
@@ -427,5 +581,96 @@ public class GraphDataServiceImpl implements GraphDataService {
             log.error("获取图统计信息失败，graphId={}", graphId, e);
             throw new RuntimeException("获取图统计信息失败: " + e.getMessage(), e);
         }
+    }
+
+    // ==================== 私有辅助方法 ====================
+
+    /**
+     * 获取图数据操作接口
+     */
+    private GraphDataOperations getGraphDataOperations(Long graphId) {
+        Graph graph = graphService.getById(graphId);
+        if (graph == null) {
+            throw new RuntimeException("图不存在，graphId=" + graphId);
+        }
+
+        GraphDatabaseConnection connection = connectionService.getById(graph.getConnectionId());
+        if (connection == null) {
+            throw new RuntimeException("图数据库连接不存在，connectionId=" + graph.getConnectionId());
+        }
+
+        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
+        GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+        return graphClient.opsForGraphData();
+    }
+
+    /**
+     * 构建按标签分页查询节点的 Cypher 语句
+     */
+    private String buildLabelQuery(Long graphId, String label, int skip, int size) {
+        return String.format("MATCH (n:`%s`) RETURN n SKIP %d LIMIT %d", label, skip, size);
+    }
+
+    /**
+     * 构建按标签分页查询边的 Cypher 语句
+     */
+    private String buildEdgeLabelQuery(Long graphId, String label, int skip, int size) {
+        return String.format("MATCH p=()-[r:`%s`]->() RETURN p SKIP %d LIMIT %d", label, skip, size);
+    }
+
+    /**
+     * 构建按 uid 查找节点的 Cypher 语句
+     */
+    private String buildFindVertexQuery(Long graphId, String nodeId) {
+        return String.format("MATCH (n {uid: '%s'}) RETURN n", escapeCypherString(nodeId));
+    }
+
+    /**
+     * 构建按 uid 查找边的 Cypher 语句
+     */
+    private String buildFindEdgeQuery(Long graphId, String edgeId) {
+        return String.format("MATCH ()-[r {uid: '%s'}]-() RETURN r", escapeCypherString(edgeId));
+    }
+
+    /**
+     * 将 GraphVertex 转为 Map
+     */
+    private Map<String, Object> vertexToMap(GraphVertex vertex) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", vertex.getId());
+        map.put("uid", vertex.getUid());
+        map.put("label", vertex.getLabel());
+        if (vertex.getProperties() != null) {
+            map.putAll(vertex.getProperties());
+        }
+        return map;
+    }
+
+    /**
+     * 将 GraphEdge 转为 Map
+     */
+    private Map<String, Object> edgeToMap(GraphEdge edge) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", edge.getId());
+        map.put("uid", edge.getUid());
+        map.put("label", edge.getLabel());
+        map.put("startUid", edge.getStartUid());
+        map.put("startLabel", edge.getStartLabel());
+        map.put("endUid", edge.getEndUid());
+        map.put("endLabel", edge.getEndLabel());
+        if (edge.getProperties() != null) {
+            map.put("properties", edge.getProperties());
+        }
+        return map;
+    }
+
+    /**
+     * 转义 Cypher 字符串中的特殊字符（单引号）
+     */
+    private String escapeCypherString(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\\", "\\\\").replace("'", "\\'");
     }
 }

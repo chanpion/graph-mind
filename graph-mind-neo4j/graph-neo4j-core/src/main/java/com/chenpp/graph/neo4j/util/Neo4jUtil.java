@@ -22,6 +22,7 @@ import org.neo4j.driver.types.Relationship;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * @author April.Chen
@@ -91,7 +92,7 @@ public class Neo4jUtil {
         }
 
         GraphEdge edge = new GraphEdge();
-        edge.setId(relationship.elementId());
+        edge.setId(relationship.startNodeId());
         edge.setUid(getRelationshipPropertyAsString(relationship, "uid"));
         edge.setStartUid(relationship.startNodeElementId());
         edge.setEndUid(relationship.endNodeElementId());
@@ -175,15 +176,16 @@ public class Neo4jUtil {
                 }
             }
         }
-
-        graphData.getEdges().forEach(edge -> {
-            GraphVertex start = elementIdVertexMap.get(edge.getStartUid());
-            edge.setStartUid(start.getUid());
-            edge.setStartLabel(start.getLabel());
-            GraphVertex end = elementIdVertexMap.get(edge.getEndUid());
-            edge.setEndUid(end.getUid());
-            edge.setEndLabel(end.getLabel());
-        });
+        if (graphData.getEdges() != null) {
+            graphData.getEdges().forEach(edge -> {
+                GraphVertex start = elementIdVertexMap.get(edge.getStartUid());
+                edge.setStartUid(start.getUid());
+                edge.setStartLabel(start.getLabel());
+                GraphVertex end = elementIdVertexMap.get(edge.getEndUid());
+                edge.setEndUid(end.getUid());
+                edge.setEndLabel(end.getLabel());
+            });
+        }
         return graphData;
     }
 }
