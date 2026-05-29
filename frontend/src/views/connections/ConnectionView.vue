@@ -313,19 +313,25 @@ function handleEdit(row) {
   form.port = editRow.port ?? (defaultPorts[normalizeType(editRow.type)] || 7687)
   form.description = editRow.description || ''
 
-  // 解析 params 字段以获取 username、storageBackend、storageHost 等参数
-  let params = {}
-  if (editRow.params) {
-    try {
-      params = typeof editRow.params === 'string' ? JSON.parse(editRow.params) : editRow.params
-    } catch (e) {
-      console.error('解析 params 失败:', e)
+  form.username = editRow.username || ''
+
+  // 兼容旧数据：如果实体字段为空，从 params 中获取
+  if (!editRow.username && !editRow.password) {
+    let params = {}
+    if (editRow.params) {
+      try {
+        params = typeof editRow.params === 'string' ? JSON.parse(editRow.params) : editRow.params
+      } catch (e) {
+        console.error('解析 params 失败:', e)
+      }
     }
+    if (!form.username) form.username = params.username || ''
+    form.password = params.password ? '••••••••' : ''
+  } else {
+    // 如果有密码，显示 •••••••• 表示有密码但不显示具体内容
+    form.password = editRow.password ? '••••••••' : ''
   }
 
-  form.username = params.username || ''
-  // 如果有密码，显示 •••••••• 表示有密码但不显示具体内容
-  form.password = params.password ? '••••••••' : ''
   form.storageBackend = params.storageBackend || 'cql'
   form.storageHost = params.storageHost || ''
   dialogVisible.value = true
