@@ -52,20 +52,13 @@ function prepareData(data) {
     }
   }).filter(e => nodeMap.has(e.source) && nodeMap.has(e.target))
 
-  return { nodes, edges }
-}
-
-// 计算圆形布局
-function applyCircularLayout(nodes, w, h) {
-  const cx = w / 2, cy = h / 2
-  const radius = Math.min(w, h) * 0.35
-  nodes.forEach((n, i) => {
-    const angle = (2 * Math.PI * i) / nodes.length
-    n.x = cx + radius * Math.cos(angle)
-    n.y = cy + radius * Math.sin(angle)
-    n.fx = n.x
-    n.fy = n.y
+  // 将边的 source 和 target 从 ID 转换为对象引用（供层次图等非力导布局使用）
+  edges.forEach(e => {
+    e.source = nodeMap.get(e.source) || e.source
+    e.target = nodeMap.get(e.target) || e.target
   })
+
+  return { nodes, edges }
 }
 
 // 计算层次布局 (自上而下的树)
@@ -117,23 +110,6 @@ function applyHierarchicalLayout(nodes, edges, w, h) {
   })
 }
 
-// 计算网格布局
-function applyGridLayout(nodes, w, h) {
-  const cols = Math.ceil(Math.sqrt(nodes.length))
-  const rows = Math.ceil(nodes.length / cols)
-  const padding = { top: 30, bottom: 30, left: 40, right: 40 }
-  const cellW = (w - padding.left - padding.right) / cols
-  const cellH = (h - padding.top - padding.bottom) / rows
-  nodes.forEach((n, i) => {
-    const col = i % cols
-    const row = Math.floor(i / cols)
-    n.x = padding.left + col * cellW + cellW / 2
-    n.y = padding.top + row * cellH + cellH / 2
-    n.fx = n.x
-    n.fy = n.y
-  })
-}
-
 function initChart() {
   if (!container.value) return
 
@@ -170,13 +146,10 @@ function render() {
   if (nodes.length === 0) return
 
   // 应用布局
-  if (props.layoutType === 'circular') {
-    applyCircularLayout(nodes, props.width, props.height)
-  } else if (props.layoutType === 'hierarchical') {
+  if (props.layoutType === 'hierarchical') {
     applyHierarchicalLayout(nodes, edges, props.width, props.height)
-  } else if (props.layoutType === 'grid') {
-    applyGridLayout(nodes, props.width, props.height)
   }
+  // force 布局由力模拟处理，此处不预设坐标
 
   // 箭头标记
   const defs = gRoot.append('defs')
@@ -192,21 +165,34 @@ function render() {
     .attr('d', 'M0,-5L10,0L0,5')
     .attr('fill', '#94a3b8')
 
-  // 边
-  linkElements = gRoot.append('g')
+  // 边（用 g 包裹，内部加透明宽线扩大点击区域）
+  const edgeGroup = gRoot.append('g')
     .attr('class', 'edges')
-    .selectAll('line')
+    .selectAll('g')
     .data(edges)
-    .join('line')
-    .attr('stroke', '#94a3b8')
-    .attr('stroke-width', 3)
-    .attr('stroke-opacity', 0.6)
-    .attr('marker-end', 'url(#arrowhead)')
+    .join('g')
     .style('cursor', 'pointer')
     .on('click', (event, d) => {
       event.stopPropagation()
       emit('edge-click', d)
     })
+
+  // 透明宽点击热区
+  edgeGroup.append('line')
+    .attr('class', 'edge-hit')
+    .attr('stroke', 'transparent')
+    .attr('stroke-width', 14)
+
+  // 可见边线
+  edgeGroup.append('line')
+    .attr('class', 'edge-visual')
+    .attr('stroke', '#94a3b8')
+    .attr('stroke-width', 2)
+    .attr('stroke-opacity', 0.6)
+    .attr('marker-end', 'url(#arrowhead)')
+
+  // 保存引用（用于 tick 更新）
+  linkElements = edgeGroup
 
   // 边标签
   const edgeLabels = gRoot.append('g')
@@ -262,24 +248,28 @@ function render() {
     .attr('stroke', '#fff')
     .attr('stroke-width', 1.5)
 
-  // 节点标签
+  // 节点标签（居中显示在节点圆形内）
   labelElements = nodeGroup.append('text')
-    .text(d => d.label || d.id)
-    .attr('dx', 12)
-    .attr('dy', 4)
-    .attr('font-size', 11)
-    .attr('fill', '#e2e8f0')
+    .text(d => {
+      const uid = d.properties?.uid || d.uid || d.id || ''
+      return String(uid).substring(0, 6)
+    })
+    .attr('text-anchor', 'middle')
+    .attr('dy', '0.35em')
+    .attr('font-size', 10)
+    .attr('fill', '#fff')
+    .attr('font-weight', 600)
     .attr('pointer-events', 'none')
 
   // 力导向布局
   if (props.layoutType === 'force') {
     simulation = d3.forceSimulation(nodes)
-      .force('link', d3.forceLink(edges).id(d => d.id).distance(100))
-      .force('charge', d3.forceManyBody().strength(-200))
+      .force('link', d3.forceLink(edges).id(d => d.id).distance(80))
+      .force('charge', d3.forceManyBody().strength(-120))
       .force('center', d3.forceCenter(props.width / 2, props.height / 2))
-      .force('collision', d3.forceCollide(20))
+      .force('collision', d3.forceCollide(25))
       .on('tick', () => {
-        linkElements
+        linkElements.selectAll('line')
           .attr('x1', d => d.source.x)
           .attr('y1', d => d.source.y)
           .attr('x2', d => d.target.x)
@@ -289,33 +279,77 @@ function render() {
           .attr('y', d => (d.source.y + d.target.y) / 2)
         nodeGroup.attr('transform', d => `translate(${d.x},${d.y})`)
       })
+      .on('end', () => {
+        // 模拟稳定后再适应视图
+        safeFitToView()
+      })
   } else {
     // 非力导向：直接定位
     nodeGroup.attr('transform', d => `translate(${d.x},${d.y})`)
-    linkElements
-      .attr('x1', d => d.source.x || d.source)
-      .attr('y1', d => d.source.y || 0)
-      .attr('x2', d => d.target.x || d.target)
-      .attr('y2', d => d.target.y || 0)
+    linkElements.selectAll('line')
+      .attr('x1', d => d.source.x)
+      .attr('y1', d => d.source.y)
+      .attr('x2', d => d.target.x)
+      .attr('y2', d => d.target.y)
     edgeLabels
-      .attr('x', d => {
-        const sx = typeof d.source === 'object' ? d.source.x : 0
-        const tx = typeof d.target === 'object' ? d.target.x : 0
-        return (sx + tx) / 2
-      })
-      .attr('y', d => {
-        const sy = typeof d.source === 'object' ? d.source.y : 0
-        const ty = typeof d.target === 'object' ? d.target.y : 0
-        return (sy + ty) / 2
-      })
+      .attr('x', d => (d.source.x + d.target.x) / 2)
+      .attr('y', d => (d.source.y + d.target.y) / 2)
+  }
+
+  // 非力导向：立即适应；力导向：由 on('end') 触发 safeFitToView
+  if (props.layoutType !== 'force') {
+    requestAnimationFrame(() => requestAnimationFrame(safeFitToView))
   }
 }
+
+let fitToViewTimer = null
 
 function destroySimulation() {
   if (simulation) {
     simulation.stop()
     simulation = null
   }
+  // 清理待执行的 fitToView 定时器
+  if (fitToViewTimer) {
+    clearTimeout(fitToViewTimer)
+    fitToViewTimer = null
+  }
+}
+
+// 安全调用 fitToView：防抖，避免重复触发
+function safeFitToView() {
+  if (fitToViewTimer) clearTimeout(fitToViewTimer)
+  fitToViewTimer = setTimeout(() => {
+    fitToViewTimer = null
+    fitToView()
+  }, 100)
+}
+
+// 自动缩放适应视图：计算所有节点的边界框，缩放并平移使所有节点可见
+function fitToView() {
+  if (!svg || !zoomBehavior || !gRoot) return
+  const gRootNode = gRoot.node()
+  if (!gRootNode) return
+  const bounds = gRootNode.getBBox()
+  if (bounds.width === 0 || bounds.height === 0) return
+  // 用 SVG 实际渲染尺寸，而非 props（避免 props 与真实渲染尺寸不一致）
+  const svgNode = svg.node()
+  if (!svgNode) return
+  const clientRect = svgNode.getBoundingClientRect()
+  const viewW = clientRect.width || props.width || 800
+  const viewH = clientRect.height || props.height || 600
+  const padding = 60
+  const availW = viewW - padding * 2
+  const availH = viewH - padding * 2
+  if (availW <= 0 || availH <= 0) return
+  const scale = Math.min(availW / bounds.width, availH / bounds.height, 2)
+  // tx, ty 是 gRoot 的 translate，使得边界框在视口中居中
+  const tx = padding + (availW - bounds.width * scale) / 2 - bounds.x * scale
+  const ty = padding + (availH - bounds.height * scale) / 2 - bounds.y * scale
+  svg.transition().duration(600).call(
+    zoomBehavior.transform,
+    d3.zoomIdentity.translate(tx, ty).scale(scale)
+  )
 }
 
 // 公开方法

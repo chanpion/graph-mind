@@ -12,8 +12,6 @@ import com.chenpp.graph.core.schema.GraphProperty;
 import com.chenpp.graph.core.schema.GraphRelation;
 import com.chenpp.graph.core.schema.GraphSchema;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -246,7 +244,7 @@ public class GraphSchemaController {
             nodeDef.setStatus(1);
             if (entity.getProperties() != null) {
                 List<GraphPropertyDef> props = entity.getProperties().stream()
-                    .map(p -> buildPropertyDef(p))
+                    .map(this::buildPropertyDef)
                     .collect(Collectors.toList());
                 nodeDef.setProperties(props);
             }
@@ -293,6 +291,64 @@ public class GraphSchemaController {
             }
             return edgeDef;
         }).collect(Collectors.toList());
+    }
+
+    /**
+     * 合并从图数据库发现的节点属性到已有的节点定义中
+     */
+    private void mergeDiscoveredNodeProperties(List<GraphNodeDef> nodeDefs, Long graphId) {
+        GraphSchema schema = graphSchemaService.discoverSchema(graphId);
+        if (schema == null || schema.getEntities() == null) {
+            return;
+        }
+        Map<String, List<GraphProperty>> labelPropsMap = schema.getEntities().stream()
+            .collect(Collectors.toMap(GraphEntity::getLabel, GraphEntity::getProperties, (a, b) -> a));
+        for (GraphNodeDef nodeDef : nodeDefs) {
+            if (nodeDef.getLabel() != null) {
+                List<GraphProperty> discovered = labelPropsMap.get(nodeDef.getLabel());
+                if (discovered != null && !discovered.isEmpty()) {
+                    List<GraphPropertyDef> existing = nodeDef.getProperties() != null
+                        ? nodeDef.getProperties() : new ArrayList<>();
+                    for (GraphProperty p : discovered) {
+                        boolean exists = existing.stream()
+                            .anyMatch(e -> p.getCode().equals(e.getCode()));
+                        if (!exists) {
+                            existing.add(buildPropertyDef(p));
+                        }
+                    }
+                    nodeDef.setProperties(existing);
+                }
+            }
+        }
+    }
+
+    /**
+     * 合并从图数据库发现的边属性到已有的边定义中
+     */
+    private void mergeDiscoveredEdgeProperties(List<GraphEdgeDef> edgeDefs, Long graphId) {
+        GraphSchema schema = graphSchemaService.discoverSchema(graphId);
+        if (schema == null || schema.getRelations() == null) {
+            return;
+        }
+        Map<String, List<GraphProperty>> labelPropsMap = schema.getRelations().stream()
+            .collect(Collectors.toMap(GraphRelation::getLabel, GraphRelation::getProperties, (a, b) -> a));
+        for (GraphEdgeDef edgeDef : edgeDefs) {
+            if (edgeDef.getLabel() != null) {
+                List<GraphProperty> discovered = labelPropsMap.get(edgeDef.getLabel());
+                if (discovered != null && !discovered.isEmpty()) {
+                    List<GraphPropertyDef> existing = edgeDef.getProperties() != null
+                        ? edgeDef.getProperties() : new ArrayList<>();
+                    for (GraphProperty p : discovered) {
+                        boolean exists = existing.stream()
+                            .anyMatch(e -> p.getCode().equals(e.getCode()));
+                        if (!exists) {
+                            existing.add(buildPropertyDef(p));
+                        }
+                    }
+                    edgeDef.setProperties(existing);
+                }
+            }
+        }
     }
 
     /**

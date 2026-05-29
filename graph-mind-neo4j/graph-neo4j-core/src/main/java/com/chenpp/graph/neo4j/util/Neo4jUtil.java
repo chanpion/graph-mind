@@ -151,6 +151,9 @@ public class Neo4jUtil {
                 // 解析节点
                 if (value.hasType(InternalTypeSystem.TYPE_SYSTEM.NODE())) {
                     Node node = value.asNode();
+                    if (elementIdVertexMap.containsKey(node.elementId())) {
+                        continue;
+                    }
                     GraphVertex vertex = Neo4jUtil.parseVertex(node);
                     graphData.addVertex(vertex);
                     elementIdVertexMap.put(node.elementId(), vertex);
@@ -165,6 +168,9 @@ public class Neo4jUtil {
                 else if (value.hasType(InternalTypeSystem.TYPE_SYSTEM.PATH())) {
                     InternalPath path = (InternalPath) value.asPath();
                     for (Node node : path.nodes()) {
+                        if (elementIdVertexMap.containsKey(node.elementId())) {
+                            continue;
+                        }
                         GraphVertex vertex = Neo4jUtil.parseVertex(node);
                         graphData.addVertex(vertex);
                         elementIdVertexMap.put(node.elementId(), vertex);

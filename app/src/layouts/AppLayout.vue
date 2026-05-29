@@ -113,14 +113,13 @@ const router = useRouter()
 const appStore = useAppStore()
 const authStore = useAuthStore()
 const graphsStore = useGraphsStore()
-const { currentGraphId, graphs } = storeToRefs(graphsStore)
+const { currentGraphId, graphs, selectedConnectionId } = storeToRefs(graphsStore)
 const { toggleTheme, isDark } = useTheme()
 
 const sidebarCollapsed = computed(() => appStore.sidebarCollapsed)
 
 // 连接列表
 const connections = ref([])
-const selectedConnectionId = ref('')
 
 // 数据库类型标签映射
 const DB_TAG_MAP = {
@@ -167,13 +166,9 @@ function handleUserCommand(cmd) {
 }
 
 async function handleConnectionChange(connectionId) {
-  selectedConnectionId.value = connectionId
+  graphsStore.setSelectedConnection(connectionId)
   graphsStore.setCurrentGraph(null)
-  if (connectionId) {
-    await graphsStore.fetchGraphsByConnection(connectionId)
-  } else {
-    graphs.value = []
-  }
+  await graphsStore.fetchGraphsByConnection(connectionId)
 }
 
 function handleGraphChange(graphId) {

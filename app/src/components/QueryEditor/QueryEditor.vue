@@ -32,7 +32,7 @@
             :loading="loading"
           >
             <el-icon><VideoPlay /></el-icon>
-            {{ loading ? `执行中...${progressText}` : '执行查询' }}
+            {{ loading ? `执行中...${progressText}` : '查询' }}
           </el-button>
           <slot name="actions-append"></slot>
         </div>

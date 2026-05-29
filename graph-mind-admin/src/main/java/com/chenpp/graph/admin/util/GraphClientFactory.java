@@ -9,7 +9,6 @@ import com.chenpp.graph.janus.CassandraConf;
 import com.chenpp.graph.janus.HBaseConf;
 import com.chenpp.graph.janus.JanusClient;
 import com.chenpp.graph.janus.JanusConf;
-import com.chenpp.graph.janus.JanusConstants;
 import com.chenpp.graph.nebula.NebulaClient;
 import com.chenpp.graph.nebula.NebulaConf;
 import com.chenpp.graph.neo4j.Neo4jClient;
@@ -52,7 +51,8 @@ public class GraphClientFactory {
             case "janus":
                 JanusConf janusConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), JanusConf.class);
                 janusConf.setGraphCode(graphConf.getGraphCode());
-                if (janusConf.getStorageBackend().equals(JanusConstants.BACKEND_CASSANDRA)) {
+                String storageBackend = janusConf.getStorageBackend();
+                if ("cassandra".equals(storageBackend) || "cql".equals(storageBackend)) {
                     CassandraConf cassandraConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), CassandraConf.class);
                     cassandraConf.setHostname(graphConf.getHost());
                     cassandraConf.setPort(graphConf.getPort());

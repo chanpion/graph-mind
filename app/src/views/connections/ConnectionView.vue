@@ -224,15 +224,19 @@ const form = reactive({
   storageHost: ''
 })
 
-const rules = {
-  name: [
-    { required: true, message: '请输入连接名称', trigger: 'blur' },
-    { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
-  ],
-  type: [{ required: true, message: '请选择数据库类型', trigger: 'change' }],
-  host: [{ required: true, message: '请输入主机地址', trigger: 'blur' }],
-  port: [{ required: true, message: '请输入端口号', trigger: 'blur' }]
-}
+const rules = computed(() => {
+  const isEdit = !!form.id
+  return {
+    name: [
+      { required: true, message: '请输入连接名称', trigger: 'blur' },
+      { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
+    ],
+    type: [{ required: true, message: '请选择数据库类型', trigger: 'change' }],
+    host: [{ required: true, message: '请输入主机地址', trigger: 'blur' }],
+    port: [{ required: true, message: '请输入端口号', trigger: 'blur' }],
+    password: isEdit ? [] : [{ required: true, message: '请输入密码', trigger: 'blur' }]
+  }
+})
 
 const filteredConnections = computed(() => {
   return connections.value
@@ -306,12 +310,24 @@ function handleEdit(row) {
   form.name = editRow.name
   form.type = normalizeType(editRow.type) || 'NEO4J'
   form.host = editRow.host || ''
-    form.port = editRow.port ?? (defaultPorts[normalizeType(editRow.type)] || 7687)
-  form.username = editRow.username || ''
-  form.password = ''
+  form.port = editRow.port ?? (defaultPorts[normalizeType(editRow.type)] || 7687)
   form.description = editRow.description || ''
-  form.storageBackend = editRow.storageBackend || 'cql'
-  form.storageHost = editRow.storageHost || ''
+
+  // 解析 params 字段以获取 username、storageBackend、storageHost 等参数
+  let params = {}
+  if (editRow.params) {
+    try {
+      params = typeof editRow.params === 'string' ? JSON.parse(editRow.params) : editRow.params
+    } catch (e) {
+      console.error('解析 params 失败:', e)
+    }
+  }
+
+  form.username = params.username || ''
+  // 如果有密码，显示 •••••••• 表示有密码但不显示具体内容
+  form.password = params.password ? '••••••••' : ''
+  form.storageBackend = params.storageBackend || 'cql'
+  form.storageHost = params.storageHost || ''
   dialogVisible.value = true
 }
 
@@ -358,7 +374,8 @@ async function handleSubmit() {
     const data = { ...form }
     const params = {}
     if (data.username) params.username = data.username
-    if (data.password) params.password = data.password
+    // 如果密码是 ••••••••，说明用户没有修改密码，不传递密码
+    if (data.password && data.password !== '••••••••') params.password = data.password
     if (data.storageBackend) params.storageBackend = data.storageBackend
     if (data.storageHost) params.storageHost = data.storageHost
     data.params = JSON.stringify(params)

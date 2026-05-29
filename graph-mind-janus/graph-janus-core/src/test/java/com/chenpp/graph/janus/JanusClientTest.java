@@ -53,16 +53,17 @@ public class JanusClientTest {
     @Before
     public void init() {
         CassandraConf cassandraConf = new CassandraConf();
-        cassandraConf.setHostname("10.58.12.60");
+//        cassandraConf.setHostname("10.58.12.60");
+        cassandraConf.setHostname("localhost");
         cassandraConf.setPort(9042);
-        cassandraConf.setUsername("cassandra");
-        cassandraConf.setPassword("cassandra");
+//        cassandraConf.setUsername("cassandra");
+//        cassandraConf.setPassword("cassandra");
         cassandraConf.setKeyspace(graphCode);
 
         janusConf = new JanusConf();
         janusConf.setGraphCode(graphCode);
         janusConf.setStorageBackend("cassandra");
-        janusConf.setStorageHost("10.58.12.60");
+        janusConf.setStorageHost("localhost");
         janusConf.setStoragePort(9042);
         janusConf.setCassandraConf(cassandraConf);
 

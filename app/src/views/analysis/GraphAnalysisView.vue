@@ -670,48 +670,33 @@ const executePathQuery = async () => {
     analysisLoading.value = true
     analysisResult.value = null
 
-    // 调用实际API进行路径查询，传递maxLength参数
-    // TODO: 这里需要根据实际API调整参数传递方式
-    // 目前使用模拟数据
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    // 示例：调用更新后的API
-    // const res = await graphApi.findPath(
-    //   graphsStore.currentGraphId, 
-    //   analysisForm.sourceValue, 
-    //   analysisForm.targetValue, 
-    //   5,  // maxDepth
-    //   analysisForm.maxLength  // maxLength
-    // )
+    try {
+      // 调用后端API进行路径查询
+      const apiResponse = await graphApi.findPath(
+        graphsStore.currentGraphId,
+        analysisForm.sourceValue, // 起点ID
+        analysisForm.targetValue, // 终点ID
+        analysisForm.maxLength // 最大路径长度
+      )
 
-    // 模拟路径查询结果
-    analysisResult.value = {
-      pathLength: 4.2,
-      nodeCount: 5,
-      path: ['1', '3', '5', '7', '9']
+      // 转换API响应数据为图数据
+      const transformedData = transformApiResponseToGraphData(apiResponse)
+      nodes.value = transformedData.nodes
+      edges.value = transformedData.edges
+
+      // 设置分析结果
+      analysisResult.value = {
+        nodeCount: nodes.value.length,
+        edgeCount: edges.value.length,
+        algorithm: 'shortestPath'
+      }
+
+    } catch (error) {
+      console.error('路径查询失败:', error)
+      ElMessage.error('路径查询失败: ' + (error.message || '未知错误'))
+      analysisLoading.value = false
+      return
     }
-
-    // 模拟路径数据
-    nodes.value = [
-      {id: '1', label: '起点', group: 'path', x: 100, y: 100},
-      {id: '3', label: '节点3', group: 'path', x: 200, y: 150},
-      {id: '5', label: '节点5', group: 'path', x: 300, y: 100},
-      {id: '7', label: '节点7', group: 'path', x: 400, y: 150},
-      {id: '9', label: '终点', group: 'path', x: 500, y: 100},
-      {id: '2', label: '普通节点', group: 'normal', x: 150, y: 250},
-      {id: '4', label: '普通节点', group: 'normal', x: 350, y: 250},
-      {id: '6', label: '普通节点', group: 'normal', x: 250, y: 300}
-    ]
-    edges.value = [
-      {source: '1', target: '3', value: 1.2},
-      {source: '3', target: '5', value: 1.5},
-      {source: '5', target: '7', value: 0.8},
-      {source: '7', target: '9', value: 0.7},
-      {source: '1', target: '2', value: 2.1},
-      {source: '2', target: '4', value: 1.3},
-      {source: '4', target: '6', value: 1.1},
-      {source: '6', target: '5', value: 1.9}
-    ]
 
     // 绘制图形
     await nextTick()
@@ -790,9 +775,6 @@ const executeAnalysis = async () => {
     analysisLoading.value = true
     analysisResult.value = null
 
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1500))
-
     // 根据当前激活的tab设置算法
     let algorithm = analysisForm.algorithm;
     if (activeAlgorithmTab.value === 'kLayerExpand') {
@@ -801,77 +783,63 @@ const executeAnalysis = async () => {
       algorithm = 'shortestPath';
     }
 
-    // 模拟分析结果
-    switch (algorithm) {
-      case 'shortestPath':
-        analysisResult.value = {
-          pathLength: 4.2,
-          nodeCount: 5,
-          path: ['1', '3', '5', '7', '9']
-        }
-        // 模拟路径数据
-        nodes.value = [
-          {id: '1', label: '起点', group: 'path', x: 100, y: 100},
-          {id: '3', label: '节点3', group: 'path', x: 200, y: 150},
-          {id: '5', label: '节点5', group: 'path', x: 300, y: 100},
-          {id: '7', label: '节点7', group: 'path', x: 400, y: 150},
-          {id: '9', label: '终点', group: 'path', x: 500, y: 100},
-          {id: '2', label: '普通节点', group: 'normal', x: 150, y: 250},
-          {id: '4', label: '普通节点', group: 'normal', x: 350, y: 250},
-          {id: '6', label: '普通节点', group: 'normal', x: 250, y: 300}
-        ]
-        edges.value = [
-          {source: '1', target: '3', value: 1.2},
-          {source: '3', target: '5', value: 1.5},
-          {source: '5', target: '7', value: 0.8},
-          {source: '7', target: '9', value: 0.7},
-          {source: '1', target: '2', value: 2.1},
-          {source: '2', target: '4', value: 1.3},
-          {source: '4', target: '6', value: 1.1},
-          {source: '6', target: '5', value: 1.9}
-        ]
-        break
+    try {
+      // 调用后端API执行分析
+      let apiResponse;
+      switch (algorithm) {
+        case 'kLayerExpand':
+          // K层展开：调用 expandNode API
+          const targetEntityType = analysisForm.targetEntity[0];
+          const targetEntityProp = analysisForm.targetEntity[1];
+          apiResponse = await graphApi.expandNode(
+            graphsStore.currentGraphId,
+            analysisForm.queryValue, // 使用查询值作为节点ID
+            analysisForm.layers
+          );
+          break
 
-      case 'pageRank':
-        analysisResult.value = {
-          nodeCount: 128,
-          topNode: 'Node_42',
-          topScore: 0.0875
-        }
-        // 生成PageRank示例数据
-        generateSampleGraphData(20)
-        break
+        case 'shortestPath':
+          // 最短路径：调用 findPath API
+          apiResponse = await graphApi.findPath(
+            graphsStore.currentGraphId,
+            analysisForm.sourceValue, // 起点ID
+            analysisForm.targetValue, // 终点ID
+            analysisForm.maxLength // 最大路径长度
+          );
+          break
 
-      case 'community':
-        analysisResult.value = {
-          communityCount: 5,
-          maxCommunitySize: 32
-        }
-        // 生成社区发现示例数据
-        generateSampleGraphData(25)
-        break
+        case 'pageRank':
+        case 'community':
+        case 'connectedComponents':
+          // 这些算法暂时使用查询API模拟
+          ElMessage.info(`${algorithm} 算法暂未实现，使用查询模拟`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          apiResponse = { data: { nodes: [], edges: [] } };
+          break
 
-      case 'connectedComponents':
-        analysisResult.value = {
-          componentCount: 3,
-          maxComponentSize: 85
-        }
-        // 生成连通分量示例数据
-        generateSampleGraphData(30)
-        break
+        default:
+          ElMessage.error('未知算法');
+          analysisLoading.value = false;
+          return;
+      }
 
-      case 'kLayerExpand':
-        analysisResult.value = {
-          pathLength: 4.2,
-          nodeCount: 5,
-          path: ['1', '3', '5', '7', '9'],
-          expandedNodes: 23,
-          expandedEdges: 45,
-          pathCount: 12
-        }
-        // 生成K层展开示例数据
-        generateKLayerExpandData()
-        break
+      // 转换API响应数据为图数据
+      const transformedData = transformApiResponseToGraphData(apiResponse);
+      nodes.value = transformedData.nodes;
+      edges.value = transformedData.edges;
+
+      // 设置分析结果
+      analysisResult.value = {
+        nodeCount: nodes.value.length,
+        edgeCount: edges.value.length,
+        algorithm: algorithm
+      };
+
+    } catch (error) {
+      console.error('分析失败:', error);
+      ElMessage.error('分析失败: ' + (error.message || '未知错误'));
+      analysisLoading.value = false;
+      return;
     }
 
     // 绘制图形
@@ -1338,6 +1306,49 @@ const handleResize = () => {
         graphContainerRef.value.clientHeight / 2
     ))
     simulation.alpha(0.3).restart()
+  }
+}
+
+/**
+ * 将API返回的数据转换为图数据格式
+ * @param {Object} apiResponse - API返回的数据
+ * @returns {Object} 转换后的图数据
+ */
+const transformApiResponseToGraphData = (apiResponse) => {
+  const rawData = apiResponse.data || apiResponse || []
+
+  // 优先处理 vertices/edges 格式
+  if (rawData.vertices && rawData.edges) {
+    return {
+      nodes: rawData.vertices.map(v => ({
+        id: v.uid || v.id,
+        label: v.label,
+        properties: v.properties || {},
+        group: v.group || 'normal'
+      })),
+      edges: rawData.edges.map(e => ({
+        id: e.uid || e.id,
+        source: e.startUid || e.sourceUid || e.source,
+        target: e.endUid || e.targetUid || e.target,
+        label: e.label,
+        properties: e.properties || {},
+        value: e.value || 1
+      }))
+    }
+  }
+
+  // 如果返回的是标准图数据结构
+  if (rawData.nodes && rawData.edges) {
+    return {
+      nodes: rawData.nodes || [],
+      edges: rawData.edges || []
+    }
+  }
+
+  // 默认返回空数据
+  return {
+    nodes: [],
+    edges: []
   }
 }
 

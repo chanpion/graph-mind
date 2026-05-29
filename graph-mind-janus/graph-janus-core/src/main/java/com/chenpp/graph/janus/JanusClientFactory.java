@@ -13,8 +13,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.chenpp.graph.janus.JanusConstants.BACKEND_CASSANDRA;
-import static com.chenpp.graph.janus.JanusConstants.BACKEND_HBASE;
 import static org.janusgraph.diskstorage.hbase.HBaseStoreManager.HBASE_TABLE;
 import static org.janusgraph.diskstorage.hbase.HBaseStoreManager.REGION_COUNT;
 import static org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration.AUTH_PASSWORD;
@@ -67,17 +65,15 @@ public class JanusClientFactory {
         
         Configuration configuration;
         try {
-            switch (janusConf.getStorageBackend()) {
-                case BACKEND_HBASE:
-                    configuration = buildHBaseConfiguration(janusConf);
-                    break;
-                case BACKEND_CASSANDRA:
-                    configuration = buildCassandraConfiguration(janusConf);
-                    break;
-                default:
-                    log.error("Not supported backend: {}", janusConf.getStorageBackend());
-                    throw new GraphException("Not supported backend: " + janusConf.getStorageBackend());
-            }
+            String backend = janusConf.getStorageBackend();
+            configuration = switch (backend) {
+                case "hbase" -> buildHBaseConfiguration(janusConf);
+                case "cassandra", "cql" -> buildCassandraConfiguration(janusConf);
+                default -> {
+                    log.error("Not supported backend: {}", backend);
+                    throw new GraphException("Not supported backend: " + backend);
+                }
+            };
             
             //open a graph database
             graph = JanusGraphFactory.open(configuration);

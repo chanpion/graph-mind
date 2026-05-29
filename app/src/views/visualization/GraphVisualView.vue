@@ -52,9 +52,7 @@
 
               <el-select v-model="layoutType" size="small" style="width: 110px" @change="onLayoutChange">
                 <el-option label="力导向" value="force" />
-                <el-option label="圆形" value="circular" />
                 <el-option label="层次" value="hierarchical" />
-                <el-option label="网格" value="grid" />
               </el-select>
 
               <div class="toolbar-divider"></div>
@@ -355,7 +353,7 @@ const loadSampleData = () => {
 const onNodeClick = (node) => {
   selectedElement.value = {
     type: 'node',
-    id: node.id,
+    id: node.properties?.id ?? node.id,
     label: node.label,
     properties: node.properties
   }
@@ -647,7 +645,11 @@ const transformApiResponseToGraphData = (apiResponse) => {
       nodes: rawData.vertices.map(v => ({
         id: v.uid || v.id,
         label: v.label,
-        properties: v.properties || {}
+        properties: {
+          ...(v.id !== undefined && v.id !== v.uid ? { id: v.id } : {}),
+          ...(v.uid !== undefined ? { uid: v.uid } : {}),
+          ...(v.properties || {})
+        }
       })),
       edges: rawData.edges.map(e => ({
         id: e.uid || e.id,
