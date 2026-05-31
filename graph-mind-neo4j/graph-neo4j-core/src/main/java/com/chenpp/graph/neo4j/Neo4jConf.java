@@ -19,7 +19,7 @@ public class Neo4jConf extends GraphConf {
     /**
      * 连接超时时间（毫秒）
      */
-    private int connectionTimeout = 30000;
+    private int connectionTimeout = 3000;
     
     /**
      * 最大连接池大小
