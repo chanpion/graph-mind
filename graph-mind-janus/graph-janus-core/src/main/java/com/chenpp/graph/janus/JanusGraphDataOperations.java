@@ -17,6 +17,7 @@ import org.apache.tinkerpop.gremlin.groovy.jsr223.GremlinGroovyScriptEngine;
 import org.apache.tinkerpop.gremlin.process.traversal.Path;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.process.traversal.step.util.BulkSet;
+import org.apache.tinkerpop.gremlin.structure.Direction;
 import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.apache.tinkerpop.gremlin.structure.Element;
 import org.apache.tinkerpop.gremlin.structure.Property;
@@ -354,6 +355,19 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         }
         log.info("Iterate over the result set returned by gremlin server, time (ms)={}", System.currentTimeMillis() - start);
 
+        // 如果只返回了顶点而没有边，补全顶点关联的边
+        if (edgeList.isEmpty() && !vertexList.isEmpty()) {
+            for (CacheVertex vertex : vertexList) {
+                vertex.edges(Direction.BOTH).forEachRemaining(edge -> {
+                    CacheEdge cacheEdge = (CacheEdge) edge;
+                    if (!edgeList.contains(cacheEdge)) {
+                        edgeList.add(cacheEdge);
+                        vertexList.add((CacheVertex) cacheEdge.outVertex());
+                        vertexList.add((CacheVertex) cacheEdge.inVertex());
+                    }
+                });
+            }
+        }
 
         GraphData graphData = convertToGraphData(vertexList, edgeList);
         long time = System.currentTimeMillis() - start;
@@ -451,10 +465,11 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             GraphEdge graphEdge = new GraphEdge();
             graphEdge.setId(valueOf(detachedEdge.id()));
 
-            Object inId = detachedEdge.inVertex().id();
-            Object outId = detachedEdge.outVertex().id();
-            graphEdge.setStartUid(valueOf(inId));
-            graphEdge.setEndUid(valueOf(outId));
+            // 优先使用uid属性作为起点/终点标识
+            JanusGraphVertex outVertex = detachedEdge.outVertex();
+            JanusGraphVertex inVertex = detachedEdge.inVertex();
+            graphEdge.setStartUid(getJanusVertexUid(outVertex));
+            graphEdge.setEndUid(getJanusVertexUid(inVertex));
 
             graphEdge.setLabel(detachedEdge.label());
             Map<String, Object> map = Maps.newHashMap();
@@ -531,10 +546,8 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         // 获取标签
         graphVertex.setLabel(vertex.label());
 
-        // 获取UID（如果存在）
-        if (vertex.properties("uid").hasNext()) {
-            graphVertex.setUid(vertex.property("uid").value().toString());
-        }
+        // 获取UID，优先使用uid属性，否则使用内部ID
+        graphVertex.setUid(getVertexUid(vertex));
 
         // 获取属性
         Map<String, Object> properties = new HashMap<>();
@@ -562,13 +575,17 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         // 获取标签
         graphEdge.setLabel(edge.label());
 
-        // 获取起始和结束顶点ID
-        graphEdge.setStartUid(edge.outVertex().id().toString());
-        graphEdge.setEndUid(edge.inVertex().id().toString());
+        // 获取起始和结束顶点UID（优先使用uid属性，否则使用内部ID）
+        Vertex outV = edge.outVertex();
+        Vertex inV = edge.inVertex();
+        graphEdge.setStartUid(getVertexUid(outV));
+        graphEdge.setEndUid(getVertexUid(inV));
 
-        // 获取UID（如果存在）
+        // 获取UID，优先使用uid属性，否则使用内部ID
         if (edge.properties("uid").hasNext()) {
             graphEdge.setUid(edge.property("uid").value().toString());
+        } else {
+            graphEdge.setUid(edge.id().toString());
         }
 
         // 获取属性
@@ -582,6 +599,26 @@ public class JanusGraphDataOperations implements GraphDataOperations {
 
         graphEdge.setProperties(properties);
         return graphEdge;
+    }
+
+    /**
+     * 从TinkerPop顶点获取uid属性值
+     */
+    private String getVertexUid(Vertex vertex) {
+        if (vertex.properties("uid").hasNext()) {
+            return vertex.property("uid").value().toString();
+        }
+        return vertex.id().toString();
+    }
+
+    /**
+     * 从JanusGraphVertex获取uid属性值
+     */
+    private String getJanusVertexUid(JanusGraphVertex vertex) {
+        if (vertex.property("uid").isPresent()) {
+            return vertex.property("uid").value().toString();
+        }
+        return vertex.id().toString();
     }
 
     /**
@@ -679,9 +716,11 @@ public class JanusGraphDataOperations implements GraphDataOperations {
     private GraphVertex parseVertex(JanusGraphVertex vertex) {
         GraphVertex graphVertex = new GraphVertex();
 
-        // 获取UID
+        // 获取UID，优先使用uid属性，否则使用内部ID
         if (vertex.property(GraphConstants.UID).isPresent()) {
             graphVertex.setUid(vertex.property("uid").value().toString());
+        } else {
+            graphVertex.setUid(vertex.id().toString());
         }
         // 获取ID
         graphVertex.setId(vertex.id().toString());
@@ -709,9 +748,11 @@ public class JanusGraphDataOperations implements GraphDataOperations {
     private GraphEdge parseEdge(JanusGraphEdge edge) {
         GraphEdge graphEdge = new GraphEdge();
 
-        // 获取UID
+        // 获取UID，优先使用uid属性，否则使用内部ID
         if (edge.property("uid").isPresent()) {
             graphEdge.setUid((String) edge.property("uid").value());
+        } else {
+            graphEdge.setUid(edge.id().toString());
         }
 
         // 获取标签

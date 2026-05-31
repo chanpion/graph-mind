@@ -120,8 +120,13 @@ public class JanusGraphOperations implements GraphOperations {
             // 创建属性键
             createPropertyKeys(management, graphSchema.getEntities(), graphSchema.getRelations());
 
+            // 确保系统属性键 uid 存在（用于顶点/边查询）
+            ensureSystemPropertyKeys(management);
+
             // 创建索引
             createIndices(management, graphSchema.getIndexes());
+            // 确保 uid 索引存在
+            ensureSystemIndices(management);
 
             management.commit();
             log.info("Successfully applied schema to graph: {}", graphConf.getGraphCode());
@@ -433,5 +438,32 @@ public class JanusGraphOperations implements GraphOperations {
 
         mgmt.buildEdgeIndex(edgeLabel, name, Direction.BOTH, Order.desc, propertyKeys.toArray(PropertyKey[]::new));
         log.info("Created relation index: {} for edge label: {}", name, edgeLabel.name());
+    }
+
+    /**
+     * 确保系统属性键存在（如uid）
+     */
+    private void ensureSystemPropertyKeys(JanusGraphManagement management) {
+        if (!management.containsPropertyKey(GraphConstants.UID)) {
+            management.makePropertyKey(GraphConstants.UID)
+                    .dataType(String.class)
+                    .cardinality(Cardinality.SINGLE)
+                    .make();
+            log.info("Created system property key: {}", GraphConstants.UID);
+        }
+    }
+
+    /**
+     * 确保系统索引存在（如uid索引）
+     */
+    private void ensureSystemIndices(JanusGraphManagement management) {
+        String uidIndexName = "byUid";
+        if (!management.containsGraphIndex(uidIndexName)) {
+            PropertyKey uidKey = management.getPropertyKey(GraphConstants.UID);
+            management.buildIndex(uidIndexName, Vertex.class)
+                    .addKey(uidKey)
+                    .buildCompositeIndex();
+            log.info("Created system composite index: {} on property: {}", uidIndexName, GraphConstants.UID);
+        }
     }
 }

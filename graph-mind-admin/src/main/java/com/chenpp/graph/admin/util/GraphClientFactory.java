@@ -34,6 +34,8 @@ public class GraphClientFactory {
             case "neo4j":
                 Neo4jConf neo4jConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), Neo4jConf.class);
                 neo4jConf.setGraphCode(graphConf.getGraphCode());
+                neo4jConf.setUsername(graphConf.getUsername());
+                neo4jConf.setPassword(graphConf.getPassword());
                 if (graphConf.getHost() != null) {
                     neo4jConf.setUri(String.format("neo4j://%s:%s", graphConf.getHost(), graphConf.getPort()));
                 } else {
@@ -46,11 +48,15 @@ public class GraphClientFactory {
                 nebulaConf.setGraphCode(graphConf.getGraphCode());
                 nebulaConf.setHosts(graphConf.getHost());
                 nebulaConf.setPort(graphConf.getPort());
+                nebulaConf.setUsername(graphConf.getUsername());
+                nebulaConf.setPassword(graphConf.getPassword());
                 nebulaConf.setSpace(graphConf.getGraphCode());
                 return new NebulaClient(nebulaConf);
             case "janus":
                 JanusConf janusConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), JanusConf.class);
                 janusConf.setGraphCode(graphConf.getGraphCode());
+                janusConf.setUsername(graphConf.getUsername());
+                janusConf.setPassword(graphConf.getPassword());
                 String storageBackend = janusConf.getStorageBackend();
                 if ("cassandra".equals(storageBackend) || "cql".equals(storageBackend)) {
                     CassandraConf cassandraConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), CassandraConf.class);
@@ -76,10 +82,26 @@ public class GraphClientFactory {
         graphConf.setType(connection.getType());
         graphConf.setHost(connection.getHost());
         graphConf.setPort(connection.getPort());
+        graphConf.setUsername(connection.getUsername());
+        graphConf.setPassword(connection.getPassword());
         if (connection.getParams() != null) {
             graphConf.setParams(JSON.parseObject(connection.getParams()));
         } else {
             graphConf.setParams(JSON.parseObject(JSON.toJSONString(connection)));
+        }
+
+        // 兼容旧数据：如果实体字段为空，从 params JSON 中获取
+        if (graphConf.getUsername() == null && graphConf.getParams() != null) {
+            Object username = graphConf.getParams().get("username");
+            if (username != null) {
+                graphConf.setUsername(username.toString());
+            }
+        }
+        if (graphConf.getPassword() == null && graphConf.getParams() != null) {
+            Object password = graphConf.getParams().get("password");
+            if (password != null) {
+                graphConf.setPassword(password.toString());
+            }
         }
 
         return graphConf;

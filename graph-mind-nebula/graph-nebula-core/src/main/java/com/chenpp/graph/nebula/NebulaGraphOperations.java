@@ -194,8 +194,8 @@ public class NebulaGraphOperations implements GraphOperations {
                 String nql = NebulaUtil.buildCreateTag(entity);
                 ResultSet resultSet = session.execute(nql);
                 if (!resultSet.isSucceeded()) {
-                    log.warn("Failed to create tag: {}, errorCode: {}, errorMessage: {}",
-                            entity.getLabel(), resultSet.getErrorCode(), resultSet.getErrorMessage());
+                    throw new GraphException(String.format("Failed to create tag: %s, errorCode: %s, errorMessage: %s",
+                            entity.getLabel(), resultSet.getErrorCode(), resultSet.getErrorMessage()));
                 } else {
                     log.info("Successfully created tag: {}", entity.getLabel());
                 }
@@ -219,13 +219,14 @@ public class NebulaGraphOperations implements GraphOperations {
                 String nql = NebulaUtil.buildCreateEdge(edge);
                 ResultSet resultSet = session.execute(nql);
                 if (!resultSet.isSucceeded()) {
-                    log.warn("Failed to create edge: {}, errorCode: {}, errorMessage: {}",
-                            edge.getLabel(), resultSet.getErrorCode(), resultSet.getErrorMessage());
+                    throw new GraphException(String.format("Failed to create edge: %s, errorCode: %s, errorMessage: %s",
+                            edge.getLabel(), resultSet.getErrorCode(), resultSet.getErrorMessage()));
                 } else {
                     log.info("Successfully created edge: {}", edge.getLabel());
                 }
             } catch (Exception e) {
                 log.error("Error creating edge: " + edge.getLabel(), e);
+                throw new GraphException(e);
             }
         });
     }

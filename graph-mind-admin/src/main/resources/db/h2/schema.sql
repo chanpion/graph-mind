@@ -98,6 +98,8 @@ CREATE TABLE graph_database_connection (
   type VARCHAR(50) NOT NULL COMMENT '数据库类型',
   host VARCHAR(255) NOT NULL COMMENT '主机地址',
   port INT NOT NULL COMMENT '端口号',
+  username VARCHAR(100) DEFAULT NULL COMMENT '用户名',
+  password VARCHAR(255) DEFAULT NULL COMMENT '密码',
   status INT DEFAULT 0 COMMENT '状态（0: disconnected, 1: connected, 2: connecting）',
   description TEXT COMMENT '描述',
   params VARCHAR(2000) DEFAULT NULL COMMENT '其他参数',

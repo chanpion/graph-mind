@@ -62,13 +62,22 @@ public class GraphSchemaController {
         List<GraphNodeDef> nodeDefs = nodeDefService.getNodeDefsByGraphId(graphId, status);
         // 元数据为空时，从图数据库发现
         if (nodeDefs == null || nodeDefs.isEmpty()) {
-            nodeDefs = discoverNodeDefs(graphId);
+            try {
+                nodeDefs = discoverNodeDefs(graphId);
+            } catch (Exception e) {
+                log.warn("从图数据库发现节点定义失败: {}", e.getMessage());
+                nodeDefs = new ArrayList<>();
+            }
         } else {
             // 有定义但属性为空时，尝试从图数据库发现并合并属性
             boolean hasEmptyProperties = nodeDefs.stream()
                 .anyMatch(n -> n.getProperties() == null || n.getProperties().isEmpty());
             if (hasEmptyProperties) {
-                mergeDiscoveredNodeProperties(nodeDefs, graphId);
+                try {
+                    mergeDiscoveredNodeProperties(nodeDefs, graphId);
+                } catch (Exception e) {
+                    log.warn("合并从图数据库发现的节点属性失败: {}", e.getMessage());
+                }
             }
         }
         return Result.success(nodeDefs);
@@ -86,6 +95,8 @@ public class GraphSchemaController {
         nodeDef.setGraphId(graphId);
         boolean success = nodeDefService.saveNodeDefWithProperties(nodeDef);
         if (success) {
+            // 自动发布到图数据库，失败时抛异常让前端感知
+            graphSchemaService.publishSchema(graphId);
             return Result.success("新增节点定义成功");
         } else {
             return Result.error("新增节点定义失败");
@@ -141,13 +152,22 @@ public class GraphSchemaController {
         List<GraphEdgeDef> edgeDefs = edgeDefService.getEdgeDefsByGraphId(graphId, status);
         // 元数据为空时，从图数据库发现
         if (edgeDefs == null || edgeDefs.isEmpty()) {
-            edgeDefs = discoverEdgeDefs(graphId);
+            try {
+                edgeDefs = discoverEdgeDefs(graphId);
+            } catch (Exception e) {
+                log.warn("从图数据库发现边定义失败: {}", e.getMessage());
+                edgeDefs = new ArrayList<>();
+            }
         } else {
             // 有定义但属性为空时，尝试从图数据库发现并合并属性
             boolean hasEmptyProperties = edgeDefs.stream()
                 .anyMatch(e -> e.getProperties() == null || e.getProperties().isEmpty());
             if (hasEmptyProperties) {
-                mergeDiscoveredEdgeProperties(edgeDefs, graphId);
+                try {
+                    mergeDiscoveredEdgeProperties(edgeDefs, graphId);
+                } catch (Exception e) {
+                    log.warn("合并从图数据库发现的边属性失败: {}", e.getMessage());
+                }
             }
         }
         return Result.success(edgeDefs);
@@ -165,6 +185,8 @@ public class GraphSchemaController {
         edgeDef.setGraphId(graphId);
         boolean success = edgeDefService.saveEdgeDefWithProperties(edgeDef);
         if (success) {
+            // 自动发布到图数据库，失败时抛异常让前端感知
+            graphSchemaService.publishSchema(graphId);
             return Result.success("新增边定义成功");
         } else {
             return Result.error("新增边定义失败");

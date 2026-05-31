@@ -65,6 +65,9 @@ public class GraphNodeDefServiceImpl extends ServiceImpl<GraphNodeDefDao, GraphN
                 property.setGraphId(nodeDef.getGraphId());
                 property.setEntityId(nodeDef.getId());
                 property.setPropertyType("node");
+                if (property.getCode() == null || property.getCode().isEmpty()) {
+                    property.setCode(property.getName());
+                }
                 graphPropertyDefService.saveOrUpdate(property);
             }
         }

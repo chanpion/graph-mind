@@ -65,6 +65,9 @@ public class GraphEdgeDefServiceImpl extends ServiceImpl<GraphEdgeDefDao, GraphE
                 property.setEntityId(edgeDef.getId());
                 property.setPropertyType("edge");
                 property.setGraphId(edgeDef.getGraphId());
+                if (property.getCode() == null || property.getCode().isEmpty()) {
+                    property.setCode(property.getName());
+                }
                 propertyDao.insert(property);
             }
         }

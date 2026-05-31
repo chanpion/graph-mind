@@ -53,7 +53,7 @@ public class NebulaUtil {
     public static String buildCreateEdge(GraphRelation relation) {
         StringBuilder edgeBuilder = new StringBuilder();
         String properties = relation.getProperties().stream()
-                .map(prop -> prop.getName() + " " + convertToNebulaDataType(prop.getDataType()))
+                .map(prop -> prop.getCode() + " " + convertToNebulaDataType(prop.getDataType()))
                 .collect(Collectors.joining(", "));
         edgeBuilder.append("CREATE EDGE IF NOT EXISTS ").append(relation.getLabel()).append("(").append(properties).append(")");
         return edgeBuilder.toString();
@@ -224,7 +224,12 @@ public class NebulaUtil {
                 });
             }
             graphEdge.setProperties(properties);
-            graphEdge.setUid(properties.get("uid").toString());
+            if (properties.get("uid") != null) {
+                graphEdge.setUid(properties.get("uid").toString());
+            } else {
+                // 使用复合键作为 uid，避免路径查询中多条边因 uid 为 null 而相互覆盖
+                graphEdge.setUid(srcId + "->" + dstId + "@" + edgeName);
+            }
         } catch (UnsupportedEncodingException e) {
             log.warn("Failed to parse edge due to encoding issue: {}", e.getMessage(), e);
         }

@@ -142,8 +142,20 @@ public class GraphQueryController {
         GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
         GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
 
-        // 构造路径查询语句（以Gremlin为例）
-        String pathQuery = String.format("g.V().has('uid','%s').repeat(bothE().bothV().simplePath()).until(has('uid','%s')).limit(1).path()", startNodeId, endNodeId);
+        // 根据图数据库类型构造路径查询语句
+        String pathQuery;
+        String dbType = connection.getType();
+        if ("nebula".equalsIgnoreCase(dbType)) {
+            pathQuery = String.format("FIND SHORTEST PATH FROM \"%s\" TO \"%s\" OVER * UPTO %d STEPS YIELD PATH AS p",
+                    startNodeId, endNodeId, maxDepth);
+        } else if ("janus".equalsIgnoreCase(dbType) || "janusgraph".equalsIgnoreCase(dbType)) {
+            pathQuery = String.format("g.V().has('uid','%s').repeat(bothE().bothV().simplePath()).until(has('uid','%s')).limit(1).path()",
+                    startNodeId, endNodeId);
+        } else {
+            // neo4j 或默认
+            pathQuery = String.format("MATCH p = (a)-[*1..%d]-(b) WHERE a.uid = '%s' AND b.uid = '%s' RETURN p LIMIT 1",
+                    maxDepth, startNodeId, endNodeId);
+        }
         // 执行查询
         GraphData graphData = graphDataOperations.query(pathQuery);
         return Result.success(graphData);

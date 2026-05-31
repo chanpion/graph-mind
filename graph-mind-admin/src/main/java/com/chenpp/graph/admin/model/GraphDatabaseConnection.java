@@ -24,6 +24,8 @@ public class GraphDatabaseConnection {
     private String type;
     private String host;
     private Integer port;
+    private String username;
+    private String password;
     /**
      * 0: 未检测, 1: 通过, 2: 失败
      */

@@ -7,11 +7,13 @@ import com.chenpp.graph.admin.model.Graph;
 import com.chenpp.graph.admin.model.GraphDatabaseConnection;
 import com.chenpp.graph.admin.model.GraphEdgeDef;
 import com.chenpp.graph.admin.model.GraphNodeDef;
+import com.chenpp.graph.admin.model.GraphPropertyDef;
 import com.chenpp.graph.admin.model.ImportResult;
 import com.chenpp.graph.admin.service.GraphDataService;
 import com.chenpp.graph.admin.service.GraphDatabaseConnectionService;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
 import com.chenpp.graph.admin.service.GraphNodeDefService;
+import com.chenpp.graph.admin.service.GraphPropertyDefService;
 import com.chenpp.graph.admin.service.GraphService;
 import com.chenpp.graph.admin.util.GraphClientFactory;
 import com.chenpp.graph.core.GraphClient;
@@ -35,6 +37,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 图数据服务实现类
@@ -59,8 +63,11 @@ public class GraphDataServiceImpl implements GraphDataService {
     @Autowired
     private GraphDatabaseConnectionService connectionService;
 
+    @Autowired
+    private GraphPropertyDefService propertyDefService;
+
     @Override
-    public ImportResult importNodeData(Long graphId, Long nodeTypeId, MultipartFile file, String headers, String mapping, String data) {
+    public ImportResult importNodeData(Long graphId, Long nodeTypeId, MultipartFile file, String config) {
         ImportResult result = new ImportResult();
         result.setTotalCount(0);
         result.setSuccessCount(0);
@@ -95,13 +102,24 @@ public class GraphDataServiceImpl implements GraphDataService {
                 return result;
             }
 
-            // 解析映射关系
-            ObjectMapper objectMapper = new ObjectMapper();
-            Map<String, String> mappingMap = objectMapper.readValue(mapping, new TypeReference<Map<String, String>>() {
-            });
+            // 解析配置（含 mapping、delimiter、hasHeader 等）
+            JSONObject configJson = JSON.parseObject(config);
+            String delimiter = configJson.getString("delimiter");
+            if (StringUtils.isBlank(delimiter)) {
+                delimiter = ",";
+            }
 
             // 逐行解析CSV文件
-            List<Map<String, String>> dataList = parseCsvFile(file);
+            List<Map<String, String>> dataList = parseCsvFile(file, delimiter);
+
+            // 获取节点定义的属性code列表，用于过滤不在schema中的属性
+            QueryWrapper<GraphPropertyDef> propQuery = new QueryWrapper<GraphPropertyDef>()
+                    .eq("entity_id", nodeTypeId)
+                    .eq("property_type", "node");
+            List<GraphPropertyDef> propDefs = propertyDefService.list(propQuery);
+            Set<String> vertexSchemaPropertyCodes = propDefs.stream()
+                    .map(GraphPropertyDef::getCode)
+                    .collect(Collectors.toSet());
 
             // 更新导入结果统计
             result.setTotalCount(dataList.size());
@@ -120,19 +138,18 @@ public class GraphDataServiceImpl implements GraphDataService {
             for (Map<String, String> dataRow : dataList) {
                 try {
                     GraphVertex vertex = new GraphVertex();
-                    vertex.setLabel(nodeDef.getLabel());
+                    vertex.setUid(dataRow.get("uid"));
+                    vertex.setLabel(dataRow.get("label"));
 
                     // 设置节点属性
                     Map<String, Object> properties = new HashMap<>();
-                    for (Map.Entry<String, String> entry : mappingMap.entrySet()) {
-                        String header = entry.getKey();
-                        String propertyName = entry.getValue();
-                        if (StringUtils.isNotBlank(propertyName) && dataRow.containsKey(header)) {
-                            properties.put(propertyName, dataRow.get(header));
+
+                    dataRow.forEach((key, value) -> {
+                        if (vertexSchemaPropertyCodes.contains(key)) {
+                            properties.put(key, value);
                         }
-                    }
+                    });
                     vertex.setProperties(properties);
-                    vertex.setUid(properties.get("uid").toString());
                     // 添加节点
                     graphDataOperations.addVertex(vertex);
                     successCount++;
@@ -160,11 +177,12 @@ public class GraphDataServiceImpl implements GraphDataService {
     /**
      * 解析CSV文件
      *
-     * @param file CSV文件
+     * @param file      CSV文件
+     * @param delimiter 分隔符
      * @return 解析后的数据列表
      * @throws Exception 解析异常
      */
-    private List<Map<String, String>> parseCsvFile(MultipartFile file) throws Exception {
+    private List<Map<String, String>> parseCsvFile(MultipartFile file, String delimiter) throws Exception {
         List<Map<String, String>> dataList = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
             String headerLine = reader.readLine();
@@ -172,10 +190,10 @@ public class GraphDataServiceImpl implements GraphDataService {
                 throw new IllegalArgumentException("CSV文件为空");
             }
 
-            String[] headers = headerLine.split(",");
+            String[] headers = headerLine.split(delimiter);
             String line;
             while ((line = reader.readLine()) != null) {
-                String[] values = line.split(",");
+                String[] values = line.split(delimiter);
                 Map<String, String> dataMap = new HashMap<>();
                 for (int i = 0; i < Math.min(headers.length, values.length); i++) {
                     dataMap.put(headers[i].trim(), values[i].trim());
@@ -188,7 +206,7 @@ public class GraphDataServiceImpl implements GraphDataService {
 
 
     @Override
-    public ImportResult importEdgeData(Long graphId, Long edgeTypeId, MultipartFile file, String headers, String mapping, String data) {
+    public ImportResult importEdgeData(Long graphId, Long edgeTypeId, MultipartFile file, String config) {
         ImportResult result = new ImportResult();
         result.setTotalCount(0);
         result.setSuccessCount(0);
@@ -223,10 +241,15 @@ public class GraphDataServiceImpl implements GraphDataService {
                 result.setErrorMessages(errorMessages.toArray(new String[0]));
                 return result;
             }
+            List<Map<String, String>> dataList = parseCsvFile(file, ",");
 
-            // 解析映射关系和数据
-            JSONObject mappingMap = JSON.parseObject(mapping);
-            List<Map<String, String>> dataList = parseCsvFile(file);
+            // 获取边定义的属性code列表，用于过滤不在schema中的属性
+            QueryWrapper<GraphPropertyDef> edgePropQuery = new QueryWrapper<GraphPropertyDef>()
+                    .eq("entity_id", edgeTypeId)
+                    .eq("property_type", "edge");
+            Set<String> edgeSchemaPropertyCodes = propertyDefService.list(edgePropQuery).stream()
+                    .map(GraphPropertyDef::getCode)
+                    .collect(Collectors.toSet());
 
             // 更新导入结果统计
             result.setTotalCount(dataList.size());
@@ -245,23 +268,21 @@ public class GraphDataServiceImpl implements GraphDataService {
             for (Map<String, String> dataRow : dataList) {
                 try {
                     GraphEdge edge = new GraphEdge();
-                    edge.setUid(dataRow.get(mappingMap.getString("uid")));
+                    edge.setUid(dataRow.get("uid"));
                     edge.setLabel(edgeDef.getLabel());
-                    edge.setStartLabel(dataRow.get(mappingMap.getString("sourceLabel")));
-                    edge.setEndLabel(dataRow.get(mappingMap.getString("targetLabel")));
-                    edge.setStartUid(dataRow.get(mappingMap.getString("source")));
-                    edge.setEndUid(dataRow.get(mappingMap.getString("target")));
+                    edge.setStartLabel(edgeDef.getFrom());
+                    edge.setEndLabel(edgeDef.getTo());
+                    edge.setStartUid(dataRow.get("source"));
+                    edge.setEndUid(dataRow.get("target"));
 
                     // 设置边属性
                     Map<String, Object> properties = new HashMap<>();
-
-                    mappingMap.forEach((col, filed) -> {
-                        if (!StringUtils.equalsAny(col, "sourceLabel", "targetLabel", "source", "target")) {
-                            properties.put(col, dataRow.get(filed));
+                    dataRow.forEach((col, value) -> {
+                        if (edgeSchemaPropertyCodes.contains(col)) {
+                            properties.put(col, value);
                         }
                     });
                     edge.setProperties(properties);
-
                     // 添加边
                     graphDataOperations.addEdge(edge);
                     successCount++;
@@ -306,7 +327,7 @@ public class GraphDataServiceImpl implements GraphDataService {
                 return new ArrayList<>();
             }
 
-           return graphData.getVertices();
+            return graphData.getVertices();
         } catch (Exception e) {
             log.error("查询节点数据列表失败，graphId={}, nodeTypeId={}", graphId, nodeTypeId, e);
             return new ArrayList<>();
@@ -391,9 +412,23 @@ public class GraphDataServiceImpl implements GraphDataService {
 
             GraphVertex vertex = new GraphVertex();
             vertex.setLabel(nodeDef.getLabel());
-            vertex.setProperties(data);
-            if (data.containsKey("uid")) {
+
+            // 处理嵌套属性结构：前端发送 {label: "...", properties: {uid, name, ...}}
+            Map<String, Object> properties;
+            if (data.containsKey("properties") && data.get("properties") instanceof Map) {
+                properties = (Map<String, Object>) data.get("properties");
+            } else {
+                properties = new HashMap<>(data);
+                properties.remove("label");
+                properties.remove("properties");
+            }
+            vertex.setProperties(properties);
+            // uid 可能在前端数据顶层或 properties 中
+            if (properties.containsKey("uid")) {
+                vertex.setUid(properties.get("uid").toString());
+            } else if (data.containsKey("uid")) {
                 vertex.setUid(data.get("uid").toString());
+                properties.put("uid", data.get("uid").toString());
             }
 
             ops.addVertex(vertex);
@@ -418,15 +453,34 @@ public class GraphDataServiceImpl implements GraphDataService {
 
             GraphEdge edge = new GraphEdge();
             edge.setLabel(edgeDef.getLabel());
-            edge.setProperties(data);
-            if (data.containsKey("uid")) {
-                edge.setUid(data.get("uid").toString());
+
+            // 处理嵌套属性结构：前端发送 {label, startUid, endUid, properties: {uid, ...}}
+            Map<String, Object> properties;
+            if (data.containsKey("properties") && data.get("properties") instanceof Map) {
+                properties = (Map<String, Object>) data.get("properties");
+            } else {
+                properties = new HashMap<>(data);
+                properties.remove("label");
+                properties.remove("properties");
             }
+            edge.setProperties(properties);
+            // uid 可能在前端数据顶层或 properties 中
+            if (properties.containsKey("uid")) {
+                edge.setUid(properties.get("uid").toString());
+            } else if (data.containsKey("uid")) {
+                edge.setUid(data.get("uid").toString());
+                properties.put("uid", data.get("uid").toString());
+            }
+            // startUid/endUid 可能在前端数据顶层或 properties 中
             if (data.containsKey("startUid")) {
                 edge.setStartUid(data.get("startUid").toString());
+            } else if (properties.containsKey("startUid")) {
+                edge.setStartUid(properties.get("startUid").toString());
             }
             if (data.containsKey("endUid")) {
                 edge.setEndUid(data.get("endUid").toString());
+            } else if (properties.containsKey("endUid")) {
+                edge.setEndUid(properties.get("endUid").toString());
             }
             if (data.containsKey("startLabel")) {
                 edge.setStartLabel(data.get("startLabel").toString());
@@ -454,7 +508,21 @@ public class GraphDataServiceImpl implements GraphDataService {
             if (data.containsKey("label")) {
                 vertex.setLabel(data.get("label").toString());
             }
-            vertex.setProperties(data);
+            // 处理嵌套属性结构
+            Map<String, Object> properties;
+            if (data.containsKey("properties") && data.get("properties") instanceof Map) {
+                properties = (Map<String, Object>) data.get("properties");
+            } else {
+                properties = new HashMap<>(data);
+                properties.remove("label");
+                properties.remove("properties");
+            }
+            vertex.setProperties(properties);
+            if (properties.containsKey("uid")) {
+                vertex.setUid(properties.get("uid").toString());
+            } else if (data.containsKey("uid")) {
+                vertex.setUid(data.get("uid").toString());
+            }
 
             ops.updateVertex(vertex);
             log.info("更新节点成功，nodeId={}", nodeId);
@@ -475,7 +543,27 @@ public class GraphDataServiceImpl implements GraphDataService {
             if (data.containsKey("label")) {
                 edge.setLabel(data.get("label").toString());
             }
-            edge.setProperties(data);
+            // 处理嵌套属性结构
+            Map<String, Object> properties;
+            if (data.containsKey("properties") && data.get("properties") instanceof Map) {
+                properties = (Map<String, Object>) data.get("properties");
+            } else {
+                properties = new HashMap<>(data);
+                properties.remove("label");
+                properties.remove("properties");
+            }
+            // startUid/endUid 可能在前端数据顶层或 properties 中
+            if (data.containsKey("startUid")) {
+                edge.setStartUid(data.get("startUid").toString());
+            } else if (properties.containsKey("startUid")) {
+                edge.setStartUid(properties.get("startUid").toString());
+            }
+            if (data.containsKey("endUid")) {
+                edge.setEndUid(data.get("endUid").toString());
+            } else if (properties.containsKey("endUid")) {
+                edge.setEndUid(properties.get("endUid").toString());
+            }
+            edge.setProperties(properties);
 
             ops.updateEdge(edge);
             log.info("更新边成功，edgeId={}", edgeId);
@@ -562,20 +650,20 @@ public class GraphDataServiceImpl implements GraphDataService {
 
             // 构建图配置信息
             GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
-            
+
             // 创建图客户端
             GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
-            
+
             // 获取图数据操作接口
             GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
-            
+
             // 获取图统计信息
             GraphSummary summary = graphDataOperations.getSummary();
-            
+
             // 设置图的基本信息
             summary.setGraphCode(graph.getCode());
             summary.setGraphName(graph.getName());
-            
+
             return summary;
         } catch (Exception e) {
             log.error("获取图统计信息失败，graphId={}", graphId, e);
@@ -605,31 +693,61 @@ public class GraphDataServiceImpl implements GraphDataService {
     }
 
     /**
-     * 构建按标签分页查询节点的 Cypher 语句
+     * 构建按标签分页查询节点的查询语句（根据数据库类型生成不同语法）
      */
     private String buildLabelQuery(Long graphId, String label, int skip, int size) {
+        if (isGremlinGraph(graphId)) {
+            return String.format("g.V().hasLabel(\"%s\").range(%d, %d)", label, skip, skip + size);
+        }
         return String.format("MATCH (n:`%s`) RETURN n SKIP %d LIMIT %d", label, skip, size);
     }
 
     /**
-     * 构建按标签分页查询边的 Cypher 语句
+     * 构建按标签分页查询边的查询语句
      */
     private String buildEdgeLabelQuery(Long graphId, String label, int skip, int size) {
+        if (isGremlinGraph(graphId)) {
+            return String.format("g.E().hasLabel(\"%s\").range(%d, %d)", label, skip, skip + size);
+        }
         return String.format("MATCH p=()-[r:`%s`]->() RETURN p SKIP %d LIMIT %d", label, skip, size);
     }
 
     /**
-     * 构建按 uid 查找节点的 Cypher 语句
+     * 构建按 uid 查找节点的查询语句
      */
     private String buildFindVertexQuery(Long graphId, String nodeId) {
+        if (isGremlinGraph(graphId)) {
+            return String.format("g.V().has(\"uid\", \"%s\")", escapeGremlinString(nodeId));
+        }
         return String.format("MATCH (n {uid: '%s'}) RETURN n", escapeCypherString(nodeId));
     }
 
     /**
-     * 构建按 uid 查找边的 Cypher 语句
+     * 构建按 uid 查找边的查询语句
      */
     private String buildFindEdgeQuery(Long graphId, String edgeId) {
+        if (isGremlinGraph(graphId)) {
+            return String.format("g.E().has(\"uid\", \"%s\")", escapeGremlinString(edgeId));
+        }
         return String.format("MATCH ()-[r {uid: '%s'}]-() RETURN r", escapeCypherString(edgeId));
+    }
+
+    /**
+     * 判断图数据库是否使用Gremlin查询语言
+     */
+    private boolean isGremlinGraph(Long graphId) {
+        Graph graph = graphService.getById(graphId);
+        if (graph == null) return false;
+        GraphDatabaseConnection conn = connectionService.getById(graph.getConnectionId());
+        return conn != null && "janus".equalsIgnoreCase(conn.getType());
+    }
+
+    /**
+     * Gremlin字符串转义
+     */
+    private String escapeGremlinString(String str) {
+        if (str == null) return "";
+        return str.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     /**
@@ -673,4 +791,15 @@ public class GraphDataServiceImpl implements GraphDataService {
         }
         return value.replace("\\", "\\\\").replace("'", "\\'");
     }
+
+    private String getEdgeField(Map<String, String> dataRow, JSONObject mappingMap, String... keys) {
+        for (String key : keys) {
+            String mapped = mappingMap.getString(key);
+            if (mapped != null && dataRow.containsKey(mapped)) {
+                return dataRow.get(mapped);
+            }
+        }
+        return null;
+    }
+
 }

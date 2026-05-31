@@ -29,34 +29,24 @@ public class GraphDataController {
     private GraphDataService graphDataService;
 
     /**
-     * 导入节点数据
+     * 导入节点数据（CSV）
      *
      * @param graphId    图ID
      * @param nodeTypeId 节点类型ID
      * @param file       CSV文件
-     * @param headers    CSV表头信息
-     * @param mapping    字段映射关系
-     * @param data       数据内容
+     * @param config     导入配置（JSON，含 delimiter、hasHeader 等）
      * @return 导入结果
      */
-    @PostMapping("/nodes/{nodeTypeId}/import")
+    @PostMapping("/import/nodes/{nodeTypeId}")
     public Result<ImportResult> importNodeData(
             @PathVariable Long graphId,
             @PathVariable Long nodeTypeId,
             @RequestPart("file") MultipartFile file,
-            @RequestPart("headers") String headers,
-            @RequestPart("mapping") String mapping,
-            @RequestPart("data") String data) {
+            @RequestPart("config") String config) {
         try {
-            // TODO: 实现节点数据导入逻辑
-            log.info("开始导入节点数据，graphId={}, nodeTypeId={}", graphId, nodeTypeId);
-            log.info("文件名: {}", file.getOriginalFilename());
-            log.info("表头信息: {}", headers);
-            log.info("映射关系: {}", mapping);
-            log.info("数据内容: {}", data);
+            log.info("开始导入节点数据，graphId={}, nodeTypeId={}, config={}", graphId, nodeTypeId, config);
 
-            // 调用服务方法处理数据导入
-            ImportResult result = graphDataService.importNodeData(graphId, nodeTypeId, file, headers, mapping, data);
+            ImportResult result = graphDataService.importNodeData(graphId, nodeTypeId, file, config);
 
             return Result.success(result);
         } catch (Exception e) {
@@ -66,34 +56,24 @@ public class GraphDataController {
     }
 
     /**
-     * 导入边数据
+     * 导入边数据（CSV）
      *
      * @param graphId    图ID
      * @param edgeTypeId 边类型ID
      * @param file       CSV文件
-     * @param headers    CSV表头信息
-     * @param mapping    字段映射关系
-     * @param data       数据内容
+     * @param config     导入配置（JSON，含 delimiter、hasHeader 等）
      * @return 导入结果
      */
-    @PostMapping("/edges/{edgeTypeId}/import")
+    @PostMapping("/import/edges/{edgeTypeId}")
     public Result<ImportResult> importEdgeData(
             @PathVariable Long graphId,
             @PathVariable Long edgeTypeId,
             @RequestPart("file") MultipartFile file,
-            @RequestPart("headers") String headers,
-            @RequestPart("mapping") String mapping,
-            @RequestPart("data") String data) {
+            @RequestPart("config") String config) {
         try {
-            // TODO: 实现边数据导入逻辑
-            log.info("开始导入边数据，graphId={}, edgeTypeId={}", graphId, edgeTypeId);
-            log.info("文件名: {}", file.getOriginalFilename());
-            log.info("表头信息: {}", headers);
-            log.info("映射关系: {}", mapping);
-            log.info("数据内容: {}", data);
+            log.info("开始导入边数据，graphId={}, edgeTypeId={}, config={}", graphId, edgeTypeId, config);
 
-            // 调用服务方法处理数据导入
-            ImportResult result = graphDataService.importEdgeData(graphId, edgeTypeId, file, headers, mapping, data);
+            ImportResult result = graphDataService.importEdgeData(graphId, edgeTypeId, file, config);
 
             return Result.success(result);
         } catch (Exception e) {

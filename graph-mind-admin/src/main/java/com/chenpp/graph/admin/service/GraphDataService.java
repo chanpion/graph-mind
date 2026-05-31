@@ -23,12 +23,10 @@ public interface GraphDataService {
      * @param graphId    图ID
      * @param nodeTypeId 节点类型ID
      * @param file       CSV文件
-     * @param headers    表头信息
-     * @param mapping    字段映射关系
-     * @param data       数据内容
+     * @param config     导入配置JSON（含 delimiter、hasHeader 等）
      * @return 导入结果
      */
-    ImportResult importNodeData(Long graphId, Long nodeTypeId, MultipartFile file, String headers, String mapping, String data);
+    ImportResult importNodeData(Long graphId, Long nodeTypeId, MultipartFile file, String config);
 
     /**
      * 导入边数据到图数据库
@@ -36,12 +34,10 @@ public interface GraphDataService {
      * @param graphId    图ID
      * @param edgeTypeId 边类型ID
      * @param file       CSV文件
-     * @param headers    表头信息
-     * @param mapping    字段映射关系
-     * @param data       数据内容
+     * @param config     导入配置JSON（含 delimiter、hasHeader 等）
      * @return 导入结果
      */
-    ImportResult importEdgeData(Long graphId, Long edgeTypeId, MultipartFile file, String headers, String mapping, String data);
+    ImportResult importEdgeData(Long graphId, Long edgeTypeId, MultipartFile file, String config);
 
     /**
      * 查询节点数据列表

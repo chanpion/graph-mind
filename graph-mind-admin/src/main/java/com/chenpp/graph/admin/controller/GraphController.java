@@ -3,6 +3,7 @@ package com.chenpp.graph.admin.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.chenpp.graph.admin.model.Graph;
 import com.chenpp.graph.admin.model.Result;
+import com.chenpp.graph.admin.service.GraphSchemaService;
 import com.chenpp.graph.admin.service.GraphService;
 import com.chenpp.graph.core.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +35,9 @@ public class GraphController {
 
     @Autowired
     private GraphService graphService;
+
+    @Autowired
+    private GraphSchemaService graphSchemaService;
 
     /**
      * 获取图列表
@@ -90,6 +94,14 @@ public class GraphController {
         graph.setUpdateTime(LocalDateTime.now());
         graph.setStatus(0);
         graphService.save(graph);
+
+        // 自动发布Schema到图数据库（创建图空间/初始化）
+        try {
+            graphSchemaService.publishSchema(graph.getId());
+        } catch (Exception e) {
+            log.warn("自动发布Schema失败: {}", e.getMessage());
+        }
+
         return Result.success(graph.getId());
     }
 

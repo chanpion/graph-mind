@@ -9,6 +9,7 @@ import com.chenpp.graph.core.model.GraphSummary;
 import com.chenpp.graph.core.model.GraphVertex;
 import com.chenpp.graph.nebula.util.NebulaUtil;
 import com.vesoft.nebula.client.graph.SessionPool;
+import com.vesoft.nebula.client.graph.data.PathWrapper;
 import com.vesoft.nebula.client.graph.data.ResultSet;
 import com.vesoft.nebula.client.graph.data.ValueWrapper;
 import com.vesoft.nebula.client.graph.exception.IOErrorException;
@@ -21,6 +22,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -308,9 +310,9 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                         + ", errorMessage: " + resultSet.getErrorMessage());
             }
 
-            GraphData graphData = new GraphData();
-            graphData.setVertices(new ArrayList<>());
-            graphData.setEdges(new ArrayList<>());
+            // 使用 Map 做去重，key 为 uid 保证顺序
+            Map<String, GraphVertex> vertexMap = new LinkedHashMap<>();
+            Map<String, GraphEdge> edgeMap = new LinkedHashMap<>();
 
             // 解析结果集
             for (int i = 0; i < resultSet.rowsSize(); i++) {
@@ -318,14 +320,32 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                 for (ValueWrapper value : record.values()) {
                     if (value.isVertex()) {
                         GraphVertex vertex = NebulaUtil.parseVertex(value.asNode());
-                        graphData.addVertex(vertex);
+                        if (vertex.getUid() != null) {
+                            vertexMap.put(vertex.getUid(), vertex);
+                        }
                     }
                     if (value.isEdge()) {
                         GraphEdge edge = NebulaUtil.parseEdge(value.asRelationship());
-                        graphData.addEdge(edge);
+                        edgeMap.put(edge.getUid(), edge);
+                    }
+                    if (value.isPath()) {
+                        PathWrapper path = value.asPath();
+                        for (com.vesoft.nebula.client.graph.data.Node node : path.getNodes()) {
+                            GraphVertex vertex = NebulaUtil.parseVertex(node);
+                            if (vertex.getUid() != null) {
+                                vertexMap.put(vertex.getUid(), vertex);
+                            }
+                        }
+                        for (com.vesoft.nebula.client.graph.data.Relationship rel : path.getRelationships()) {
+                            GraphEdge edge = NebulaUtil.parseEdge(rel);
+                            edgeMap.put(edge.getUid(), edge);
+                        }
                     }
                 }
             }
+            GraphData graphData = new GraphData();
+            graphData.setVertices(new ArrayList<>(vertexMap.values()));
+            graphData.setEdges(new ArrayList<>(edgeMap.values()));
 
             if (CollectionUtils.isNotEmpty(graphData.getEdges()) && CollectionUtils.isEmpty(graphData.getVertices())) {
                 Set<String> vertexIds = new HashSet<>();
@@ -395,9 +415,8 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
 
     @Override
     public GraphData expand(String nodeId, int depth) throws GraphException {
-        String ngql = String.format("GO %d STEPS FROM \"%s\" OVER * YIELD DISTINCT dst(edge) AS dst | " +
-                "FETCH PROP ON * $-.dst YIELD vertex AS v | " +
-                "FETCH PROP ON * \"%s\" YIELD vertex AS v", depth, nodeId, nodeId);
+        // 使用 MATCH 匹配从起点出发的所有可达路径，返回点、边、关系
+        String ngql = String.format("MATCH p=(v)-[r*1..%d]-(v2) WHERE id(v) == \"%s\" RETURN p", depth, nodeId);
         return query(ngql);
     }
 
@@ -499,4 +518,12 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
             throw new GraphException("Failed to get graph summary from Nebula", e);
         }
     }
+
+    private String edgeKey(GraphEdge edge) {
+        if (edge.getUid() != null) {
+            return edge.getUid();
+        }
+        return edge.getStartUid() + "->" + edge.getEndUid() + "#" + edge.getLabel();
+    }
+
 }
