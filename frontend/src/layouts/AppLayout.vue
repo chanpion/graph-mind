@@ -85,7 +85,7 @@
       </div>
     </el-header>
     <el-container class="app-body">
-      <el-aside :width="sidebarCollapsed ? '64px' : '220px'" class="app-sidebar">
+      <el-aside :width="sidebarCollapsed ? '64px' : '180px'" class="app-sidebar">
         <SidebarNav />
       </el-aside>
       <el-container class="app-main">

@@ -44,50 +44,83 @@
               v-for="edge in filteredEdges"
               :key="edge.id"
               class="edge"
-              :class="{ highlighted: isHighlighted(edge) }"
+              :class="{ highlighted: isHighlighted(edge), 'is-loop': isSelfLoop(edge) }"
             >
-              <line
-                v-if="isHighlighted(edge)"
-                :x1="edge.source.x"
-                :y1="edge.source.y"
-                :x2="getEdgeTarget(edge).x"
-                :y2="getEdgeTarget(edge).y"
-                stroke="var(--el-color-primary)"
-                stroke-width="3"
-                stroke-opacity="0.6"
-                stroke-dasharray="10, 5"
-                class="edge-flow"
-              />
-              <line
-                :x1="edge.source.x"
-                :y1="edge.source.y"
-                :x2="edge.target.x"
-                :y2="edge.target.y"
-                stroke="transparent"
-                stroke-width="12"
-                @click="selectEdge(edge)"
-                class="edge-hit-area"
-              />
-              <line
-                :x1="edge.source.x"
-                :y1="edge.source.y"
-                :x2="getEdgeTarget(edge).x"
-                :y2="getEdgeTarget(edge).y"
-                :stroke="getEdgeColor(edge)"
-                stroke-width="2"
-                marker-end="url(#arrowhead)"
-                class="edge-line"
-              />
-              <text
-                :x="(edge.source.x + edge.target.x) / 2"
-                :y="(edge.source.y + edge.target.y) / 2 - 5"
-                text-anchor="middle"
-                font-size="11"
-                fill="var(--el-text-color-secondary)"
-                class="edge-label"
-              >
-                {{ edge.label }}
-              </text>
+              <!-- 自环边 (同节点类型) 用曲线渲染 -->
+              <template v-if="isSelfLoop(edge)">
+                <path
+                  :d="getSelfLoopPath(edge)"
+                  :stroke="getEdgeColor(edge)"
+                  stroke-width="2"
+                  fill="none"
+                  marker-end="url(#arrowhead-loop)"
+                  class="edge-line"
+                  @click="selectEdge(edge)"
+                />
+                <path
+                  :d="getSelfLoopPath(edge)"
+                  stroke="transparent"
+                  stroke-width="12"
+                  fill="none"
+                  @click="selectEdge(edge)"
+                  class="edge-hit-area"
+                />
+                <text
+                  :x="getSelfLoopLabelX(edge)"
+                  :y="getSelfLoopLabelY(edge)"
+                  text-anchor="middle"
+                  font-size="11"
+                  fill="var(--el-text-color-secondary)"
+                  class="edge-label"
+                >
+                  {{ edge.label }}
+                </text>
+              </template>
+              <!-- 普通边用线段渲染 -->
+              <template v-else>
+                <line
+                  v-if="isHighlighted(edge)"
+                  :x1="edge.source.x"
+                  :y1="edge.source.y"
+                  :x2="getEdgeTarget(edge).x"
+                  :y2="getEdgeTarget(edge).y"
+                  stroke="var(--el-color-primary)"
+                  stroke-width="3"
+                  stroke-opacity="0.6"
+                  stroke-dasharray="10, 5"
+                  class="edge-flow"
+                />
+                <line
+                  :x1="edge.source.x"
+                  :y1="edge.source.y"
+                  :x2="edge.target.x"
+                  :y2="edge.target.y"
+                  stroke="transparent"
+                  stroke-width="12"
+                  @click="selectEdge(edge)"
+                  class="edge-hit-area"
+                />
+                <line
+                  :x1="edge.source.x"
+                  :y1="edge.source.y"
+                  :x2="getEdgeTarget(edge).x"
+                  :y2="getEdgeTarget(edge).y"
+                  :stroke="getEdgeColor(edge)"
+                  stroke-width="2"
+                  marker-end="url(#arrowhead)"
+                  class="edge-line"
+                />
+                <text
+                  :x="(edge.source.x + edge.target.x) / 2"
+                  :y="(edge.source.y + edge.target.y) / 2 - 5"
+                  text-anchor="middle"
+                  font-size="11"
+                  fill="var(--el-text-color-secondary)"
+                  class="edge-label"
+                >
+                  {{ edge.label }}
+                </text>
+              </template>
             </g>
           </g>
 
@@ -166,6 +199,17 @@
         <defs>
           <marker
             id="arrowhead"
+            markerWidth="12"
+            markerHeight="8"
+            refX="10"
+            refY="4"
+            orient="auto"
+            markerUnits="userSpaceOnUse"
+          >
+            <polygon points="0 0, 12 4, 0 8" fill="var(--el-text-color-secondary)" />
+          </marker>
+          <marker
+            id="arrowhead-loop"
             markerWidth="12"
             markerHeight="8"
             refX="10"
@@ -369,6 +413,34 @@ function getNodeRadius(node) {
   return 24 + Math.min(3, (node.propertyCount || 0) * 0.3)
 }
 
+function isSelfLoop(edge) {
+  return edge.source && edge.target && (edge.source.id === edge.target.id || edge.source === edge.target)
+}
+
+function getSelfLoopPath(edge) {
+  const cx = edge.source.x
+  const cy = edge.source.y
+  const r = getNodeRadius(edge.source)
+  const loopRadius = 60
+  const startX = cx + r
+  const startY = cy
+  const endX = cx - r
+  const endY = cy
+  const cp1X = cx + r + loopRadius
+  const cp1Y = cy - loopRadius - 20
+  const cp2X = cx - r - loopRadius
+  const cp2Y = cy - loopRadius - 20
+  return `M ${startX} ${startY} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${endX} ${endY}`
+}
+
+function getSelfLoopLabelX(edge) {
+  return edge.source.x
+}
+
+function getSelfLoopLabelY(edge) {
+  return edge.source.y - getNodeRadius(edge.source) - 75
+}
+
 // 计算边的终点（在目标节点边缘处截断，露出箭头）
 function getEdgeTarget(edge) {
   const s = edge.source, t = edge.target
@@ -445,8 +517,11 @@ function transformData() {
 
   // Map edgeDefs to D3 edges using from/to IDs (use == to handle String/Number type mismatch)
   edges.value = (props.edgeDefs || []).map(et => {
-    const sourceNode = nodes.value.find(n => n.id == et.from)
-    const targetNode = nodes.value.find(n => n.id == et.to)
+    // 优先按 node.id 匹配，兼容按 node.label 匹配
+    let sourceNode = nodes.value.find(n => n.id == et.from)
+    if (!sourceNode) sourceNode = nodes.value.find(n => n.label == et.from)
+    let targetNode = nodes.value.find(n => n.id == et.to)
+    if (!targetNode) targetNode = nodes.value.find(n => n.label == et.to)
     return {
       id: et.id,
       label: et.label || et.name,

@@ -1,9 +1,9 @@
 <template>
   <div class="graph-analysis-container">
 
-    <el-row :gutter="20" class="main-content analysis-layout">
+    <el-row :gutter="0" class="main-content analysis-layout">
       <!-- 左侧操作区 -->
-      <el-col :span="6" class="operation-panel">
+      <el-col style="flex: 0 0 300px; max-width: 300px;" class="operation-panel">
         <!-- 侧边栏头部 -->
         <div class="sidebar-header">
           <div class="sidebar-header-top">
@@ -168,17 +168,10 @@
           </el-tabs>
 
           <!-- 分析结果展示 -->
-          <div v-if="analysisResult && !analysisLoading" class="result-section">
+          <div v-if="analysisResult && !analysisLoading && (activeAlgorithmTab === 'pathQuery' || analysisForm.algorithm === 'shortestPath')" class="result-section">
             <el-divider>分析结果</el-divider>
             <div class="result-content">
-              <template v-if="activeAlgorithmTab === 'kLayerExpand' || analysisForm.algorithm === 'kLayerExpand'">
-                <h4>K层展开</h4>
-                <p>拓展节点数: {{ analysisResult.expandedNodes }}</p>
-                <p>拓展边数: {{ analysisResult.expandedEdges }}</p>
-                <p>路径数: {{ analysisResult.pathCount }}</p>
-              </template>
-              
-              <template v-else-if="activeAlgorithmTab === 'pathQuery' || analysisForm.algorithm === 'shortestPath'">
+              <template v-if="activeAlgorithmTab === 'pathQuery' || analysisForm.algorithm === 'shortestPath'">
                 <h4>最短路径</h4>
                 <p>路径长度: {{ analysisResult.pathLength }}</p>
                 <p>路径节点数: {{ analysisResult.nodeCount }}</p>
@@ -197,7 +190,7 @@
       </el-col>
 
       <!-- 右侧图可视化区 -->
-      <el-col :span="18" class="visualization-panel">
+      <el-col style="flex: 1;" class="visualization-panel">
         <div class="visualization-content">
           <!-- 图可视化区域 -->
           <div ref="graphContainerRef" class="viz-canvas-container">
@@ -357,7 +350,7 @@ const graphTypeTagType = computed(() => {
 const defaultQuery = computed(() => {
   const map = {
     neo4j: 'MATCH p=(n)-[r]->() RETURN p LIMIT 10',
-    nebula: 'FETCH PROP ON * LIMIT 10',
+    nebula: 'MATCH p=(v)-[e]->(v2) RETURN p LIMIT 10',
     janusgraph: 'g.V().limit(10)'
   }
   return map[graphType.value] || ''
@@ -681,6 +674,13 @@ const executePathQuery = async () => {
 
       // 转换API响应数据为图数据
       const transformedData = transformApiResponseToGraphData(apiResponse)
+      // 标记路径节点并设置起点/终点高亮
+      transformedData.nodes = transformedData.nodes.map(n => ({
+        ...n,
+        group: 'path'
+      }))
+      analysisForm.sourceId = analysisForm.sourceValue
+      analysisForm.targetId = analysisForm.targetValue
       nodes.value = transformedData.nodes
       edges.value = transformedData.edges
 
@@ -825,6 +825,18 @@ const executeAnalysis = async () => {
 
       // 转换API响应数据为图数据
       const transformedData = transformApiResponseToGraphData(apiResponse);
+      // 标记种子节点
+      if (algorithm === 'kLayerExpand') {
+        transformedData.nodes = transformedData.nodes.map(n => ({
+          ...n,
+          group: n.id === analysisForm.queryValue ? 'center' : (n.group || 'normal')
+        }));
+      } else if (algorithm === 'shortestPath') {
+        transformedData.nodes = transformedData.nodes.map(n => ({
+          ...n,
+          group: 'path'
+        }));
+      }
       nodes.value = transformedData.nodes;
       edges.value = transformedData.edges;
 
@@ -943,6 +955,13 @@ const generateKLayerExpandData = () => {
   }
 }
 
+// 获取节点半径
+const getNodeRadius = (node) => {
+  if (node.id === analysisForm.sourceId || node.id === analysisForm.targetId) return 22;
+  if (node.group === 'center' || node.group === 'path') return 22;
+  return 16;
+};
+
 // 绘制图形
 const drawGraph = () => {
   if (!svgRef.value || !graphContainerRef.value) return
@@ -957,38 +976,39 @@ const drawGraph = () => {
 
   // 设置SVG和g元素
   svg = d3.select(svgRef.value)
+      .style('cursor', 'grab')
   g = svg.append('g')
 
   // 设置缩放行为
   zoom = d3.zoom()
-      .scaleExtent([0.1, 10])
+      .scaleExtent([0.1, 8])
       .on('zoom', handleZoom)
 
   svg.call(zoom)
 
   // 创建力导向模拟
   simulation = d3.forceSimulation(nodes.value)
-      .force('link', d3.forceLink(edges.value).id(d => d.id).distance(100))
-      .force('charge', d3.forceManyBody().strength(-300))
+      .force('link', d3.forceLink(edges.value).id(d => d.id).distance(80))
+      .force('charge', d3.forceManyBody().strength(-120))
       .force('center', d3.forceCenter(container.clientWidth / 2, container.clientHeight / 2))
+      .force('collision', d3.forceCollide(25))
       .on('tick', ticked)
 
   // 定义箭头标记
   const defs = g.append("defs");
   
   // 为每条边创建独立的箭头标记，以适应不同颜色和大小
+  const isPathScene = activeAlgorithmTab.value === 'pathQuery' || analysisForm.algorithm === 'shortestPath';
   edges.value.forEach((d, i) => {
-    const isPath = d.source.group === 'path' && d.target.group === 'path';
-    const color = isPath ? 'var(--el-color-danger)' : 'var(--el-text-color-secondary)';
-    const size = isPath ? 17 : 12; // 节点半径 + 2
+    const color = isPathScene ? 'var(--el-color-danger)' : 'var(--el-text-color-secondary)';
     
     defs.append("marker")
       .attr("id", `arrow-${i}`)
       .attr("viewBox", "0 -5 10 10")
-      .attr("refX", size)
+      .attr("refX", 10)
       .attr("refY", 0)
-      .attr("markerWidth", 6)
-      .attr("markerHeight", 6)
+      .attr("markerWidth", 8)
+      .attr("markerHeight", 8)
       .attr("orient", "auto")
       .append("path")
       .attr("d", "M 0 -5 L 10 0 L 0 5")
@@ -997,14 +1017,17 @@ const drawGraph = () => {
 
   const link = g.append('g')
       .attr('class', 'links')
-      .selectAll('line')
+      .selectAll('g')
       .data(edges.value)
       .enter()
+      .append('g')
+      .attr('class', 'edge-group')
+      // 透明宽线（点击区域）
       .append('line')
-      .attr('stroke', d => d.source.group === 'path' && d.target.group === 'path' ? 'var(--el-color-danger)' : 'var(--el-text-color-secondary)')
-      .attr('stroke-width', d => d.source.group === 'path' && d.target.group === 'path' ? 3 : 2)
-      .attr("marker-end", (d, i) => `url(#arrow-${i})`)
-      // 添加边点击事件
+      .attr('stroke', 'transparent')
+      .attr('stroke-width', 14)
+      .attr('stroke-linecap', 'round')
+      .attr('cursor', 'pointer')
       .on('click', (event, d) => {
         selectedElement.value = {
           type: 'edge',
@@ -1018,6 +1041,16 @@ const drawGraph = () => {
         event.stopPropagation();
       })
 
+  // 可见边线
+  const linkLine = g.select('.links').selectAll('.edge-group')
+      .append('line')
+      .attr('stroke', isPathScene ? 'var(--el-color-danger)' : 'var(--el-text-color-secondary)')
+      .attr('stroke-width', isPathScene ? 3 : 2)
+      .attr('stroke-opacity', isPathScene ? 1 : 0.6)
+      .attr('stroke-linecap', 'round')
+      .attr('pointer-events', 'none')
+      .attr("marker-end", (d, i) => `url(#arrow-${i})`)
+
   // 绘制节点
   const node = g.append('g')
       .attr('class', 'nodes')
@@ -1025,20 +1058,28 @@ const drawGraph = () => {
       .data(nodes.value)
       .enter()
       .append('circle')
-      .attr('r', d => d.group === 'path' ? 15 : 10)
+      .attr('r', d => {
+        if (d.id === analysisForm.sourceId || d.id === analysisForm.targetId) return 22
+        if (d.group === 'center' || d.group === 'path') return 22
+        return 16
+      })
       .attr('fill', d => {
+        // sourceId/targetId 优先于 group
+        if (d.id === analysisForm.sourceId) return 'var(--el-color-success)'
+        if (d.id === analysisForm.targetId) return 'var(--el-color-warning)'
         if (d.group === 'path') return 'var(--el-color-danger)'
         if (d.group === 'center') return 'var(--el-color-warning)'
         if (d.group === 'layer1') return 'var(--el-color-primary)'
         if (d.group === 'layer2') return 'var(--el-color-success)'
-        if (d.id === analysisForm.sourceId) return 'var(--el-color-success)'
-        if (d.id === analysisForm.targetId) return 'var(--el-color-warning)'
         return 'var(--el-color-primary)'
       })
-      .call(d3.drag())
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 1.5)
+      .attr('cursor', 'pointer')
+      .call(d3.drag()
           .on('start', dragstarted)
           .on('drag', dragged)
-          .on('end', dragended)
+          .on('end', dragended))
       // 添加节点点击事件
       .on('click', (event, d) => {
         selectedElement.value = {
@@ -1058,11 +1099,13 @@ const drawGraph = () => {
       .data(nodes.value)
       .enter()
       .append('text')
-      .text(d => d.label)
+      .text(d => d.id)
       .attr('text-anchor', 'middle')
-      .attr('dy', 25)
-      .attr('fill', 'var(--el-text-color-primary)')
-      .attr('font-size', '12px')
+      .attr('dy', '0.35em')
+      .attr('fill', '#fff')
+      .attr('font-size', '10px')
+      .attr('font-weight', 600)
+      .attr('pointer-events', 'none')
 
   // 力导向模拟tick函数 - 使用requestAnimationFrame批量化DOM更新
   function ticked() {
@@ -1074,11 +1117,66 @@ const drawGraph = () => {
     
     rafId = requestAnimationFrame(() => {
       // 批量更新DOM，减少重绘次数
+      // 连线偏移到节点边缘，让箭头可见
       link
-        .attr('x1', d => d.source.x)
-        .attr('y1', d => d.source.y)
-        .attr('x2', d => d.target.x)
-        .attr('y2', d => d.target.y)
+        .attr('x1', d => {
+          const r = getNodeRadius(d.source);
+          const dx = d.target.x - d.source.x;
+          const dy = d.target.y - d.source.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          return d.source.x + (dx / dist) * r;
+        })
+        .attr('y1', d => {
+          const r = getNodeRadius(d.source);
+          const dx = d.target.x - d.source.x;
+          const dy = d.target.y - d.source.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          return d.source.y + (dy / dist) * r;
+        })
+        .attr('x2', d => {
+          const r = getNodeRadius(d.target);
+          const dx = d.target.x - d.source.x;
+          const dy = d.target.y - d.source.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          return d.target.x - (dx / dist) * r;
+        })
+        .attr('y2', d => {
+          const r = getNodeRadius(d.target);
+          const dx = d.target.x - d.source.x;
+          const dy = d.target.y - d.source.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          return d.target.y - (dy / dist) * r;
+        })
+
+      linkLine
+        .attr('x1', d => {
+          const r = getNodeRadius(d.source);
+          const dx = d.target.x - d.source.x;
+          const dy = d.target.y - d.source.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          return d.source.x + (dx / dist) * r;
+        })
+        .attr('y1', d => {
+          const r = getNodeRadius(d.source);
+          const dx = d.target.x - d.source.x;
+          const dy = d.target.y - d.source.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          return d.source.y + (dy / dist) * r;
+        })
+        .attr('x2', d => {
+          const r = getNodeRadius(d.target);
+          const dx = d.target.x - d.source.x;
+          const dy = d.target.y - d.source.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          return d.target.x - (dx / dist) * r;
+        })
+        .attr('y2', d => {
+          const r = getNodeRadius(d.target);
+          const dx = d.target.x - d.source.x;
+          const dy = d.target.y - d.source.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          return d.target.y - (dy / dist) * r;
+        })
 
       node
         .attr('cx', d => d.x)

@@ -161,27 +161,31 @@
     <el-dialog v-model="nodeDialogVisible" :title="nodeDialogTitle" width="600px">
       <el-form :model="nodeForm" label-width="90px">
         <el-form-item label="标签" required>
-          <el-select v-model="nodeForm.label" placeholder="选择节点标签" style="width: 100%">
+          <el-select v-model="nodeForm.label" placeholder="选择节点标签" style="width: 100%" @change="onNodeLabelChange">
             <el-option v-for="t in nodeTypes" :key="t.id" :label="t.name || t.label" :value="t.label" />
           </el-select>
         </el-form-item>
-        <el-form-item label="属性">
-          <div class="props-editor">
-            <div class="props-editor-header">
-              <span class="props-editor-title">属性列表</span>
-              <el-button size="small" text @click="addNodeProp">
-                <el-icon><Plus /></el-icon> 添加
-              </el-button>
-            </div>
-            <div v-for="(_, idx) in nodePropKeys" :key="idx" class="prop-row">
-              <el-input v-model="nodePropKeys[idx]" placeholder="属性名" size="small" />
-              <el-input v-model="nodePropVals[idx]" placeholder="属性值" size="small" />
-              <el-button type="danger" :icon="Delete" size="small" circle @click="removeNodeProp(idx)" />
-            </div>
-            <div v-if="nodePropKeys.length === 0" class="props-empty">
-              <el-empty description="暂无属性" :image-size="40" />
-            </div>
+        <el-form-item label="UID" required>
+          <el-input v-model="nodeForm.uid" placeholder="输入唯一标识符" />
+        </el-form-item>
+        <el-form-item label="属性" v-if="currentNodeDef && currentNodeDef.properties?.length">
+          <div class="props-form">
+            <el-form-item
+              v-for="prop in currentNodeDef.properties"
+              :key="prop.id"
+              :label="prop.name || prop.code"
+              :prop="`props.${prop.code}`"
+            >
+              <el-input
+                v-model="nodeForm.props[prop.code]"
+                :placeholder="`输入${prop.name || prop.code}`"
+                clearable
+              />
+            </el-form-item>
           </div>
+        </el-form-item>
+        <el-form-item label="属性" v-else>
+          <span style="color: var(--el-text-color-placeholder); font-size: 13px;">该节点类型暂无自定义属性</span>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -194,33 +198,33 @@
     <el-dialog v-model="edgeDialogVisible" :title="edgeDialogTitle" width="600px">
       <el-form :model="edgeForm" label-width="100px">
         <el-form-item label="标签" required>
-          <el-select v-model="edgeForm.label" placeholder="选择边标签" style="width: 100%">
+          <el-select v-model="edgeForm.label" placeholder="选择边标签" style="width: 100%" @change="onEdgeLabelChange">
             <el-option v-for="t in edgeTypes" :key="t.id" :label="t.name || t.label" :value="t.label" />
           </el-select>
         </el-form-item>
         <el-form-item label="起点UID" required>
-          <el-input v-model="edgeForm.startUid" placeholder="输入起点UID" />
+          <el-input v-model="edgeForm.startUid" placeholder="输入起点节点UID" />
         </el-form-item>
         <el-form-item label="终点UID" required>
-          <el-input v-model="edgeForm.endUid" placeholder="输入终点UID" />
+          <el-input v-model="edgeForm.endUid" placeholder="输入终点节点UID" />
         </el-form-item>
-        <el-form-item label="属性">
-          <div class="props-editor">
-            <div class="props-editor-header">
-              <span class="props-editor-title">属性列表</span>
-              <el-button size="small" text @click="addEdgeProp">
-                <el-icon><Plus /></el-icon> 添加
-              </el-button>
-            </div>
-            <div v-for="(_, idx) in edgePropKeys" :key="idx" class="prop-row">
-              <el-input v-model="edgePropKeys[idx]" placeholder="属性名" size="small" />
-              <el-input v-model="edgePropVals[idx]" placeholder="属性值" size="small" />
-              <el-button type="danger" :icon="Delete" size="small" circle @click="removeEdgeProp(idx)" />
-            </div>
-            <div v-if="edgePropKeys.length === 0" class="props-empty">
-              <el-empty description="暂无属性" :image-size="40" />
-            </div>
+        <el-form-item label="属性" v-if="currentEdgeDef && currentEdgeDef.properties?.length">
+          <div class="props-form">
+            <el-form-item
+              v-for="prop in currentEdgeDef.properties"
+              :key="prop.id"
+              :label="prop.name || prop.code"
+            >
+              <el-input
+                v-model="edgeForm.props[prop.code]"
+                :placeholder="`输入${prop.name || prop.code}`"
+                clearable
+              />
+            </el-form-item>
           </div>
+        </el-form-item>
+        <el-form-item label="属性" v-else>
+          <span style="color: var(--el-text-color-placeholder); font-size: 13px;">该边类型暂无自定义属性</span>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -395,67 +399,78 @@ async function loadTypes() {
 // ---- 新增/编辑 节点 ----
 const nodeDialogVisible = ref(false)
 const nodeDialogTitle = ref('')
-const nodeForm = ref({ label: '', properties: {} })
-const nodePropKeys = ref([])
-const nodePropVals = ref([])
+const nodeForm = ref({ label: '', uid: '', props: {} })
+const currentNodeDef = ref(null)
 
 function showCreateDialog() {
   if (selectedType.value === 'node') {
-    nodeForm.value = { label: '', properties: {} }
-    nodePropKeys.value = []
-    nodePropVals.value = []
+    nodeForm.value = { label: '', uid: '', props: {} }
+    currentNodeDef.value = null
     nodeDialogTitle.value = '新增节点'
     nodeDialogVisible.value = true
   } else {
-    edgeForm.value = { label: '', startUid: '', endUid: '', properties: {} }
-    edgePropKeys.value = []
-    edgePropVals.value = []
+    edgeForm.value = { label: '', startUid: '', endUid: '', props: {} }
+    currentEdgeDef.value = null
     edgeDialogTitle.value = '新增边'
     edgeDialogVisible.value = true
   }
 }
 
+function onNodeLabelChange(label) {
+  currentNodeDef.value = nodeTypes.value.find(t => t.label === label) || null
+  nodeForm.value.props = {}
+}
+
+function onEdgeLabelChange(label) {
+  currentEdgeDef.value = edgeTypes.value.find(t => t.label === label) || null
+  edgeForm.value.props = {}
+}
+
 function showEditDialog(row) {
   const props = row.properties || {}
   if (selectedType.value === 'node') {
-    nodeForm.value = { uid: row.uid, label: row.label, properties: { ...props } }
-    nodePropKeys.value = Object.keys(props)
-    nodePropVals.value = Object.values(props)
+    const def = nodeTypes.value.find(t => t.label === row.label)
+    currentNodeDef.value = def || null
+    nodeForm.value = {
+      uid: row.uid,
+      label: row.label,
+      props: { ...props }
+    }
     nodeDialogTitle.value = '编辑节点'
     nodeDialogVisible.value = true
   } else {
-    edgeForm.value = { uid: row.uid, label: row.label, startUid: row.startUid, endUid: row.endUid, properties: { ...props } }
-    edgePropKeys.value = Object.keys(props)
-    edgePropVals.value = Object.values(props)
+    const def = edgeTypes.value.find(t => t.label === row.label)
+    currentEdgeDef.value = def || null
+    edgeForm.value = {
+      uid: row.uid,
+      label: row.label,
+      startUid: row.startUid,
+      endUid: row.endUid,
+      props: { ...props }
+    }
     edgeDialogTitle.value = '编辑边'
     edgeDialogVisible.value = true
   }
 }
 
-function buildProperties(keys, vals) {
-  const p = {}
-  keys.forEach((k, i) => { if (k) p[k] = vals[i] })
-  return p
-}
-
-function addNodeProp() { nodePropKeys.value.push(''); nodePropVals.value.push('') }
-function removeNodeProp(i) { nodePropKeys.value.splice(i, 1); nodePropVals.value.splice(i, 1) }
-
 const saving = ref(false)
 
 async function saveNode() {
+  if (!nodeForm.value.label) { ElMessage.warning('请选择标签'); return }
+  if (!nodeForm.value.uid) { ElMessage.warning('请输入UID'); return }
   saving.value = true
   try {
-    const data = {
-      label: nodeForm.value.label,
-      properties: buildProperties(nodePropKeys.value, nodePropVals.value)
-    }
-    if (nodeForm.value.uid) {
+    const properties = {}
+    Object.entries(nodeForm.value.props).forEach(([k, v]) => {
+      if (v !== '' && v != null) properties[k] = v
+    })
+    const data = { uid: nodeForm.value.uid, label: nodeForm.value.label, properties }
+    if (nodeDialogTitle.value === '编辑节点') {
       await graphApi.updateNodeData(graphId.value, nodeForm.value.uid, data)
     } else {
       await graphApi.addNodeData(graphId.value, selectedTypeId.value, data)
     }
-    ElMessage.success(nodeForm.value.uid ? '更新成功' : '新增成功')
+    ElMessage.success(nodeDialogTitle.value === '编辑节点' ? '更新成功' : '新增成功')
     nodeDialogVisible.value = false
     await loadData()
   } catch (e) {
@@ -468,28 +483,31 @@ async function saveNode() {
 // ---- 新增/编辑 边 ----
 const edgeDialogVisible = ref(false)
 const edgeDialogTitle = ref('')
-const edgeForm = ref({ label: '', startUid: '', endUid: '', properties: {} })
-const edgePropKeys = ref([])
-const edgePropVals = ref([])
-
-function addEdgeProp() { edgePropKeys.value.push(''); edgePropVals.value.push('') }
-function removeEdgeProp(i) { edgePropKeys.value.splice(i, 1); edgePropVals.value.splice(i, 1) }
+const edgeForm = ref({ label: '', startUid: '', endUid: '', props: {} })
+const currentEdgeDef = ref(null)
 
 async function saveEdge() {
+  if (!edgeForm.value.label) { ElMessage.warning('请选择标签'); return }
+  if (!edgeForm.value.startUid) { ElMessage.warning('请输入起点UID'); return }
+  if (!edgeForm.value.endUid) { ElMessage.warning('请输入终点UID'); return }
   saving.value = true
   try {
+    const properties = {}
+    Object.entries(edgeForm.value.props).forEach(([k, v]) => {
+      if (v !== '' && v != null) properties[k] = v
+    })
     const data = {
       label: edgeForm.value.label,
       startUid: edgeForm.value.startUid,
       endUid: edgeForm.value.endUid,
-      properties: buildProperties(edgePropKeys.value, edgePropVals.value)
+      properties
     }
-    if (edgeForm.value.uid) {
+    if (edgeDialogTitle.value === '编辑边') {
       await graphApi.updateEdgeData(graphId.value, edgeForm.value.uid, data)
     } else {
       await graphApi.addEdgeData(graphId.value, selectedTypeId.value, data)
     }
-    ElMessage.success(edgeForm.value.uid ? '更新成功' : '新增成功')
+    ElMessage.success(edgeDialogTitle.value === '编辑边' ? '更新成功' : '新增成功')
     edgeDialogVisible.value = false
     await loadData()
   } catch (e) {
@@ -497,10 +515,7 @@ async function saveEdge() {
   } finally {
     saving.value = false
   }
-}
-
-// ---- 删除 ----
-async function handleDelete(row) {
+}async function handleDelete(row) {
   try {
     await ElMessageBox.confirm('确定要删除该数据吗？', '提示', { type: 'warning' })
     if (selectedType.value === 'node') {
@@ -1070,46 +1085,9 @@ watch(() => graphId.value, (newId) => {
   padding: 0;
 }
 
-/* ===== 属性编辑器（对话框内） ===== */
-.props-editor {
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.props-editor-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: var(--el-fill-color-lighter);
-  border-bottom: 1px solid var(--el-border-color-light);
-}
-
-.props-editor-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--el-text-color-secondary);
-}
-
-.prop-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 32px;
-  gap: 8px;
-  align-items: center;
-  padding: 6px 12px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-  transition: background 0.15s;
-}
-.prop-row:hover {
-  background: var(--el-fill-color-lighter);
-}
-.prop-row:last-child {
-  border-bottom: none;
-}
-
-.props-empty {
-  padding: 12px 0;
+/* ===== 属性表单（对话框内，根据 schema 动态生成） ===== */
+.props-form .el-form-item {
+  margin-bottom: 12px;
 }
 
 /* ===== 上传区域 ===== */

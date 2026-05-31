@@ -193,9 +193,9 @@ import {
 // 默认查询语句
 const DEFAULT_QUERIES = {
   neo4j: 'MATCH p=(n)-[r]->() RETURN p LIMIT 10',
-  nebula: 'FETCH PROP ON * LIMIT 10',
-  janusgraph: 'g.V().limit(10)',
-  janus: 'g.V().limit(10)'
+  nebula: 'MATCH p=(v)-[e]->(v2) RETURN p LIMIT 10',
+  janusgraph: 'g.V().limit(10).union(identity(), bothE().limit(25))',
+  janus: 'g.V().limit(10).union(identity(), bothE().limit(25))'
 }
 
 // 状态管理
@@ -651,13 +651,15 @@ const transformApiResponseToGraphData = (apiResponse) => {
           ...(v.properties || {})
         }
       })),
-      edges: rawData.edges.map(e => ({
-        id: e.uid || e.id,
-        source: e.startUid || e.sourceUid || e.source,
-        target: e.endUid || e.targetUid || e.target,
-        label: e.label,
-        properties: e.properties || {}
-      }))
+      edges: rawData.edges
+        .map(e => ({
+          id: e.uid || e.id,
+          source: e.startUid || e.sourceUid || e.source || '',
+          target: e.endUid || e.targetUid || e.target || '',
+          label: e.label,
+          properties: e.properties || {}
+        }))
+        .filter(e => e.source && e.target)
     }
   }
 
