@@ -7,7 +7,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
@@ -28,7 +27,6 @@ import java.util.Arrays;
  */
 @Configuration
 @EnableWebSecurity
-@EnableGlobalMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
     @Value("${auth.enable:true}")
@@ -68,9 +66,9 @@ public class SecurityConfig {
 
         if (authEnable) {
             http.authorizeHttpRequests(authz -> authz
-                    .requestMatchers("/api/auth/**", "/h2-console", "/h2-console/**").permitAll() // 允许所有用户访问认证接口、允许访问H2控制台
-                    .requestMatchers("/api/**").hasAnyRole("admin")
-                    .anyRequest().authenticated());
+                    .requestMatchers("/api/auth/**").permitAll()
+                    .requestMatchers("/api/**").authenticated()
+                    .anyRequest().permitAll());
             // 添加JWT认证过滤器
             http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         } else {

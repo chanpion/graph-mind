@@ -6,12 +6,15 @@ import com.chenpp.graph.admin.mapper.GraphNodeDefDao;
 import com.chenpp.graph.admin.model.GraphNodeDef;
 import com.chenpp.graph.admin.model.GraphPropertyDef;
 import com.chenpp.graph.admin.service.GraphNodeDefService;
+import com.chenpp.graph.admin.service.GraphPropertyDefService;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 图节点定义服务实现类
@@ -24,7 +27,7 @@ public class GraphNodeDefServiceImpl extends ServiceImpl<GraphNodeDefDao, GraphN
 
 
     @Resource
-    private GraphPropertyDefServiceImpl graphPropertyDefService;
+    private GraphPropertyDefService graphPropertyDefService;
 
     @Override
     public List<GraphNodeDef> getNodeDefsByGraphId(Long graphId, Integer status) {
@@ -35,15 +38,20 @@ public class GraphNodeDefServiceImpl extends ServiceImpl<GraphNodeDefDao, GraphN
         }
         List<GraphNodeDef> nodeDefs = this.list(queryWrapper);
 
-        // 查询并设置每个节点定义的属性列表
-        for (GraphNodeDef nodeDef : nodeDefs) {
+        if (!nodeDefs.isEmpty()) {
+            List<Long> nodeDefIds = nodeDefs.stream().map(GraphNodeDef::getId).collect(Collectors.toList());
             QueryWrapper<GraphPropertyDef> propertyQueryWrapper = new QueryWrapper<>();
-            propertyQueryWrapper.eq("entity_id", nodeDef.getId());
+            propertyQueryWrapper.in("entity_id", nodeDefIds);
             propertyQueryWrapper.eq("property_type", "node");
             if (status != null) {
                 propertyQueryWrapper.eq("status", status);
             }
-            nodeDef.setProperties(graphPropertyDefService.list(propertyQueryWrapper));
+            List<GraphPropertyDef> allProperties = graphPropertyDefService.list(propertyQueryWrapper);
+            Map<Long, List<GraphPropertyDef>> propertyMap = allProperties.stream()
+                    .collect(Collectors.groupingBy(GraphPropertyDef::getEntityId));
+            for (GraphNodeDef nodeDef : nodeDefs) {
+                nodeDef.setProperties(propertyMap.getOrDefault(nodeDef.getId(), List.of()));
+            }
         }
 
         return nodeDefs;

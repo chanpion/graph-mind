@@ -11,6 +11,7 @@ import com.chenpp.graph.admin.util.GraphClientFactory;
 import com.chenpp.graph.core.GraphClient;
 import com.chenpp.graph.core.exception.BusinessException;
 import com.chenpp.graph.core.model.GraphConf;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -21,6 +22,7 @@ import java.time.LocalDateTime;
  * @author April.Chen
  * @date 2025/8/1 16:30
  */
+@Slf4j
 @Service
 public class GraphDatabaseConnectionServiceImpl extends ServiceImpl<GraphDatabaseConnectionDao, GraphDatabaseConnection> implements GraphDatabaseConnectionService {
 
@@ -44,21 +46,17 @@ public class GraphDatabaseConnectionServiceImpl extends ServiceImpl<GraphDatabas
 
     @Override
     public boolean testConnection(Long id) {
-        // 模拟测试连接逻辑
         GraphDatabaseConnection connection = this.getById(id);
         if (connection == null) {
             return false;
         }
         try {
             GraphConf graphConf = GraphClientFactory.createGraphConf(connection, new Graph());
-            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
-            boolean result = graphClient.checkConnection();
-            if (result) {
-                connection.setStatus(1);
-            } else {
-                connection.setStatus(2);
+            try (GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf)) {
+                boolean result = graphClient.checkConnection();
+                connection.setStatus(result ? 1 : 2);
+                return result;
             }
-            return result;
         } catch (Exception e) {
             log.error("连接测试异常", e);
             connection.setStatus(2);

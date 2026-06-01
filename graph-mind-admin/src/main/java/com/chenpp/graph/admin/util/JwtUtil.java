@@ -5,10 +5,13 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,16 +22,28 @@ import java.util.Map;
  */
 @Component
 public class JwtUtil {
-    /**
-     * JWT密钥
-     */
 
-    private final SecretKey secretKey = Keys.secretKeyFor(SignatureAlgorithm.HS512);
+    private SecretKey secretKey;
 
-    /**
-     * JWT过期时间（毫秒），默认24小时
-     */
-    private final long expiration = Constants.JWT_EXPIRATION;
+    private long expiration;
+
+    @Value("${jwt.secret:}")
+    private String configuredSecret;
+
+    @Value("${jwt.expiration:86400000}")
+    private void setExpiration(long expirationMs) {
+        this.expiration = expirationMs;
+    }
+
+    @PostConstruct
+    public void init() {
+        if (configuredSecret != null && !configuredSecret.isBlank()) {
+            byte[] keyBytes = Base64.getDecoder().decode(configuredSecret);
+            this.secretKey = Keys.hmacShaKeyFor(keyBytes);
+        } else {
+            this.secretKey = Keys.secretKeyFor(SignatureAlgorithm.HS512);
+        }
+    }
 
     /**
      * 生成JWT令牌

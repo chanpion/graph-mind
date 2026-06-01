@@ -9,6 +9,12 @@
           <el-radio-button value="list">列表视图</el-radio-button>
           <el-radio-button value="graph">图析视图</el-radio-button>
         </el-radio-group>
+      </div>
+    </div>
+
+    <div class="content-card">
+      <div class="list-toolbar">
+        <el-button type="primary" :icon="Plus" size="small" @click="handleAdd">新增</el-button>
         <el-button size="small" @click="handleExport" :loading="exporting">
           <el-icon><Download /></el-icon>
           导出
@@ -19,12 +25,7 @@
         </el-button>
         <input ref="fileInputRef" type="file" accept=".json" style="display:none" @change="handleFileChange" />
       </div>
-    </div>
-
-    <div class="content-card">
-    <template v-if="viewMode === 'list'">
-      <div class="tabs-with-action">
-        <el-tabs v-model="activeTab" @tab-change="handleTabChange" class="flex-tabs">
+      <el-tabs v-model="activeTab" @tab-change="handleTabChange" class="schema-tabs">
         <el-tab-pane label="点定义" name="nodes">
           <el-table :data="nodeDefs" style="width: 100%" row-key="id" v-loading="loading">
           <el-table-column prop="label" label="标签" min-width="120" />
@@ -63,9 +64,9 @@
             </template>
           </el-table-column>
         </el-table>
-      </el-tab-pane>
-      <el-tab-pane label="边定义" name="edges">
-        <el-table :data="edgeDefs" style="width: 100%" row-key="id" v-loading="loading">
+        </el-tab-pane>
+        <el-tab-pane label="边定义" name="edges">
+          <el-table :data="edgeDefs" style="width: 100%" row-key="id" v-loading="loading">
           <el-table-column prop="label" label="标签" min-width="120" />
           <el-table-column prop="name" label="名称" min-width="150" />
           <el-table-column label="起点类型" min-width="120">
@@ -106,10 +107,9 @@
             </template>
           </el-table-column>
         </el-table>
-      </el-tab-pane>
-        </el-tabs>
-        <el-button type="primary" :icon="Plus" @click="handleAdd" class="tab-action-btn">新增</el-button>
-      </div>
+        </el-tab-pane>
+      </el-tabs>
+    </div>
 
     <!-- 点定义弹窗 -->
     <el-dialog v-model="nodeDialogVisible" :title="nodeDialogTitle" width="800px">
@@ -280,13 +280,10 @@
       </template>
     </el-dialog>
 
-    </template> <!-- end list view -->
-
     <!-- 图析视图 -->
-    <div v-else class="graph-view-wrapper">
+    <div v-if="viewMode === 'graph'" class="graph-view-wrapper">
       <GraphModelingView :node-defs="nodeDefs" :edge-defs="edgeDefs" />
     </div>
-    </div> <!-- end content-card -->
 
   </div>
 </template>
@@ -687,17 +684,7 @@ onMounted(async () => {
 
 .tabs-with-action {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.flex-tabs {
-  flex: 1;
-}
-
-.tab-action-btn {
-  margin-top: 8px;
-  flex-shrink: 0;
+  flex-direction: column;
 }
 
 .dialog-footer {
@@ -726,6 +713,17 @@ onMounted(async () => {
   background: var(--el-bg-color);
   border: 1px solid var(--el-border-color-light);
   box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05);
+}
+
+.list-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  justify-content: flex-end;
+}
+
+.schema-tabs {
+  margin-top: 12px;
 }
 
 .import-summary { display: flex; flex-direction: column; gap: 12px; }

@@ -10,6 +10,7 @@ import com.chenpp.graph.admin.model.User;
 import com.chenpp.graph.admin.service.UserService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -47,6 +48,7 @@ public class UserServiceImpl extends ServiceImpl<UserDao, User> implements UserS
         return this.getOne(new QueryWrapper<>(User.class).eq("username", username));
     }
 
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public void addUser(User user) {
         // 对密码进行加密
@@ -56,6 +58,7 @@ public class UserServiceImpl extends ServiceImpl<UserDao, User> implements UserS
         this.save(user);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public void updateUser(User user) {
         // 如果密码不为空，则进行加密
@@ -65,11 +68,13 @@ public class UserServiceImpl extends ServiceImpl<UserDao, User> implements UserS
         this.updateById(user);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public void deleteUsers(List<Long> userIds) {
         this.removeBatchByIds(userIds);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public void updateUserStatus(Long userId, Integer status) {
         User user = new User();

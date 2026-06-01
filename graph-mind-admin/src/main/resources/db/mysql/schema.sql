@@ -132,53 +132,10 @@ CREATE TABLE `sys_app_config` (
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COMMENT='系统配置表';
 
 -- ----------------------------
--- Table structure for sys_permission
--- ----------------------------
-DROP TABLE IF EXISTS `sys_permission`;
-CREATE TABLE `sys_permission` (
-                                  `permission_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '权限ID',
-                                  `permission_name` varchar(50) NOT NULL COMMENT '权限名称',
-                                  `parent_id` bigint(20) NOT NULL DEFAULT '0' COMMENT '父权限ID',
-                                  `permission_type` char(1) NOT NULL DEFAULT 'M' COMMENT '权限类型（M目录 C菜单 F按钮）',
-                                  `permission_key` varchar(100) DEFAULT '' COMMENT '权限标识',
-                                  `component` varchar(255) DEFAULT '' COMMENT '组件路径',
-                                  `path` varchar(255) DEFAULT '' COMMENT '路由地址',
-                                  `icon` varchar(100) DEFAULT '#' COMMENT '菜单图标',
-                                  `order_num` int(11) NOT NULL DEFAULT '0' COMMENT '显示顺序',
-                                  `status` tinyint(4) NOT NULL DEFAULT '0' COMMENT '菜单状态（0正常 1停用）',
-                                  `visible` tinyint(4) NOT NULL DEFAULT '0' COMMENT '是否显示（0显示 1隐藏）',
-                                  `cache` tinyint(4) NOT NULL DEFAULT '0' COMMENT '是否缓存（0缓存 1不缓存）',
-                                  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-                                  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-                                  PRIMARY KEY (`permission_id`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COMMENT='权限表';
 
 -- ----------------------------
--- Table structure for sys_role
--- ----------------------------
-DROP TABLE IF EXISTS `sys_role`;
-CREATE TABLE `sys_role` (
-                            `role_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '角色ID',
-                            `role_name` varchar(30) NOT NULL COMMENT '角色名称',
-                            `role_key` varchar(100) NOT NULL COMMENT '角色权限字符串',
-                            `role_sort` int(11) NOT NULL DEFAULT '0' COMMENT '显示顺序',
-                            `status` tinyint(4) NOT NULL DEFAULT '0' COMMENT '角色状态（0正常 1停用）',
-                            `data_scope` tinyint(4) DEFAULT '1' COMMENT '数据范围（1：全部数据权限 2：自定义数据权限 3：本部门数据权限 4：本部门及以下数据权限 5：仅本人数据权限）',
-                            `remark` varchar(500) DEFAULT NULL COMMENT '备注',
-                            `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-                            `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-                            PRIMARY KEY (`role_id`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COMMENT='角色信息表';
 
 -- ----------------------------
--- Table structure for sys_role_permission
--- ----------------------------
-DROP TABLE IF EXISTS `sys_role_permission`;
-CREATE TABLE `sys_role_permission` (
-                                       `role_id` bigint(20) NOT NULL COMMENT '角色ID',
-                                       `permission_id` bigint(20) NOT NULL COMMENT '权限ID',
-                                       PRIMARY KEY (`role_id`,`permission_id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色和权限关联表';
 
 -- ----------------------------
 -- Table structure for sys_user
@@ -200,13 +157,5 @@ CREATE TABLE `sys_user` (
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COMMENT='用户信息表';
 
 -- ----------------------------
--- Table structure for sys_user_role
--- ----------------------------
-DROP TABLE IF EXISTS `sys_user_role`;
-CREATE TABLE `sys_user_role` (
-                                 `user_id` bigint(20) NOT NULL COMMENT '用户ID',
-                                 `role_id` bigint(20) NOT NULL COMMENT '角色ID',
-                                 PRIMARY KEY (`user_id`,`role_id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户和角色关联表';
 
 SET FOREIGN_KEY_CHECKS = 1;

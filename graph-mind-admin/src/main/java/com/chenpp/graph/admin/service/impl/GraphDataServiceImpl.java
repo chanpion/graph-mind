@@ -29,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedReader;
@@ -49,6 +50,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
+@Transactional(rollbackFor = Exception.class)
 public class GraphDataServiceImpl implements GraphDataService {
 
     @Autowired
@@ -127,15 +129,15 @@ public class GraphDataServiceImpl implements GraphDataService {
             // 构建图配置信息
             GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
 
-            // 创建图客户端
-            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
-            GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
+            // 创建图客户端并批量导入节点数据
+            try (GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf)) {
+                GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
 
-            // 批量导入节点数据
-            int successCount = 0;
-            int failureCount = 0;
+                // 批量导入节点数据
+                int successCount = 0;
+                int failureCount = 0;
 
-            for (Map<String, String> dataRow : dataList) {
+                for (Map<String, String> dataRow : dataList) {
                 try {
                     GraphVertex vertex = new GraphVertex();
                     vertex.setUid(dataRow.get("uid"));
@@ -164,6 +166,7 @@ public class GraphDataServiceImpl implements GraphDataService {
             result.setErrorMessages(errorMessages.toArray(new String[0]));
 
             log.info("导入节点数据完成，总数={}，成功={}，失败={}", dataList.size(), successCount, failureCount);
+            }
         } catch (Exception e) {
             log.error("导入节点数据失败", e);
             errorMessages.add("导入节点数据失败: " + e.getMessage());
@@ -257,15 +260,15 @@ public class GraphDataServiceImpl implements GraphDataService {
             // 构建图配置信息
             GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
 
-            // 创建图客户端
-            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
-            GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
+            // 创建图客户端并批量导入边数据
+            try (GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf)) {
+                GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
 
-            // 批量导入边数据
-            int successCount = 0;
-            int failureCount = 0;
+                // 批量导入边数据
+                int successCount = 0;
+                int failureCount = 0;
 
-            for (Map<String, String> dataRow : dataList) {
+                for (Map<String, String> dataRow : dataList) {
                 try {
                     GraphEdge edge = new GraphEdge();
                     edge.setUid(dataRow.get("uid"));
@@ -297,6 +300,7 @@ public class GraphDataServiceImpl implements GraphDataService {
             result.setErrorMessages(errorMessages.toArray(new String[0]));
 
             log.info("导入边数据完成，总数={}，成功={}，失败={}", dataList.size(), successCount, failureCount);
+            }
         } catch (Exception e) {
             log.error("导入边数据失败", e);
             errorMessages.add("导入边数据失败: " + e.getMessage());
@@ -605,13 +609,13 @@ public class GraphDataServiceImpl implements GraphDataService {
             // 构建图配置信息
             GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
 
-            // 创建图客户端
-            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
-            GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
+            // 创建图客户端并删除节点
+            try (GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf)) {
+                GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
 
-            GraphNodeDef nodeDef = nodeDefService.getOne(new QueryWrapper<GraphNodeDef>().eq("graph_id", graphId).eq("label", label));
-            // 删除节点
-            for (String nodeId : nodeIds) {
+                GraphNodeDef nodeDef = nodeDefService.getOne(new QueryWrapper<GraphNodeDef>().eq("graph_id", graphId).eq("label", label));
+                // 删除节点
+                for (String nodeId : nodeIds) {
                 try {
                     GraphVertex vertex = new GraphVertex();
                     vertex.setUid(nodeId);
@@ -623,7 +627,7 @@ public class GraphDataServiceImpl implements GraphDataService {
                     // 继续删除其他节点，不因单个节点失败而中断整个过程
                 }
             }
-
+            }
             return true;
         } catch (Exception e) {
             log.error("批量删除节点失败，graphId={}", graphId, e);
@@ -651,20 +655,17 @@ public class GraphDataServiceImpl implements GraphDataService {
             // 构建图配置信息
             GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
 
-            // 创建图客户端
-            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
-
-            // 获取图数据操作接口
-            GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
-
             // 获取图统计信息
-            GraphSummary summary = graphDataOperations.getSummary();
+            try (GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf)) {
+                GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
+                GraphSummary summary = graphDataOperations.getSummary();
 
-            // 设置图的基本信息
-            summary.setGraphCode(graph.getCode());
-            summary.setGraphName(graph.getName());
+                // 设置图的基本信息
+                summary.setGraphCode(graph.getCode());
+                summary.setGraphName(graph.getName());
 
-            return summary;
+                return summary;
+            }
         } catch (Exception e) {
             log.error("获取图统计信息失败，graphId={}", graphId, e);
             throw new RuntimeException("获取图统计信息失败: " + e.getMessage(), e);

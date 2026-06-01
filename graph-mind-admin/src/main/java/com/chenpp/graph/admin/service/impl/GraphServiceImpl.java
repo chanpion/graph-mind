@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.chenpp.graph.admin.mapper.GraphDao;
+import com.chenpp.graph.admin.mapper.GraphEdgeDefDao;
+import com.chenpp.graph.admin.mapper.GraphNodeDefDao;
 import com.chenpp.graph.admin.model.Graph;
 import com.chenpp.graph.admin.model.GraphDatabaseConnection;
 import com.chenpp.graph.admin.model.GraphEdgeDef;
@@ -23,6 +25,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 图管理服务实现类
@@ -46,6 +52,35 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
     @Autowired
     private GraphDatabaseConnectionService connectionService;
 
+    @Autowired
+    private GraphNodeDefDao graphNodeDefDao;
+
+    @Autowired
+    private GraphEdgeDefDao graphEdgeDefDao;
+
+    /**
+     * 批量填充图列表的节点类型数和边类型数（替代 N+1 循环查询）
+     */
+    private void fillGraphCounts(List<Graph> records) {
+        if (records == null || records.isEmpty()) return;
+        List<Long> graphIds = records.stream().map(Graph::getId).collect(Collectors.toList());
+        // 一次查询全部节点定义，按 graph_id 分组计数
+        List<GraphNodeDef> allNodes = graphNodeDefDao.selectList(
+                new QueryWrapper<GraphNodeDef>().in("graph_id", graphIds).eq("status", 1).select("graph_id"));
+        Map<Long, Long> nodeCountMap = allNodes.stream()
+                .collect(Collectors.groupingBy(GraphNodeDef::getGraphId, Collectors.counting()));
+        // 一次查询全部边定义，按 graph_id 分组计数
+        List<GraphEdgeDef> allEdges = graphEdgeDefDao.selectList(
+                new QueryWrapper<GraphEdgeDef>().in("graph_id", graphIds).eq("status", 1).select("graph_id"));
+        Map<Long, Long> edgeCountMap = allEdges.stream()
+                .collect(Collectors.groupingBy(GraphEdgeDef::getGraphId, Collectors.counting()));
+        // 填充统计信息
+        for (Graph graph : records) {
+            graph.setDatabaseType(graph.getGraphType());
+            graph.setNodeTypeCount(nodeCountMap.getOrDefault(graph.getId(), 0L).intValue());
+            graph.setEdgeTypeCount(edgeCountMap.getOrDefault(graph.getId(), 0L).intValue());
+        }
+    }
 
     @Override
     public Page<Graph> queryGraphs(Page<Graph> page, String keyword) {
@@ -55,12 +90,7 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
         }
         queryWrapper.orderByDesc("create_time");
         Page<Graph> pageResult = this.page(page, queryWrapper);
-        // 填充 databaseType、节点类型数、边类型数（图列表前端展示用）
-        for (Graph graph : pageResult.getRecords()) {
-            graph.setDatabaseType(graph.getGraphType());
-            graph.setNodeTypeCount((int) nodeDefService.count(new QueryWrapper<GraphNodeDef>().eq("graph_id", graph.getId()).eq("status", 1)));
-            graph.setEdgeTypeCount((int) edgeDefService.count(new QueryWrapper<GraphEdgeDef>().eq("graph_id", graph.getId()).eq("status", 1)));
-        }
+        fillGraphCounts(pageResult.getRecords());
         return pageResult;
     }
 
@@ -70,12 +100,7 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
         queryWrapper.eq("connection_id", connectionId);
         queryWrapper.orderByDesc("create_time");
         Page<Graph> pageResult = this.page(page, queryWrapper);
-        // 填充 databaseType、节点类型数、边类型数（图列表前端展示用）
-        for (Graph graph : pageResult.getRecords()) {
-            graph.setDatabaseType(graph.getGraphType());
-            graph.setNodeTypeCount((int) nodeDefService.count(new QueryWrapper<GraphNodeDef>().eq("graph_id", graph.getId()).eq("status", 1)));
-            graph.setEdgeTypeCount((int) edgeDefService.count(new QueryWrapper<GraphEdgeDef>().eq("graph_id", graph.getId()).eq("status", 1)));
-        }
+        fillGraphCounts(pageResult.getRecords());
         return pageResult;
     }
 

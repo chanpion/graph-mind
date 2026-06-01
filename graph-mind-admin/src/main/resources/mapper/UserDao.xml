@@ -17,13 +17,13 @@
         FROM sys_user
         <where>
             <if test="username != null and username != ''">
-                &amp;AND username LIKE CONCAT('%', #{username}, '%')
+                AND username LIKE CONCAT('%', #{username}, '%')
             </if>
             <if test="phoneNumber != null and phoneNumber != ''">
-                &amp;AND phone_number LIKE CONCAT('%', #{phoneNumber}, '%')
+                AND phone_number LIKE CONCAT('%', #{phoneNumber}, '%')
             </if>
             <if test="status != null">
-                &amp;AND status = #{status}
+                AND status = #{status}
             </if>
         </where>
         ORDER BY user_id DESC
