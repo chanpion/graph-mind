@@ -30,11 +30,11 @@ public class GraphRelation {
     /**
      * 源实体类型
      */
-    private String sourceLabel;
+    private String startLabel;
     /**
      * 目标实体类型
      */
-    private String targetLabel;
+    private String endLabel;
     /**
      * 是否有向
      */
