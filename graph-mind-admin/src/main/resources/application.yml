@@ -19,6 +19,11 @@ logging:
 auth:
   enable: false
 
+# JWT 配置（secret 为 base64 编码，至少 512 bits 用于 HS512）
+jwt:
+  secret: Y2hlbnBwLWdyYXBoLW1pbmQtanNvbi13ZWItdG9rZW4tc2VjcmV0LWZvci1IUzUxMi0yMDI1LXByb2R1Y3Rpb24tand0
+  expiration: 86400000
+
 ---
 spring:
   config:
@@ -42,7 +47,7 @@ spring:
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
-  type-aliases-package: com.graphdb.storage.entity
+  type-aliases-package: com.chenpp.graph.admin.model
   configuration:
     map-underscore-to-camel-case: true
 #    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
@@ -64,12 +69,12 @@ spring:
       on-profile: mysql
 
   datasource:
-#    url: jdbc:mysql://10.58.11.13:3338/graph_mind?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
-#    username: yuntu
-#    password: yuntu
-    url: jdbc:mysql://localhost:3306/graph_mind?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
-    username: root
-    password: root123
+    url: jdbc:mysql://10.58.11.13:3338/graph_mind?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: yuntu
+    password: yuntu
+#    url: jdbc:mysql://localhost:3306/graph_mind?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+#    username: root
+#    password: root123
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   sql:

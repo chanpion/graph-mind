@@ -1,0 +1,128 @@
+package com.chenpp.graph.admin.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.chenpp.graph.admin.mapper.GraphVertexDefDao;
+import com.chenpp.graph.admin.model.GraphVertexDef;
+import com.chenpp.graph.admin.model.GraphPropertyDef;
+import com.chenpp.graph.admin.service.GraphVertexDefService;
+import com.chenpp.graph.admin.service.GraphPropertyDefService;
+import jakarta.annotation.Resource;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+/**
+ * 图节点定义服务实现类
+ *
+ * @author April.Chen
+ * @date 2025/8/4 15:50
+ */
+@Service
+public class GraphVertexDefServiceImpl extends ServiceImpl<GraphVertexDefDao, GraphVertexDef> implements GraphVertexDefService {
+
+
+    @Resource
+    private GraphPropertyDefService graphPropertyDefService;
+
+    @Override
+    public List<GraphVertexDef> getVertexDefsByGraphId(Long graphId, Integer status) {
+        QueryWrapper<GraphVertexDef> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("graph_id", graphId);
+        if (status != null) {
+            queryWrapper.eq("status", status);
+        }
+        List<GraphVertexDef> vertexDefs = this.list(queryWrapper);
+
+        if (!vertexDefs.isEmpty()) {
+            List<Long> vertexDefIds = vertexDefs.stream().map(GraphVertexDef::getId).collect(Collectors.toList());
+            QueryWrapper<GraphPropertyDef> propertyQueryWrapper = new QueryWrapper<>();
+            propertyQueryWrapper.in("entity_id", vertexDefIds);
+            propertyQueryWrapper.eq("property_type", "vertex");
+            if (status != null) {
+                propertyQueryWrapper.eq("status", status);
+            }
+            List<GraphPropertyDef> allProperties = graphPropertyDefService.list(propertyQueryWrapper);
+            Map<Long, List<GraphPropertyDef>> propertyMap = allProperties.stream()
+                    .collect(Collectors.groupingBy(GraphPropertyDef::getEntityId));
+            for (GraphVertexDef vertexDef : vertexDefs) {
+                vertexDef.setProperties(propertyMap.getOrDefault(vertexDef.getId(), List.of()));
+            }
+        }
+
+        return vertexDefs;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public boolean saveVertexDefWithProperties(GraphVertexDef vertexDef) {
+        // 设置创建和更新时间
+        vertexDef.setCreateTime(LocalDateTime.now());
+        vertexDef.setUpdateTime(LocalDateTime.now());
+
+        // 保存节点定义
+        boolean saved = this.save(vertexDef);
+
+        if (saved && vertexDef.getProperties() != null) {
+            // 保存节点属性
+            for (GraphPropertyDef property : vertexDef.getProperties()) {
+                property.setGraphId(vertexDef.getGraphId());
+                property.setEntityId(vertexDef.getId());
+                property.setPropertyType("vertex");
+                if (property.getCode() == null || property.getCode().isEmpty()) {
+                    property.setCode(property.getName());
+                }
+                graphPropertyDefService.saveOrUpdate(property);
+            }
+        }
+
+        return saved;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public boolean updateVertexDefWithProperties(GraphVertexDef vertexDef) {
+        // 设置更新时间
+        vertexDef.setUpdateTime(LocalDateTime.now());
+
+        // 更新节点定义
+        boolean updated = this.updateById(vertexDef);
+
+        if (updated) {
+            // 删除原有的属性
+            QueryWrapper<GraphPropertyDef> deleteWrapper = new QueryWrapper<>();
+            deleteWrapper.eq("entity_id", vertexDef.getId());
+            deleteWrapper.eq("property_type", "vertex");
+            graphPropertyDefService.remove(deleteWrapper);
+
+            // 重新保存节点属性
+            if (vertexDef.getProperties() != null) {
+                for (GraphPropertyDef property : vertexDef.getProperties()) {
+                    property.setGraphId(vertexDef.getGraphId());
+                    property.setEntityId(vertexDef.getId());
+                    property.setPropertyType("vertex");
+                    graphPropertyDefService.saveOrUpdate(property);
+                }
+            }
+        }
+
+        return updated;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public boolean deleteVertexDefWithProperties(Long id) {
+        // 删除节点属性
+        QueryWrapper<GraphPropertyDef> deleteWrapper = new QueryWrapper<>();
+        deleteWrapper.eq("entity_id", id);
+        deleteWrapper.eq("property_type", "vertex");
+        graphPropertyDefService.remove(deleteWrapper);
+
+        // 删除节点定义
+        return this.removeById(id);
+    }
+}
