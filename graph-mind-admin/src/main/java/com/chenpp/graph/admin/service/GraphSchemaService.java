@@ -1,5 +1,7 @@
 package com.chenpp.graph.admin.service;
 
+import com.chenpp.graph.admin.model.SchemaExportDTO;
+import com.chenpp.graph.admin.model.SchemaImportDTO;
 import com.chenpp.graph.core.schema.GraphSchema;
 
 /**
@@ -30,4 +32,20 @@ public interface GraphSchemaService {
      * @return 图Schema
      */
     GraphSchema discoverSchema(Long graphId);
+
+    /**
+     * 导出图Schema（节点定义和边定义）
+     *
+     * @param graphId 图id
+     * @return 导出的Schema数据
+     */
+    SchemaExportDTO exportSchema(Long graphId);
+
+    /**
+     * 导入图Schema
+     *
+     * @param graphId  图id
+     * @param importDTO 导入数据
+     */
+    void importSchema(Long graphId, SchemaImportDTO importDTO);
 }

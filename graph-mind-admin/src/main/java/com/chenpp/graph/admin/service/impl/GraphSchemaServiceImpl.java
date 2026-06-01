@@ -5,6 +5,8 @@ import com.chenpp.graph.admin.model.GraphDatabaseConnection;
 import com.chenpp.graph.admin.model.GraphEdgeDef;
 import com.chenpp.graph.admin.model.GraphNodeDef;
 import com.chenpp.graph.admin.model.GraphPropertyDef;
+import com.chenpp.graph.admin.model.SchemaExportDTO;
+import com.chenpp.graph.admin.model.SchemaImportDTO;
 import com.chenpp.graph.admin.service.GraphDatabaseConnectionService;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
 import com.chenpp.graph.admin.service.GraphNodeDefService;
@@ -28,9 +30,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 
@@ -205,5 +210,122 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             property.setDataType(DataType.instanceOf(prop.getType()));
             return property;
         }).collect(Collectors.toList());
+    }
+
+    @Override
+    public SchemaExportDTO exportSchema(Long graphId) {
+        Graph graph = graphService.getById(graphId);
+        if (graph == null) {
+            throw new GraphException("图不存在");
+        }
+        List<GraphNodeDef> nodes = graphNodeDefService.getNodeDefsByGraphId(graphId, null);
+        List<GraphEdgeDef> edges = graphEdgeDefService.getEdgeDefsByGraphId(graphId, null);
+
+        SchemaExportDTO dto = new SchemaExportDTO();
+        dto.setVersion("1.0");
+        dto.setExportedAt(LocalDateTime.now().toString());
+        dto.setGraphId(graphId);
+        dto.setGraphCode(graph.getCode());
+        dto.setNodes(nodes);
+        dto.setEdges(edges);
+        return dto;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public void importSchema(Long graphId, SchemaImportDTO importDTO) {
+        if (importDTO == null) {
+            throw new GraphException("导入数据为空");
+        }
+
+        List<GraphNodeDef> importNodes = importDTO.getNodes();
+        List<GraphEdgeDef> importEdges = importDTO.getEdges();
+        if ((importNodes == null || importNodes.isEmpty()) && (importEdges == null || importEdges.isEmpty())) {
+            throw new GraphException("导入数据为空");
+        }
+
+        String mode = importDTO.getMode();
+        boolean replace = "replace".equalsIgnoreCase(mode);
+
+        // 替换模式：先删除现有的节点和边定义
+        if (replace) {
+            List<GraphNodeDef> existingNodes = graphNodeDefService.getNodeDefsByGraphId(graphId, null);
+            for (GraphNodeDef node : existingNodes) {
+                graphNodeDefService.deleteNodeDefWithProperties(node.getId());
+            }
+            List<GraphEdgeDef> existingEdges = graphEdgeDefService.getEdgeDefsByGraphId(graphId, null);
+            for (GraphEdgeDef edge : existingEdges) {
+                graphEdgeDefService.deleteEdgeDefWithProperties(edge.getId());
+            }
+        }
+
+        // 构建现有节点的label->id映射，用于边定义中的from/to引用
+        Map<String, Long> existingNodeLabelIdMap;
+        if (replace) {
+            existingNodeLabelIdMap = Map.of();
+        } else {
+            List<GraphNodeDef> existingNodes = graphNodeDefService.getNodeDefsByGraphId(graphId, null);
+            existingNodeLabelIdMap = existingNodes.stream()
+                .filter(n -> n.getLabel() != null)
+                .collect(Collectors.toMap(GraphNodeDef::getLabel, GraphNodeDef::getId, (a, b) -> a));
+        }
+
+        // 导入节点定义
+        if (importNodes != null) {
+            for (GraphNodeDef node : importNodes) {
+                // 合并模式：检查是否已存在（按label去重）
+                if (!replace && existingNodeLabelIdMap.containsKey(node.getLabel())) {
+                    continue;
+                }
+                node.setGraphId(graphId);
+                node.setId(null);
+                node.setStatus(0);
+                // 保存节点定义及其属性
+                graphNodeDefService.saveNodeDefWithProperties(node);
+            }
+        }
+
+        // 重新获取最新的节点定义映射（包含刚导入的）
+        Map<String, Long> allNodeLabelIdMap = graphNodeDefService.getNodeDefsByGraphId(graphId, null).stream()
+            .filter(n -> n.getLabel() != null)
+            .collect(Collectors.toMap(GraphNodeDef::getLabel, GraphNodeDef::getId, (a, b) -> a));
+
+        // 导入边定义
+        if (importEdges != null) {
+            for (GraphEdgeDef edge : importEdges) {
+                // 合并模式：检查是否已存在（按label去重）
+                if (!replace) {
+                    List<GraphEdgeDef> existingEdges = graphEdgeDefService.getEdgeDefsByGraphId(graphId, null);
+                    boolean exists = existingEdges.stream()
+                        .anyMatch(e -> Objects.equals(e.getLabel(), edge.getLabel()));
+                    if (exists) {
+                        continue;
+                    }
+                }
+                edge.setGraphId(graphId);
+                edge.setId(null);
+                edge.setStatus(0);
+                // 处理from/to引用：如果from/to是label字符串，则解析为id
+                if (edge.getFrom() != null) {
+                    Long fromId = allNodeLabelIdMap.get(edge.getFrom());
+                    if (fromId != null) {
+                        edge.setFrom(String.valueOf(fromId));
+                    }
+                }
+                if (edge.getTo() != null) {
+                    Long toId = allNodeLabelIdMap.get(edge.getTo());
+                    if (toId != null) {
+                        edge.setTo(String.valueOf(toId));
+                    }
+                }
+                // 保存边定义及其属性
+                graphEdgeDefService.saveEdgeDefWithProperties(edge);
+            }
+        }
+
+        log.info("Schema导入完成，graphId={}, mode={}, nodes={}, edges={}",
+            graphId, mode,
+            importNodes != null ? importNodes.size() : 0,
+            importEdges != null ? importEdges.size() : 0);
     }
 }

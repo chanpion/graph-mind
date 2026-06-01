@@ -4,6 +4,8 @@ import com.chenpp.graph.admin.model.GraphEdgeDef;
 import com.chenpp.graph.admin.model.GraphNodeDef;
 import com.chenpp.graph.admin.model.GraphPropertyDef;
 import com.chenpp.graph.admin.model.Result;
+import com.chenpp.graph.admin.model.SchemaExportDTO;
+import com.chenpp.graph.admin.model.SchemaImportDTO;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
 import com.chenpp.graph.admin.service.GraphNodeDefService;
 import com.chenpp.graph.admin.service.GraphSchemaService;
@@ -245,6 +247,30 @@ public class GraphSchemaController {
     @GetMapping("/schema")
     public Result<GraphSchema> getSchema(@PathVariable Long graphId) {
         return Result.success(graphSchemaService.getGraphSchema(graphId));
+    }
+
+    /**
+     * 导出图Schema（节点定义和边定义）
+     *
+     * @param graphId 图ID
+     * @return Schema导出数据
+     */
+    @GetMapping("/schema/export")
+    public Result<SchemaExportDTO> exportSchema(@PathVariable Long graphId) {
+        return Result.success(graphSchemaService.exportSchema(graphId));
+    }
+
+    /**
+     * 导入图Schema
+     *
+     * @param graphId   图ID
+     * @param importDTO 导入数据
+     * @return 导入结果
+     */
+    @PostMapping("/schema/import")
+    public Result<String> importSchema(@PathVariable Long graphId, @RequestBody SchemaImportDTO importDTO) {
+        graphSchemaService.importSchema(graphId, importDTO);
+        return Result.success("导入成功");
     }
 
     /**
