@@ -152,6 +152,18 @@ export const graphApi = {
     return request.get(`/api/graphs/${graphId}/summary`)
   },
 
+  // ====== Schema 导入导出 ======
+
+  /** 导出 Schema（节点定义和边定义） */
+  exportSchema(graphId) {
+    return request.get(`/api/graphs/${graphId}/schema/export`)
+  },
+
+  /** 导入 Schema */
+  importSchema(graphId, data) {
+    return request.post(`/api/graphs/${graphId}/schema/import`, data)
+  },
+
   // ====== 数据导入 ======
 
   /** 导入节点数据（CSV） */

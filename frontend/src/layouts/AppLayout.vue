@@ -30,7 +30,7 @@
             >
               <div class="conn-option">
                 <span class="conn-option-name">{{ conn.name || conn.alias }}</span>
-                <el-tag :type="connTagType(conn)" size="small" effect="plain" class="conn-option-tag">
+                <el-tag v-if="connLabel(conn)" :type="connTagType(conn)" size="small" effect="plain" class="conn-option-tag">
                   {{ connLabel(conn) }}
                 </el-tag>
               </div>
@@ -125,17 +125,16 @@ const connections = ref([])
 const DB_TAG_MAP = {
   neo4j: { label: 'Neo4j', type: 'primary' },
   nebula: { label: 'Nebula', type: 'success' },
-  janusgraph: { label: 'JanusGraph', type: 'warning' },
-  janus: { label: 'JanusGraph', type: 'warning' }
+  janus: { label: 'Janus', type: 'warning' }
 }
 
 function connLabel(conn) {
-  const raw = (conn.databaseType || '').toLowerCase()
+  const raw = (conn.type || conn.databaseType || '').toLowerCase()
   return DB_TAG_MAP[raw]?.label || raw.toUpperCase()
 }
 
 function connTagType(conn) {
-  const raw = (conn.databaseType || '').toLowerCase()
+  const raw = (conn.type || conn.databaseType || '').toLowerCase()
   return DB_TAG_MAP[raw]?.type || 'info'
 }
 
@@ -188,7 +187,9 @@ onMounted(async () => {
   } catch (err) {
     console.error('加载连接列表失败:', err)
   }
-  if (graphs.value.length === 0) {
+  if (selectedConnectionId.value) {
+    await graphsStore.fetchGraphsByConnection(selectedConnectionId.value)
+  } else if (graphs.value.length === 0) {
     graphsStore.fetchGraphs()
   }
 })
@@ -237,7 +238,7 @@ onMounted(async () => {
 }
 
 .header-selector {
-  width: 200px;
+  width: 160px;
 }
 
 .header-selector :deep(.el-select__wrapper) {

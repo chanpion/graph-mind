@@ -101,7 +101,7 @@
         <div class="db-item">
           <div class="db-icon nebula-icon">N</div>
           <div class="db-info">
-            <div class="db-name">Nebula Graph</div>
+            <div class="db-name">Nebula</div>
             <div class="db-description">nGQL 查询语言</div>
           </div>
         </div>
@@ -109,7 +109,7 @@
         <div class="db-item">
           <div class="db-icon janus-icon">J</div>
           <div class="db-info">
-            <div class="db-name">JanusGraph</div>
+            <div class="db-name">Janus</div>
             <div class="db-description">Gremlin 查询语言</div>
           </div>
         </div>

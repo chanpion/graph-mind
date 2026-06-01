@@ -27,8 +27,8 @@
             @change="handleSearch"
           >
             <el-option label="Neo4j" value="NEO4J" />
-            <el-option label="Nebula Graph" value="NEBULA" />
-            <el-option label="JanusGraph" value="JANUS" />
+            <el-option label="Nebula" value="NEBULA" />
+            <el-option label="Janus" value="JANUS" />
           </el-select>
         </div>
         <div class="action-area">
@@ -142,8 +142,8 @@
         <el-form-item label="数据库类型" prop="type">
           <el-select v-model="form.type" placeholder="请选择数据库类型" style="width: 100%" @change="handleTypeChange">
             <el-option label="Neo4j" value="NEO4J" />
-            <el-option label="Nebula Graph" value="NEBULA" />
-            <el-option label="JanusGraph" value="JANUS" />
+            <el-option label="Nebula" value="NEBULA" />
+            <el-option label="Janus" value="JANUS" />
           </el-select>
         </el-form-item>
 
@@ -267,7 +267,7 @@ const getTypeTagType = (type) => {
 }
 
 const getTypeLabel = (type) => {
-  const labels = { NEO4J: 'Neo4j', NEBULA: 'Nebula Graph', JANUS: 'JanusGraph' }
+  const labels = { NEO4J: 'Neo4j', NEBULA: 'Nebula', JANUS: 'Janus' }
   return labels[normalizeType(type)] || type
 }
 

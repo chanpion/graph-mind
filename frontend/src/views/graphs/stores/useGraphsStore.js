@@ -135,4 +135,8 @@ export const useGraphsStore = defineStore('graphs', () => {
     deleteGraph,
     clearData
   }
+}, {
+  persist: {
+    paths: ['selectedConnectionId', 'currentGraph']
+  }
 })

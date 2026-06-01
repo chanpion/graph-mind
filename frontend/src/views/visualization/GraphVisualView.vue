@@ -194,7 +194,7 @@ import {
 const DEFAULT_QUERIES = {
   neo4j: 'MATCH p=(n)-[r]->() RETURN p LIMIT 10',
   nebula: 'MATCH p=(v)-[e]->(v2) RETURN p LIMIT 10',
-  janusgraph: 'g.V().limit(10).union(identity(), bothE().limit(25))',
+  janus: 'g.V().limit(10).union(identity(), bothE().limit(25))',
   janus: 'g.V().limit(10).union(identity(), bothE().limit(25))'
 }
 
@@ -463,8 +463,8 @@ function resetFilter() {
 const GRAPH_TYPE_TAG = {
   neo4j: { label: 'Neo4j', type: 'primary' },
   nebula: { label: 'Nebula', type: 'success' },
-  janusgraph: { label: 'JanusGraph', type: 'warning' },
-  janus: { label: 'JanusGraph', type: 'warning' }
+  janus: { label: 'Janus', type: 'warning' },
+  janus: { label: 'Janus', type: 'warning' }
 }
 
 const graphTypeLabel = computed(() => GRAPH_TYPE_TAG[graphType.value]?.label || graphType.value)

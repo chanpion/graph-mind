@@ -9,6 +9,15 @@
           <el-radio-button value="list">列表视图</el-radio-button>
           <el-radio-button value="graph">图析视图</el-radio-button>
         </el-radio-group>
+        <el-button size="small" @click="handleExport" :loading="exporting">
+          <el-icon><Download /></el-icon>
+          导出
+        </el-button>
+        <el-button size="small" @click="handleImportClick">
+          <el-icon><Upload /></el-icon>
+          导入
+        </el-button>
+        <input ref="fileInputRef" type="file" accept=".json" style="display:none" @change="handleFileChange" />
       </div>
     </div>
 
@@ -236,6 +245,41 @@
       </template>
     </el-dialog>
 
+    <!-- 导入确认弹窗 -->
+    <el-dialog v-model="importDialogVisible" title="导入确认" width="600px">
+      <div class="import-summary">
+        <p>检测到以下定义，是否导入？</p>
+        <el-alert type="info" :closable="false" show-icon>
+          <template #title>
+            点定义 {{ importData.nodes?.length || 0 }} 个 · 边定义 {{ importData.edges?.length || 0 }} 个
+          </template>
+        </el-alert>
+        <div class="import-preview" v-if="importData.nodes?.length">
+          <div class="preview-title">点定义预览：</div>
+          <div v-for="n in importData.nodes.slice(0, 5)" :key="n.id || n.label" class="preview-item">
+            <el-tag size="small" type="success">{{ n.label }}</el-tag> {{ n.name }}
+          </div>
+          <div v-if="importData.nodes.length > 5" class="preview-more">
+            ... 还有 {{ importData.nodes.length - 5 }} 个
+          </div>
+        </div>
+        <div class="import-preview" v-if="importData.edges?.length">
+          <div class="preview-title">边定义预览：</div>
+          <div v-for="e in importData.edges.slice(0, 5)" :key="e.id || e.label" class="preview-item">
+            <el-tag size="small" type="warning">{{ e.label }}</el-tag> {{ e.name }}
+          </div>
+          <div v-if="importData.edges.length > 5" class="preview-more">
+            ... 还有 {{ importData.edges.length - 5 }} 个
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="importDialogVisible = false">取消</el-button>
+        <el-button type="warning" @click="handleImportClean" :loading="importing">仅导入新增</el-button>
+        <el-button type="primary" @click="handleImportMerge" :loading="importing">合并导入</el-button>
+      </template>
+    </el-dialog>
+
     </template> <!-- end list view -->
 
     <!-- 图析视图 -->
@@ -250,7 +294,7 @@
 <script setup>
 import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Edit, Delete, Plus } from '@element-plus/icons-vue'
+import { Edit, Delete, Plus, Download, Upload } from '@element-plus/icons-vue'
 import { graphApi } from '@/views/graphs/api/graph'
 import { useGraphsStore } from '@/views/graphs/stores/useGraphsStore'
 import GraphModelingView from './components/GraphModelingView.vue'
@@ -261,6 +305,11 @@ const currentGraphId = computed(() => graphsStore.currentGraphId)
 
 const loading = ref(false)
 const saving = ref(false)
+const exporting = ref(false)
+const importing = ref(false)
+const fileInputRef = ref(null)
+const importDialogVisible = ref(false)
+const importData = ref({ nodes: [], edges: [] })
 const activeTab = ref('nodes')
 const viewMode = ref('list')
 
@@ -471,6 +520,101 @@ function removeEdgeProperty(index) {
   edgeForm.value.properties.splice(index, 1)
 }
 
+// ==================== 导入导出 ====================
+function handleImportClick() {
+  fileInputRef.value?.click()
+}
+
+async function handleFileChange(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  try {
+    const text = await file.text()
+    const data = JSON.parse(text)
+    if (!data.nodes && !data.edges) {
+      ElMessage.error('文件格式错误，缺少 nodes 或 edges 字段')
+      return
+    }
+    importData.value = data
+    importDialogVisible.value = true
+  } catch (e) {
+    ElMessage.error('解析 JSON 文件失败')
+  }
+  event.target.value = ''
+}
+
+async function handleImportMerge() {
+  importing.value = true
+  try {
+    await graphApi.importSchema(currentGraphId.value, {
+      mode: 'merge',
+      nodes: importData.value.nodes,
+      edges: importData.value.edges
+    })
+    ElMessage.success('导入成功')
+    importDialogVisible.value = false
+    await fetchNodeDefs()
+    await fetchEdgeDefs()
+    await autoPublish()
+  } catch (e) {
+    ElMessage.error('导入失败')
+  } finally {
+    importing.value = false
+  }
+}
+
+async function handleImportClean() {
+  importing.value = true
+  try {
+    await graphApi.importSchema(currentGraphId.value, {
+      mode: 'replace',
+      nodes: importData.value.nodes,
+      edges: importData.value.edges
+    })
+    ElMessage.success('导入成功（已覆盖）')
+    importDialogVisible.value = false
+    await fetchNodeDefs()
+    await fetchEdgeDefs()
+    await autoPublish()
+  } catch (e) {
+    ElMessage.error('导入失败')
+  } finally {
+    importing.value = false
+  }
+}
+
+async function handleExport() {
+  if (!currentGraphId.value) {
+    ElMessage.warning('请先选择图')
+    return
+  }
+  exporting.value = true
+  try {
+    const res = await graphApi.exportSchema(currentGraphId.value)
+    const data = res?.data || res
+    const exportObj = {
+      version: data.version || '1.0',
+      exportedAt: new Date().toISOString(),
+      graphId: currentGraphId.value,
+      graphCode: data.graphCode,
+      nodes: data.nodes || [],
+      edges: data.edges || []
+    }
+    const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `schema-${currentGraphId.value}-${Date.now()}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('导出成功')
+  } catch (e) {
+    ElMessage.error('导出失败')
+  } finally {
+    exporting.value = false
+  }
+}
+
 watch(() => graphsStore.currentGraphId, (newId, oldId) => {
   if (newId && newId !== oldId) {
     nodeDefs.value = []
@@ -583,4 +727,10 @@ onMounted(async () => {
   border: 1px solid var(--el-border-color-light);
   box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05);
 }
+
+.import-summary { display: flex; flex-direction: column; gap: 12px; }
+.import-preview { background: var(--el-fill-color-light); border-radius: 6px; padding: 10px 14px; }
+.preview-title { font-size: 13px; font-weight: 600; color: var(--el-text-color-primary); margin-bottom: 6px; }
+.preview-item { display: flex; align-items: center; gap: 6px; font-size: 13px; margin-bottom: 4px; }
+.preview-more { font-size: 12px; color: var(--el-text-color-secondary); margin-top: 4px; }
 </style>

@@ -340,18 +340,18 @@ const graphsStore = useGraphsStore()
 // 图类型信息
 const graphType = computed(() => graphsStore.currentGraph?.graphType || '')
 const graphTypeLabel = computed(() => {
-  const map = { neo4j: 'Neo4j', nebula: 'Nebula Graph', janusgraph: 'JanusGraph' }
+  const map = { neo4j: 'Neo4j', nebula: 'Nebula', janus: 'Janus' }
   return map[graphType.value] || graphType.value || '未知'
 })
 const graphTypeTagType = computed(() => {
-  const map = { neo4j: 'success', nebula: 'warning', janusgraph: 'danger' }
+  const map = { neo4j: 'success', nebula: 'warning', janus: 'danger' }
   return map[graphType.value] || 'info'
 })
 const defaultQuery = computed(() => {
   const map = {
     neo4j: 'MATCH p=(n)-[r]->() RETURN p LIMIT 10',
     nebula: 'MATCH p=(v)-[e]->(v2) RETURN p LIMIT 10',
-    janusgraph: 'g.V().limit(10)'
+    janus: 'g.V().limit(10)'
   }
   return map[graphType.value] || ''
 })

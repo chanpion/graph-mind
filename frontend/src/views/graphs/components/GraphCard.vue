@@ -101,7 +101,7 @@ const sourceText = computed(() => {
 })
 
 const dbTypeLabel = computed(() => {
-  const labels = { neo4j: 'Neo4j', nebula: 'Nebula', janus: 'JanusGraph' }
+  const labels = { neo4j: 'Neo4j', nebula: 'Nebula', janus: 'Janus' }
   return labels[dbType.value.toLowerCase()] || dbType.value || '未知'
 })
 
