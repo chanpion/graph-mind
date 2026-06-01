@@ -4,15 +4,15 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.chenpp.graph.admin.model.Graph;
-import com.chenpp.graph.admin.model.GraphDatabaseConnection;
+import com.chenpp.graph.admin.model.GraphConnection;
 import com.chenpp.graph.admin.model.GraphEdgeDef;
-import com.chenpp.graph.admin.model.GraphNodeDef;
+import com.chenpp.graph.admin.model.GraphVertexDef;
 import com.chenpp.graph.admin.model.GraphPropertyDef;
 import com.chenpp.graph.admin.model.ImportResult;
 import com.chenpp.graph.admin.service.GraphDataService;
-import com.chenpp.graph.admin.service.GraphDatabaseConnectionService;
+import com.chenpp.graph.admin.service.GraphConnectionService;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
-import com.chenpp.graph.admin.service.GraphNodeDefService;
+import com.chenpp.graph.admin.service.GraphVertexDefService;
 import com.chenpp.graph.admin.service.GraphPropertyDefService;
 import com.chenpp.graph.admin.service.GraphService;
 import com.chenpp.graph.admin.util.GraphClientFactory;
@@ -23,8 +23,6 @@ import com.chenpp.graph.core.model.GraphData;
 import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphSummary;
 import com.chenpp.graph.core.model.GraphVertex;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,19 +55,19 @@ public class GraphDataServiceImpl implements GraphDataService {
     private GraphService graphService;
 
     @Autowired
-    private GraphNodeDefService nodeDefService;
+    private GraphVertexDefService vertexDefService;
 
     @Autowired
     private GraphEdgeDefService edgeDefService;
 
     @Autowired
-    private GraphDatabaseConnectionService connectionService;
+    private GraphConnectionService connectionService;
 
     @Autowired
     private GraphPropertyDefService propertyDefService;
 
     @Override
-    public ImportResult importNodeData(Long graphId, Long nodeTypeId, MultipartFile file, String config) {
+    public ImportResult importNodeData(Long graphId, Long vertexTypeId, MultipartFile file, String config) {
         ImportResult result = new ImportResult();
         result.setTotalCount(0);
         result.setSuccessCount(0);
@@ -87,7 +85,7 @@ public class GraphDataServiceImpl implements GraphDataService {
             }
 
             // 获取图数据库连接信息
-            GraphDatabaseConnection connection = connectionService.getById(graph.getConnectionId());
+            GraphConnection connection = connectionService.getById(graph.getConnectionId());
             if (connection == null) {
                 log.error("图数据库连接不存在，connectionId={}", graph.getConnectionId());
                 errorMessages.add("图数据库连接不存在，connectionId=" + graph.getConnectionId());
@@ -96,10 +94,10 @@ public class GraphDataServiceImpl implements GraphDataService {
             }
 
             // 获取节点定义信息
-            GraphNodeDef nodeDef = nodeDefService.getById(nodeTypeId);
-            if (nodeDef == null) {
-                log.error("节点类型不存在，nodeTypeId={}", nodeTypeId);
-                errorMessages.add("节点类型不存在，nodeTypeId=" + nodeTypeId);
+            GraphVertexDef vertexDef = vertexDefService.getById(vertexTypeId);
+            if (vertexDef == null) {
+                log.error("节点类型不存在，vertexTypeId={}", vertexTypeId);
+                errorMessages.add("节点类型不存在，vertexTypeId=" + vertexTypeId);
                 result.setErrorMessages(errorMessages.toArray(new String[0]));
                 return result;
             }
@@ -116,8 +114,8 @@ public class GraphDataServiceImpl implements GraphDataService {
 
             // 获取节点定义的属性code列表，用于过滤不在schema中的属性
             QueryWrapper<GraphPropertyDef> propQuery = new QueryWrapper<GraphPropertyDef>()
-                    .eq("entity_id", nodeTypeId)
-                    .eq("property_type", "node");
+                    .eq("entity_id", vertexTypeId)
+                    .eq("property_type", "vertex");
             List<GraphPropertyDef> propDefs = propertyDefService.list(propQuery);
             Set<String> vertexSchemaPropertyCodes = propDefs.stream()
                     .map(GraphPropertyDef::getCode)
@@ -227,7 +225,7 @@ public class GraphDataServiceImpl implements GraphDataService {
             }
 
             // 获取图数据库连接信息
-            GraphDatabaseConnection connection = connectionService.getById(graph.getConnectionId());
+            GraphConnection connection = connectionService.getById(graph.getConnectionId());
             if (connection == null) {
                 log.error("图数据库连接不存在，connectionId={}", graph.getConnectionId());
                 errorMessages.add("图数据库连接不存在，connectionId=" + graph.getConnectionId());
@@ -275,8 +273,8 @@ public class GraphDataServiceImpl implements GraphDataService {
                     edge.setLabel(edgeDef.getLabel());
                     edge.setStartLabel(edgeDef.getFrom());
                     edge.setEndLabel(edgeDef.getTo());
-                    edge.setStartUid(dataRow.get("source"));
-                    edge.setEndUid(dataRow.get("target"));
+                    edge.setStartUid(dataRow.getOrDefault("startUid", dataRow.get("source")));
+                    edge.setEndUid(dataRow.getOrDefault("endUid", dataRow.get("target")));
 
                     // 设置边属性
                     Map<String, Object> properties = new HashMap<>();
@@ -311,16 +309,16 @@ public class GraphDataServiceImpl implements GraphDataService {
     }
 
     @Override
-    public List<GraphVertex> getNodeDataList(Long graphId, Long nodeTypeId, Integer page, Integer size) {
+    public List<GraphVertex> getNodeDataList(Long graphId, Long vertexTypeId, Integer page, Integer size) {
         try {
-            GraphNodeDef nodeDef = nodeDefService.getById(nodeTypeId);
-            if (nodeDef == null) {
-                log.error("节点类型不存在，nodeTypeId={}", nodeTypeId);
+            GraphVertexDef vertexDef = vertexDefService.getById(vertexTypeId);
+            if (vertexDef == null) {
+                log.error("节点类型不存在，vertexTypeId={}", vertexTypeId);
                 return new ArrayList<>();
             }
 
             GraphDataOperations ops = getGraphDataOperations(graphId);
-            String label = nodeDef.getLabel();
+            String label = vertexDef.getLabel();
             int skip = (page - 1) * size;
 
             // 根据图类型构建不同的查询语句
@@ -333,7 +331,7 @@ public class GraphDataServiceImpl implements GraphDataService {
 
             return graphData.getVertices();
         } catch (Exception e) {
-            log.error("查询节点数据列表失败，graphId={}, nodeTypeId={}", graphId, nodeTypeId, e);
+            log.error("查询节点数据列表失败，graphId={}, vertexTypeId={}", graphId, vertexTypeId, e);
             return new ArrayList<>();
         }
     }
@@ -370,10 +368,10 @@ public class GraphDataServiceImpl implements GraphDataService {
     }
 
     @Override
-    public Map<String, Object> getNodeData(Long graphId, String nodeId) {
+    public Map<String, Object> getNodeData(Long graphId, String vertexId) {
         try {
             GraphDataOperations ops = getGraphDataOperations(graphId);
-            String query = buildFindVertexQuery(graphId, nodeId);
+            String query = buildFindVertexQuery(graphId, vertexId);
             GraphData graphData = ops.query(query);
 
             if (graphData != null && graphData.getVertices() != null && !graphData.getVertices().isEmpty()) {
@@ -381,7 +379,7 @@ public class GraphDataServiceImpl implements GraphDataService {
             }
             return new HashMap<>();
         } catch (Exception e) {
-            log.error("获取节点数据详情失败，graphId={}, nodeId={}", graphId, nodeId, e);
+            log.error("获取节点数据详情失败，graphId={}, vertexId={}", graphId, vertexId, e);
             return new HashMap<>();
         }
     }
@@ -404,18 +402,18 @@ public class GraphDataServiceImpl implements GraphDataService {
     }
 
     @Override
-    public boolean addNodeData(Long graphId, Long nodeTypeId, Map<String, Object> data) {
+    public boolean addNodeData(Long graphId, Long vertexTypeId, Map<String, Object> data) {
         try {
-            GraphNodeDef nodeDef = nodeDefService.getById(nodeTypeId);
-            if (nodeDef == null) {
-                log.error("节点类型不存在，nodeTypeId={}", nodeTypeId);
+            GraphVertexDef vertexDef = vertexDefService.getById(vertexTypeId);
+            if (vertexDef == null) {
+                log.error("节点类型不存在，vertexTypeId={}", vertexTypeId);
                 return false;
             }
 
             GraphDataOperations ops = getGraphDataOperations(graphId);
 
             GraphVertex vertex = new GraphVertex();
-            vertex.setLabel(nodeDef.getLabel());
+            vertex.setLabel(vertexDef.getLabel());
 
             // 处理嵌套属性结构：前端发送 {label: "...", properties: {uid, name, ...}}
             Map<String, Object> properties;
@@ -436,10 +434,10 @@ public class GraphDataServiceImpl implements GraphDataService {
             }
 
             ops.addVertex(vertex);
-            log.info("新增节点成功，label={}, uid={}", nodeDef.getLabel(), vertex.getUid());
+            log.info("新增节点成功，label={}, uid={}", vertexDef.getLabel(), vertex.getUid());
             return true;
         } catch (Exception e) {
-            log.error("新增节点数据失败，graphId={}, nodeTypeId={}", graphId, nodeTypeId, e);
+            log.error("新增节点数据失败，graphId={}, vertexTypeId={}", graphId, vertexTypeId, e);
             return false;
         }
     }
@@ -503,12 +501,12 @@ public class GraphDataServiceImpl implements GraphDataService {
     }
 
     @Override
-    public boolean updateNodeData(Long graphId, String nodeId, Map<String, Object> data) {
+    public boolean updateNodeData(Long graphId, String vertexId, Map<String, Object> data) {
         try {
             GraphDataOperations ops = getGraphDataOperations(graphId);
 
             GraphVertex vertex = new GraphVertex();
-            vertex.setUid(nodeId);
+            vertex.setUid(vertexId);
             if (data.containsKey("label")) {
                 vertex.setLabel(data.get("label").toString());
             }
@@ -529,10 +527,10 @@ public class GraphDataServiceImpl implements GraphDataService {
             }
 
             ops.updateVertex(vertex);
-            log.info("更新节点成功，nodeId={}", nodeId);
+            log.info("更新节点成功，vertexId={}", vertexId);
             return true;
         } catch (Exception e) {
-            log.error("更新节点数据失败，graphId={}, nodeId={}", graphId, nodeId, e);
+            log.error("更新节点数据失败，graphId={}, vertexId={}", graphId, vertexId, e);
             return false;
         }
     }
@@ -579,15 +577,15 @@ public class GraphDataServiceImpl implements GraphDataService {
     }
 
     @Override
-    public boolean deleteNode(Long graphId, String nodeId, String label) {
-        List<String> nodeIds = new ArrayList<>();
-        nodeIds.add(nodeId);
-        return deleteNodes(graphId, nodeIds, label);
+    public boolean deleteNode(Long graphId, String vertexId, String label) {
+        List<String> vertexIds = new ArrayList<>();
+        vertexIds.add(vertexId);
+        return deleteNodes(graphId, vertexIds, label);
     }
 
     @Override
-    public boolean deleteNodes(Long graphId, List<String> nodeIds, String label) {
-        if (graphId == null || nodeIds == null || nodeIds.isEmpty()) {
+    public boolean deleteNodes(Long graphId, List<String> vertexIds, String label) {
+        if (graphId == null || vertexIds == null || vertexIds.isEmpty()) {
             return false;
         }
 
@@ -600,7 +598,7 @@ public class GraphDataServiceImpl implements GraphDataService {
             }
 
             // 获取图数据库连接信息
-            GraphDatabaseConnection connection = connectionService.getById(graph.getConnectionId());
+            GraphConnection connection = connectionService.getById(graph.getConnectionId());
             if (connection == null) {
                 log.error("图数据库连接不存在，connectionId={}", graph.getConnectionId());
                 return false;
@@ -613,17 +611,17 @@ public class GraphDataServiceImpl implements GraphDataService {
             try (GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf)) {
                 GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
 
-                GraphNodeDef nodeDef = nodeDefService.getOne(new QueryWrapper<GraphNodeDef>().eq("graph_id", graphId).eq("label", label));
+                GraphVertexDef vertexDef = vertexDefService.getOne(new QueryWrapper<GraphVertexDef>().eq("graph_id", graphId).eq("label", label));
                 // 删除节点
-                for (String nodeId : nodeIds) {
+                for (String vertexId : vertexIds) {
                 try {
                     GraphVertex vertex = new GraphVertex();
-                    vertex.setUid(nodeId);
-                    vertex.setLabel(nodeDef.getLabel());
+                    vertex.setUid(vertexId);
+                    vertex.setLabel(vertexDef.getLabel());
                     graphDataOperations.deleteVertex(vertex);
-                    log.info("成功删除节点，nodeId={}", nodeId);
+                    log.info("成功删除节点，vertexId={}", vertexId);
                 } catch (Exception e) {
-                    log.error("删除节点失败，nodeId={}", nodeId, e);
+                    log.error("删除节点失败，vertexId={}", vertexId, e);
                     // 继续删除其他节点，不因单个节点失败而中断整个过程
                 }
             }
@@ -646,7 +644,7 @@ public class GraphDataServiceImpl implements GraphDataService {
             }
 
             // 获取图数据库连接信息
-            GraphDatabaseConnection connection = connectionService.getById(graph.getConnectionId());
+            GraphConnection connection = connectionService.getById(graph.getConnectionId());
             if (connection == null) {
                 log.error("图数据库连接不存在，connectionId={}", graph.getConnectionId());
                 throw new RuntimeException("图数据库连接不存在，connectionId=" + graph.getConnectionId());
@@ -683,7 +681,7 @@ public class GraphDataServiceImpl implements GraphDataService {
             throw new RuntimeException("图不存在，graphId=" + graphId);
         }
 
-        GraphDatabaseConnection connection = connectionService.getById(graph.getConnectionId());
+        GraphConnection connection = connectionService.getById(graph.getConnectionId());
         if (connection == null) {
             throw new RuntimeException("图数据库连接不存在，connectionId=" + graph.getConnectionId());
         }
@@ -716,11 +714,11 @@ public class GraphDataServiceImpl implements GraphDataService {
     /**
      * 构建按 uid 查找节点的查询语句
      */
-    private String buildFindVertexQuery(Long graphId, String nodeId) {
+    private String buildFindVertexQuery(Long graphId, String vertexId) {
         if (isGremlinGraph(graphId)) {
-            return String.format("g.V().has(\"uid\", \"%s\")", escapeGremlinString(nodeId));
+            return String.format("g.V().has(\"uid\", \"%s\")", escapeGremlinString(vertexId));
         }
-        return String.format("MATCH (n {uid: '%s'}) RETURN n", escapeCypherString(nodeId));
+        return String.format("MATCH (n {uid: '%s'}) RETURN n", escapeCypherString(vertexId));
     }
 
     /**
@@ -739,8 +737,8 @@ public class GraphDataServiceImpl implements GraphDataService {
     private boolean isGremlinGraph(Long graphId) {
         Graph graph = graphService.getById(graphId);
         if (graph == null) return false;
-        GraphDatabaseConnection conn = connectionService.getById(graph.getConnectionId());
-        return conn != null && "janus".equalsIgnoreCase(conn.getType());
+        GraphConnection conn = connectionService.getById(graph.getConnectionId());
+        return conn != null && "janus".equalsIgnoreCase(conn.getGraphType());
     }
 
     /**

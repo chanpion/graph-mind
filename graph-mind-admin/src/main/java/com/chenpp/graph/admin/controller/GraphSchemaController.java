@@ -1,13 +1,13 @@
 package com.chenpp.graph.admin.controller;
 
 import com.chenpp.graph.admin.model.GraphEdgeDef;
-import com.chenpp.graph.admin.model.GraphNodeDef;
+import com.chenpp.graph.admin.model.GraphVertexDef;
 import com.chenpp.graph.admin.model.GraphPropertyDef;
 import com.chenpp.graph.admin.model.Result;
 import com.chenpp.graph.admin.model.SchemaExportDTO;
 import com.chenpp.graph.admin.model.SchemaImportDTO;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
-import com.chenpp.graph.admin.service.GraphNodeDefService;
+import com.chenpp.graph.admin.service.GraphVertexDefService;
 import com.chenpp.graph.admin.service.GraphSchemaService;
 import com.chenpp.graph.core.schema.GraphEntity;
 import com.chenpp.graph.core.schema.GraphProperty;
@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
 public class GraphSchemaController {
 
     @Autowired
-    private GraphNodeDefService nodeDefService;
+    private GraphVertexDefService vertexDefService;
 
     @Autowired
     private GraphEdgeDefService edgeDefService;
@@ -59,43 +59,43 @@ public class GraphSchemaController {
      * @param status  节点状态
      * @return 节点定义列表
      */
-    @GetMapping("/nodes")
-    public Result<List<GraphNodeDef>> getNodeDefs(@PathVariable Long graphId, Integer status) {
-        List<GraphNodeDef> nodeDefs = nodeDefService.getNodeDefsByGraphId(graphId, status);
+    @GetMapping("/vertices")
+    public Result<List<GraphVertexDef>> getVertexDefs(@PathVariable Long graphId, Integer status) {
+        List<GraphVertexDef> vertexDefs = vertexDefService.getVertexDefsByGraphId(graphId, status);
         // 元数据为空时，从图数据库发现
-        if (nodeDefs == null || nodeDefs.isEmpty()) {
+        if (vertexDefs == null || vertexDefs.isEmpty()) {
             try {
-                nodeDefs = discoverNodeDefs(graphId);
+                vertexDefs = discoverVertexDefs(graphId);
             } catch (Exception e) {
                 log.warn("从图数据库发现节点定义失败: {}", e.getMessage());
-                nodeDefs = new ArrayList<>();
+                vertexDefs = new ArrayList<>();
             }
         } else {
             // 有定义但属性为空时，尝试从图数据库发现并合并属性
-            boolean hasEmptyProperties = nodeDefs.stream()
+            boolean hasEmptyProperties = vertexDefs.stream()
                 .anyMatch(n -> n.getProperties() == null || n.getProperties().isEmpty());
             if (hasEmptyProperties) {
                 try {
-                    mergeDiscoveredNodeProperties(nodeDefs, graphId);
+                    mergeDiscoveredVertexProperties(vertexDefs, graphId);
                 } catch (Exception e) {
                     log.warn("合并从图数据库发现的节点属性失败: {}", e.getMessage());
                 }
             }
         }
-        return Result.success(nodeDefs);
+        return Result.success(vertexDefs);
     }
 
     /**
      * 新增节点定义
      *
      * @param graphId 图ID
-     * @param nodeDef 节点定义信息
+     * @param vertexDef 节点定义信息
      * @return 是否成功
      */
-    @PostMapping("/nodes")
-    public Result<String> addNodeDef(@PathVariable Long graphId, @RequestBody GraphNodeDef nodeDef) {
-        nodeDef.setGraphId(graphId);
-        boolean success = nodeDefService.saveNodeDefWithProperties(nodeDef);
+    @PostMapping("/vertices")
+    public Result<String> addVertexDef(@PathVariable Long graphId, @RequestBody GraphVertexDef vertexDef) {
+        vertexDef.setGraphId(graphId);
+        boolean success = vertexDefService.saveVertexDefWithProperties(vertexDef);
         if (success) {
             // 自动发布到图数据库，失败时抛异常让前端感知
             graphSchemaService.publishSchema(graphId);
@@ -109,15 +109,15 @@ public class GraphSchemaController {
      * 更新节点定义
      *
      * @param graphId 图ID
-     * @param nodeId  节点定义ID
-     * @param nodeDef 节点定义信息
+     * @param vertexId  节点定义ID
+     * @param vertexDef 节点定义信息
      * @return 是否成功
      */
-    @PutMapping("/nodes/{nodeId}")
-    public Result<String> updateNodeDef(@PathVariable Long graphId, @PathVariable Long nodeId, @RequestBody GraphNodeDef nodeDef) {
-        nodeDef.setId(nodeId);
-        nodeDef.setGraphId(graphId);
-        boolean success = nodeDefService.updateNodeDefWithProperties(nodeDef);
+    @PutMapping("/vertices/{vertexId}")
+    public Result<String> updateVertexDef(@PathVariable Long graphId, @PathVariable Long vertexId, @RequestBody GraphVertexDef vertexDef) {
+        vertexDef.setId(vertexId);
+        vertexDef.setGraphId(graphId);
+        boolean success = vertexDefService.updateVertexDefWithProperties(vertexDef);
         if (success) {
             return Result.success("更新节点定义成功");
         } else {
@@ -129,12 +129,12 @@ public class GraphSchemaController {
      * 删除节点定义
      *
      * @param graphId 图ID
-     * @param nodeId  节点定义ID
+     * @param vertexId  节点定义ID
      * @return 是否成功
      */
-    @DeleteMapping("/nodes/{nodeId}")
-    public Result<String> deleteNodeDef(@PathVariable Long graphId, @PathVariable Long nodeId) {
-        boolean success = nodeDefService.deleteNodeDefWithProperties(nodeId);
+    @DeleteMapping("/vertices/{vertexId}")
+    public Result<String> deleteVertexDef(@PathVariable Long graphId, @PathVariable Long vertexId) {
+        boolean success = vertexDefService.deleteVertexDefWithProperties(vertexId);
         if (success) {
             return Result.success("删除节点定义成功");
         } else {
@@ -276,27 +276,27 @@ public class GraphSchemaController {
     /**
      * 从图数据库发现节点定义
      */
-    private List<GraphNodeDef> discoverNodeDefs(Long graphId) {
+    private List<GraphVertexDef> discoverVertexDefs(Long graphId) {
         GraphSchema schema = graphSchemaService.discoverSchema(graphId);
         if (schema == null || schema.getEntities() == null || schema.getEntities().isEmpty()) {
             return new ArrayList<>();
         }
         AtomicLong idCounter = new AtomicLong(-1);
         return schema.getEntities().stream().map(entity -> {
-            GraphNodeDef nodeDef = new GraphNodeDef();
-            nodeDef.setId(idCounter.decrementAndGet());
-            nodeDef.setGraphId(graphId);
-            nodeDef.setLabel(entity.getLabel());
-            nodeDef.setName(entity.getLabel());
-            nodeDef.setDescription("从图数据库发现");
-            nodeDef.setStatus(1);
+            GraphVertexDef vertexDef = new GraphVertexDef();
+            vertexDef.setId(idCounter.decrementAndGet());
+            vertexDef.setGraphId(graphId);
+            vertexDef.setLabel(entity.getLabel());
+            vertexDef.setName(entity.getLabel());
+            vertexDef.setDescription("从图数据库发现");
+            vertexDef.setStatus(1);
             if (entity.getProperties() != null) {
                 List<GraphPropertyDef> props = entity.getProperties().stream()
                     .map(this::buildPropertyDef)
                     .collect(Collectors.toList());
-                nodeDef.setProperties(props);
+                vertexDef.setProperties(props);
             }
-            return nodeDef;
+            return vertexDef;
         }).collect(Collectors.toList());
     }
 
@@ -308,7 +308,7 @@ public class GraphSchemaController {
         if (schema == null || schema.getRelations() == null || schema.getRelations().isEmpty()) {
             return new ArrayList<>();
         }
-        // 构建节点标签→ID映射（使用负ID，与discoverNodeDefs一致）
+        // 构建节点标签→ID映射（使用负ID，与discoverVertexDefs一致）
         Map<String, Long> labelIdMap = new HashMap<>();
         if (schema.getEntities() != null) {
             AtomicLong counter = new AtomicLong(-1);
@@ -327,10 +327,10 @@ public class GraphSchemaController {
             edgeDef.setStatus(1);
             edgeDef.setMultiple(relation.getMultiple());
             // 通过标签映射设置起点/终点节点ID
-            Long fromId = labelIdMap.get(relation.getSourceLabel());
-            edgeDef.setFrom(fromId != null ? String.valueOf(fromId) : relation.getSourceLabel());
-            Long toId = labelIdMap.get(relation.getTargetLabel());
-            edgeDef.setTo(toId != null ? String.valueOf(toId) : relation.getTargetLabel());
+            Long fromId = labelIdMap.get(relation.getStartLabel());
+            edgeDef.setFrom(fromId != null ? String.valueOf(fromId) : relation.getStartLabel());
+            Long toId = labelIdMap.get(relation.getEndLabel());
+            edgeDef.setTo(toId != null ? String.valueOf(toId) : relation.getEndLabel());
             if (relation.getProperties() != null) {
                 List<GraphPropertyDef> props = relation.getProperties().stream()
                     .map(p -> buildPropertyDef(p))
@@ -344,19 +344,19 @@ public class GraphSchemaController {
     /**
      * 合并从图数据库发现的节点属性到已有的节点定义中
      */
-    private void mergeDiscoveredNodeProperties(List<GraphNodeDef> nodeDefs, Long graphId) {
+    private void mergeDiscoveredVertexProperties(List<GraphVertexDef> vertexDefs, Long graphId) {
         GraphSchema schema = graphSchemaService.discoverSchema(graphId);
         if (schema == null || schema.getEntities() == null) {
             return;
         }
         Map<String, List<GraphProperty>> labelPropsMap = schema.getEntities().stream()
             .collect(Collectors.toMap(GraphEntity::getLabel, GraphEntity::getProperties, (a, b) -> a));
-        for (GraphNodeDef nodeDef : nodeDefs) {
-            if (nodeDef.getLabel() != null) {
-                List<GraphProperty> discovered = labelPropsMap.get(nodeDef.getLabel());
+        for (GraphVertexDef vertexDef : vertexDefs) {
+            if (vertexDef.getLabel() != null) {
+                List<GraphProperty> discovered = labelPropsMap.get(vertexDef.getLabel());
                 if (discovered != null && !discovered.isEmpty()) {
-                    List<GraphPropertyDef> existing = nodeDef.getProperties() != null
-                        ? nodeDef.getProperties() : new ArrayList<>();
+                    List<GraphPropertyDef> existing = vertexDef.getProperties() != null
+                        ? vertexDef.getProperties() : new ArrayList<>();
                     for (GraphProperty p : discovered) {
                         boolean exists = existing.stream()
                             .anyMatch(e -> p.getCode().equals(e.getCode()));
@@ -364,7 +364,7 @@ public class GraphSchemaController {
                             existing.add(buildPropertyDef(p));
                         }
                     }
-                    nodeDef.setProperties(existing);
+                    vertexDef.setProperties(existing);
                 }
             }
         }

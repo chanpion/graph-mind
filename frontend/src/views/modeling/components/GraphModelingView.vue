@@ -341,7 +341,7 @@ import { ZoomIn, ZoomOut, RefreshLeft, List, FullScreen, Close } from '@element-
 import * as d3 from 'd3'
 
 const props = defineProps({
-  nodeDefs: { type: Array, default: () => [] },
+  vertexDefs: { type: Array, default: () => [] },
   edgeDefs: { type: Array, default: () => [] }
 })
 
@@ -504,8 +504,8 @@ function closeDetail() {
 }
 
 function transformData() {
-  // Map nodeDefs to D3 nodes, use numeric id for edge lookup
-  nodes.value = (props.nodeDefs || []).map(vt => ({
+  // Map vertexDefs to D3 nodes, use numeric id for edge lookup
+  nodes.value = (props.vertexDefs || []).map(vt => ({
     id: vt.id,
     label: vt.label || vt.name,
     name: vt.name,
@@ -626,7 +626,7 @@ function handleKeyDown(event) {
   }
 }
 
-watch(() => [props.nodeDefs, props.edgeDefs], () => { transformData() }, { deep: true })
+watch(() => [props.vertexDefs, props.edgeDefs], () => { transformData() }, { deep: true })
 
 onMounted(() => {
   transformData()

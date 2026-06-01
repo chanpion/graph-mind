@@ -27,7 +27,7 @@
       </div>
       <el-tabs v-model="activeTab" @tab-change="handleTabChange" class="schema-tabs">
         <el-tab-pane label="点定义" name="nodes">
-          <el-table :data="nodeDefs" style="width: 100%" row-key="id" v-loading="loading">
+          <el-table :data="vertexDefs" style="width: 100%" row-key="id" v-loading="loading">
           <el-table-column prop="label" label="标签" min-width="120" />
           <el-table-column prop="name" label="名称" min-width="150" />
           <el-table-column prop="description" label="描述" min-width="180" />
@@ -184,12 +184,12 @@
         </el-form-item>
         <el-form-item label="起点类型">
           <el-select v-model="edgeForm.from" placeholder="请选择起点类型" style="width: 100%">
-            <el-option v-for="node in nodeDefs" :key="node.id" :label="node.name" :value="node.id" />
+            <el-option v-for="node in vertexDefs" :key="node.id" :label="node.name" :value="node.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="终点类型">
           <el-select v-model="edgeForm.to" placeholder="请选择终点类型" style="width: 100%">
-            <el-option v-for="node in nodeDefs" :key="node.id" :label="node.name" :value="node.id" />
+            <el-option v-for="node in vertexDefs" :key="node.id" :label="node.name" :value="node.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="描述">
@@ -282,7 +282,7 @@
 
     <!-- 图析视图 -->
     <div v-if="viewMode === 'graph'" class="graph-view-wrapper">
-      <GraphModelingView :node-defs="nodeDefs" :edge-defs="edgeDefs" />
+      <GraphModelingView :node-defs="vertexDefs" :edge-defs="edgeDefs" />
     </div>
 
   </div>
@@ -310,7 +310,7 @@ const importData = ref({ nodes: [], edges: [] })
 const activeTab = ref('nodes')
 const viewMode = ref('list')
 
-const nodeDefs = ref([])
+const vertexDefs = ref([])
 const edgeDefs = ref([])
 
 const nodeDialogVisible = ref(false)
@@ -344,12 +344,12 @@ async function autoPublish() {
   }
 }
 
-async function fetchNodeDefs() {
+async function fetchVertexDefs() {
   if (!currentGraphId.value) return
   loading.value = true
   try {
-    const res = await graphApi.getNodeDefs(currentGraphId.value)
-    nodeDefs.value = res?.data || res || []
+    const res = await graphApi.getVertexDefs(currentGraphId.value)
+    vertexDefs.value = res?.data || res || []
   } catch (e) {
     ElMessage.error('获取点定义失败')
   } finally {
@@ -374,12 +374,12 @@ function handleTabChange(tab) {
   if (tab === 'edges') {
     fetchEdgeDefs()
   } else {
-    fetchNodeDefs()
+    fetchVertexDefs()
   }
 }
 
 function getNodeNameById(id) {
-  const node = nodeDefs.value.find(n => n.id == id)
+  const node = vertexDefs.value.find(n => n.id == id)
   return node ? node.name : '未知节点'
 }
 
@@ -415,9 +415,9 @@ function handleEditNode(row) {
 async function handleDeleteNode(row) {
   try {
     await ElMessageBox.confirm('确定要删除该点定义吗？', '提示', { type: 'warning' })
-    await graphApi.deleteNodeDef(currentGraphId.value, row.id)
+    await graphApi.deleteVertexDef(currentGraphId.value, row.id)
     ElMessage.success('删除成功')
-    await fetchNodeDefs()
+    await fetchVertexDefs()
     await autoPublish()
   } catch (e) {
     if (e !== 'cancel') ElMessage.error('删除失败')
@@ -429,14 +429,14 @@ async function saveNode() {
   try {
     const data = { ...nodeForm.value }
     if (nodeForm.value.id) {
-      await graphApi.updateNodeDef(currentGraphId.value, nodeForm.value.id, data)
+      await graphApi.updateVertexDef(currentGraphId.value, nodeForm.value.id, data)
       ElMessage.success('更新成功')
     } else {
-      await graphApi.addNodeDef(currentGraphId.value, data)
+      await graphApi.addVertexDef(currentGraphId.value, data)
       ElMessage.success('新增成功')
     }
     nodeDialogVisible.value = false
-    await fetchNodeDefs()
+    await fetchVertexDefs()
     await autoPublish()
   } catch (e) {
     ElMessage.error('保存失败')
@@ -550,7 +550,7 @@ async function handleImportMerge() {
     })
     ElMessage.success('导入成功')
     importDialogVisible.value = false
-    await fetchNodeDefs()
+    await fetchVertexDefs()
     await fetchEdgeDefs()
     await autoPublish()
   } catch (e) {
@@ -570,7 +570,7 @@ async function handleImportClean() {
     })
     ElMessage.success('导入成功（已覆盖）')
     importDialogVisible.value = false
-    await fetchNodeDefs()
+    await fetchVertexDefs()
     await fetchEdgeDefs()
     await autoPublish()
   } catch (e) {
@@ -614,9 +614,9 @@ async function handleExport() {
 
 watch(() => graphsStore.currentGraphId, (newId, oldId) => {
   if (newId && newId !== oldId) {
-    nodeDefs.value = []
+    vertexDefs.value = []
     edgeDefs.value = []
-    fetchNodeDefs()
+    fetchVertexDefs()
     if (viewMode.value === 'graph') {
       fetchEdgeDefs()
     }
@@ -634,7 +634,7 @@ onMounted(async () => {
     await graphsStore.fetchGraphs()
   }
   if (currentGraphId.value) {
-    fetchNodeDefs()
+    fetchVertexDefs()
   }
 })
 </script>

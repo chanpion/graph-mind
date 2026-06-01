@@ -1,6 +1,7 @@
 package com.chenpp.graph.admin.model;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -13,16 +14,17 @@ import java.time.LocalDateTime;
  * @author April.Chen
  * @date 2025/8/1 15:57
  */
-@TableName("graph_database_connection")
+@TableName("graph_connection")
 @Data
-public class GraphDatabaseConnection {
+public class GraphConnection {
 
     @TableId(type = IdType.AUTO)
     private Long id;
 
     private String name;
-    private String type;
-    private String host;
+    @TableField(value = "graph_type")
+    private String graphType;
+    private String hosts;
     private Integer port;
     private String username;
     private String password;

@@ -4,6 +4,7 @@ import com.chenpp.graph.admin.model.PageResult;
 import com.chenpp.graph.admin.model.Result;
 import com.chenpp.graph.admin.model.User;
 import com.chenpp.graph.admin.service.UserService;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -63,16 +64,41 @@ public class UserController {
         User user = userService.getUserById(userId);
         return Result.success(user);
     }
+
     /**
-     * 获取用户详情
-     *
-     * @param username 用户名
-     * @return 用户详情
+     * 获取当前登录用户信息（基于JWT令牌）
      */
     @GetMapping("/profile")
-    public Result<User> getUserByName(@RequestParam String username) {
-        User user = userService.getUserByName(username);
+    public Result<User> getCurrentUser(Authentication authentication) {
+        User user = userService.getUserByName(authentication.getName());
         return Result.success(user);
+    }
+
+    /**
+     * 更新当前登录用户信息
+     */
+    @PutMapping("/profile")
+    public Result<String> updateCurrentUser(Authentication authentication, @RequestBody User user) {
+        user.setUserId(null);
+        User existing = userService.getUserByName(authentication.getName());
+        if (existing != null) {
+            user.setUserId(existing.getUserId());
+            userService.updateUser(user);
+        }
+        return Result.success("更新成功");
+    }
+
+    /**
+     * 修改当前登录用户密码
+     */
+    @PutMapping("/profile/password")
+    public Result<String> changePassword(Authentication authentication, @RequestBody User user) {
+        User existing = userService.getUserByName(authentication.getName());
+        if (existing != null) {
+            existing.setPassword(user.getPassword());
+            userService.updateUser(existing);
+        }
+        return Result.success("密码修改成功");
     }
 
     @DeleteMapping("/{userId}")
@@ -117,19 +143,6 @@ public class UserController {
     public Result<String> deleteUsers(@RequestBody List<Long> userIds) {
         userService.deleteUsers(userIds);
         return Result.success("删除用户成功");
-    }
-
-    /**
-     * 更新用户状态
-     *
-     * @param userId 用户ID
-     * @param status 状态
-     * @return 更新结果
-     */
-    @PutMapping("/{userId}/status")
-    public Result<String> updateUserStatus(@PathVariable Long userId, @RequestParam Integer status) {
-        userService.updateUserStatus(userId, status);
-        return Result.success("更新用户状态成功");
     }
 
     @PostMapping("/{userId}/password/reset")

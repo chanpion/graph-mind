@@ -2,7 +2,7 @@ package com.chenpp.graph.admin.util;
 
 import com.alibaba.fastjson2.JSON;
 import com.chenpp.graph.admin.model.Graph;
-import com.chenpp.graph.admin.model.GraphDatabaseConnection;
+import com.chenpp.graph.admin.model.GraphConnection;
 import com.chenpp.graph.core.GraphClient;
 import com.chenpp.graph.core.model.GraphConf;
 import com.chenpp.graph.janus.CassandraConf;
@@ -76,11 +76,11 @@ public class GraphClientFactory {
         }
     }
 
-    public static GraphConf createGraphConf(GraphDatabaseConnection connection, Graph graph) {
+    public static GraphConf createGraphConf(GraphConnection connection, Graph graph) {
         GraphConf graphConf = new GraphConf();
         graphConf.setGraphCode(graph.getCode());
-        graphConf.setType(connection.getType());
-        graphConf.setHost(connection.getHost());
+        graphConf.setType(connection.getGraphType());
+        graphConf.setHost(connection.getHosts());
         graphConf.setPort(connection.getPort());
         graphConf.setUsername(connection.getUsername());
         graphConf.setPassword(connection.getPassword());

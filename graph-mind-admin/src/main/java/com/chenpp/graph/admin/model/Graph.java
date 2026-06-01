@@ -38,7 +38,7 @@ public class Graph {
      */
     private Long connectionId;
 
-    /**
+    /**@
      * 图类型,
      * @see com.chenpp.graph.admin.enums.GraphTypeEnum
      */
@@ -67,9 +67,13 @@ public class Graph {
 
     /** 节点类型数量（展示用，来自 graph_node_def 统计） */
     @TableField(exist = false)
-    private Integer nodeTypeCount;
+    private Integer vertexTypeCount;
 
     /** 边类型数量（展示用，来自 graph_edge_def 统计） */
     @TableField(exist = false)
     private Integer edgeTypeCount;
+
+    /** 图来源：PLATFORM-平台创建，EXISTING-图数据库已有 */
+    @TableField(exist = false)
+    private String sourceType;
 }

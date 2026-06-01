@@ -89,12 +89,6 @@ export const routes = [
         meta: { title: '系统设置', icon: 'Setting' },
         children: [
           {
-            path: 'config',
-            name: 'AppConfig',
-            component: () => import('@/views/system/AppConfigView.vue'),
-            meta: { title: '系统配置', icon: 'Tools', roles: ['admin'] }
-          },
-          {
             path: 'profile',
             name: 'Profile',
             component: () => import('@/views/system/ProfileView.vue'),

@@ -428,7 +428,7 @@ function stringToColor(str, saturation = 70) {
 }
 
 // 点类型和边类型
-const nodeTypes = ref([])
+const vertexTypes = ref([])
 const edgeTypes = ref([])
 
 // 当前激活的算法tab
@@ -463,7 +463,7 @@ const selectedElement = ref(null)
 
 // 实体选项（用于级联选择）
 const entityOptions = computed(() => {
-  return nodeTypes.value.map(entity => ({
+  return vertexTypes.value.map(entity => ({
     value: entity.label,
     label: entity.label,
     children: entity.properties ? entity.properties.map(prop => ({
@@ -720,16 +720,16 @@ const fetchGraphSchema = async () => {
 
   try {
     const [nodeRes, edgeRes] = await Promise.all([
-      graphApi.getNodeDefs(graphsStore.currentGraphId),
+      graphApi.getVertexDefs(graphsStore.currentGraphId),
       graphApi.getEdgeDefs(graphsStore.currentGraphId)
     ])
-    const nodeDefs = nodeRes?.data || nodeRes || []
+    const vertexDefs = nodeRes?.data || nodeRes || []
     const edgeDefs = edgeRes?.data || edgeRes || []
     graphSchema.value = {
-      entities: Array.isArray(nodeDefs) ? nodeDefs : [],
+      entities: Array.isArray(vertexDefs) ? vertexDefs : [],
       relations: Array.isArray(edgeDefs) ? edgeDefs : []
     }
-    nodeTypes.value = graphSchema.value.entities
+    vertexTypes.value = graphSchema.value.entities
     edgeTypes.value = graphSchema.value.relations
 
     if (graphSchema.value.entities.length > 0) {
@@ -1357,9 +1357,9 @@ onMounted(() => {
 // 获取点类型列表
 const fetchNodeTypes = async (graphId) => {
   try {
-    const res = await graphApi.getNodeDefs(graphId)
+    const res = await graphApi.getVertexDefs(graphId)
     const data = res?.data || res || []
-    nodeTypes.value = Array.isArray(data) ? data : []
+    vertexTypes.value = Array.isArray(data) ? data : []
   } catch (e) {
     console.error('获取点类型列表失败:', e)
   }
@@ -1426,8 +1426,8 @@ const transformApiResponseToGraphData = (apiResponse) => {
       })),
       edges: rawData.edges.map(e => ({
         id: e.uid || e.id,
-        source: e.startUid || e.sourceUid || e.source,
-        target: e.endUid || e.targetUid || e.target,
+        source: e.startUid,
+        target: e.endUid,
         label: e.label,
         properties: e.properties || {},
         value: e.value || 1

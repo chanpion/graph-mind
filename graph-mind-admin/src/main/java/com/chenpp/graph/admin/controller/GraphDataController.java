@@ -32,21 +32,21 @@ public class GraphDataController {
      * 导入节点数据（CSV）
      *
      * @param graphId    图ID
-     * @param nodeTypeId 节点类型ID
+     * @param vertexTypeId 节点类型ID
      * @param file       CSV文件
      * @param config     导入配置（JSON，含 delimiter、hasHeader 等）
      * @return 导入结果
      */
-    @PostMapping("/import/nodes/{nodeTypeId}")
+    @PostMapping("/import/vertices/{vertexTypeId}")
     public Result<ImportResult> importNodeData(
             @PathVariable Long graphId,
-            @PathVariable Long nodeTypeId,
+            @PathVariable Long vertexTypeId,
             @RequestPart("file") MultipartFile file,
             @RequestPart("config") String config) {
         try {
-            log.info("开始导入节点数据，graphId={}, nodeTypeId={}, config={}", graphId, nodeTypeId, config);
+            log.info("开始导入节点数据，graphId={}, vertexTypeId={}, config={}", graphId, vertexTypeId, config);
 
-            ImportResult result = graphDataService.importNodeData(graphId, nodeTypeId, file, config);
+            ImportResult result = graphDataService.importNodeData(graphId, vertexTypeId, file, config);
 
             return Result.success(result);
         } catch (Exception e) {
@@ -86,22 +86,22 @@ public class GraphDataController {
      * 查询节点数据列表
      *
      * @param graphId    图ID
-     * @param nodeTypeId 节点类型ID
+     * @param vertexTypeId 节点类型ID
      * @param page       页码
      * @param size       每页大小
      * @return 节点数据列表
      */
-    @GetMapping("/nodes/{nodeTypeId}")
+    @GetMapping("/vertices/{vertexTypeId}")
     public Result<List<GraphVertex>> getNodeDataList(
             @PathVariable Long graphId,
-            @PathVariable Long nodeTypeId,
+            @PathVariable Long vertexTypeId,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
         try {
-            log.info("查询节点数据列表，graphId={}, nodeTypeId={}, page={}, size={}", graphId, nodeTypeId, page, size);
+            log.info("查询节点数据列表，graphId={}, vertexTypeId={}, page={}, size={}", graphId, vertexTypeId, page, size);
             
             // TODO: 实现查询节点数据列表逻辑
-            List<GraphVertex> data = graphDataService.getNodeDataList(graphId, nodeTypeId, page, size);
+            List<GraphVertex> data = graphDataService.getNodeDataList(graphId, vertexTypeId, page, size);
             
             return Result.success(data);
         } catch (Exception e) {
@@ -142,18 +142,18 @@ public class GraphDataController {
      * 获取节点数据详情
      *
      * @param graphId 图ID
-     * @param nodeId  节点ID
+     * @param vertexId  节点ID
      * @return 节点数据详情
      */
-    @GetMapping("/data/nodes/{nodeId}")
+    @GetMapping("/data/vertices/{vertexId}")
     public Result<Map<String, Object>> getNodeData(
             @PathVariable Long graphId,
-            @PathVariable String nodeId) {
+            @PathVariable String vertexId) {
         try {
-            log.info("获取节点数据详情，graphId={}, nodeId={}", graphId, nodeId);
+            log.info("获取节点数据详情，graphId={}, vertexId={}", graphId, vertexId);
             
             // TODO: 实现获取节点数据详情逻辑
-            Map<String, Object> data = graphDataService.getNodeData(graphId, nodeId);
+            Map<String, Object> data = graphDataService.getNodeData(graphId, vertexId);
             
             return Result.success(data);
         } catch (Exception e) {
@@ -190,20 +190,20 @@ public class GraphDataController {
      * 新增节点数据
      *
      * @param graphId    图ID
-     * @param nodeTypeId 节点类型ID
+     * @param vertexTypeId 节点类型ID
      * @param data       节点数据
      * @return 是否成功
      */
-    @PostMapping("/data/nodes/{nodeTypeId}")
+    @PostMapping("/data/vertices/{vertexTypeId}")
     public Result<Boolean> addNodeData(
             @PathVariable Long graphId,
-            @PathVariable Long nodeTypeId,
+            @PathVariable Long vertexTypeId,
             @RequestBody Map<String, Object> data) {
         try {
-            log.info("新增节点数据，graphId={}, nodeTypeId={}, data={}", graphId, nodeTypeId, data);
+            log.info("新增节点数据，graphId={}, vertexTypeId={}, data={}", graphId, vertexTypeId, data);
             
             // TODO: 实现新增节点数据逻辑
-            boolean result = graphDataService.addNodeData(graphId, nodeTypeId, data);
+            boolean result = graphDataService.addNodeData(graphId, vertexTypeId, data);
             
             if (result) {
                 return Result.success(true);
@@ -250,20 +250,20 @@ public class GraphDataController {
      * 更新节点数据
      *
      * @param graphId 图ID
-     * @param nodeId  节点ID
+     * @param vertexId  节点ID
      * @param data    节点数据
      * @return 是否成功
      */
-    @PutMapping("/data/nodes/{nodeId}")
+    @PutMapping("/data/vertices/{vertexId}")
     public Result<Boolean> updateNodeData(
             @PathVariable Long graphId,
-            @PathVariable String nodeId,
+            @PathVariable String vertexId,
             @RequestBody Map<String, Object> data) {
         try {
-            log.info("更新节点数据，graphId={}, nodeId={}, data={}", graphId, nodeId, data);
+            log.info("更新节点数据，graphId={}, vertexId={}, data={}", graphId, vertexId, data);
             
             // TODO: 实现更新节点数据逻辑
-            boolean result = graphDataService.updateNodeData(graphId, nodeId, data);
+            boolean result = graphDataService.updateNodeData(graphId, vertexId, data);
             
             if (result) {
                 return Result.success(true);
@@ -310,20 +310,20 @@ public class GraphDataController {
      * 删除节点
      *
      * @param graphId 图ID
-     * @param nodeId  节点ID
+     * @param vertexId  节点ID
      * @param label   节点标签
      * @return 删除结果
      */
-    @DeleteMapping("/data/nodes/{nodeId}")
+    @DeleteMapping("/data/vertices/{vertexId}")
     public Result<Boolean> deleteNode(
             @PathVariable Long graphId,
-            @PathVariable String nodeId,
+            @PathVariable String vertexId,
             @RequestParam(required = false) String label) {
         try {
-            log.info("开始删除节点，graphId={}, nodeId={}, label={}", graphId, nodeId, label);
+            log.info("开始删除节点，graphId={}, vertexId={}, label={}", graphId, vertexId, label);
 
             // 调用服务方法处理节点删除
-            boolean result = graphDataService.deleteNode(graphId, nodeId, label);
+            boolean result = graphDataService.deleteNode(graphId, vertexId, label);
 
             if (result) {
                 return Result.success(true);
@@ -331,7 +331,7 @@ public class GraphDataController {
                 return Result.error(500, "删除节点失败", false);
             }
         } catch (Exception e) {
-            log.error("删除节点失败，graphId={}, nodeId={}", graphId, nodeId, e);
+            log.error("删除节点失败，graphId={}, vertexId={}", graphId, vertexId, e);
             return Result.error(500, "删除节点失败: " + e.getMessage(), false);
         }
     }
@@ -343,22 +343,22 @@ public class GraphDataController {
      * @param request 包含节点ID列表的请求体
      * @return 删除结果
      */
-    @DeleteMapping("/data/nodes")
+    @DeleteMapping("/data/vertices")
     public Result<Boolean> deleteNodes(
             @PathVariable Long graphId,
             @RequestBody Map<String, Object> request) {
         try {
             @SuppressWarnings("unchecked")
-            List<String> nodeIds = (List<String>) request.get("nodeIds");
+            List<String> vertexIds = (List<String>) request.get("vertexIds");
 
-            if (nodeIds == null || nodeIds.isEmpty()) {
+            if (vertexIds == null || vertexIds.isEmpty()) {
                 return Result.error(400, "节点ID列表不能为空", false);
             }
 
-            log.info("开始批量删除节点，graphId={}, nodeIds={}", graphId, nodeIds);
+            log.info("开始批量删除节点，graphId={}, vertexIds={}", graphId, vertexIds);
 
             // 调用服务方法处理节点批量删除
-            boolean result = graphDataService.deleteNodes(graphId, nodeIds, request.get("label").toString());
+            boolean result = graphDataService.deleteNodes(graphId, vertexIds, request.get("label").toString());
 
             if (result) {
                 return Result.success(true);

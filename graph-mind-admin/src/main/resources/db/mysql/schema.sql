@@ -38,14 +38,14 @@ CREATE TABLE `graph` (
 ) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COMMENT='图信息表';
 
 -- ----------------------------
--- Table structure for graph_database_connection
+-- Table structure for graph_connection
 -- ----------------------------
-DROP TABLE IF EXISTS `graph_database_connection`;
-CREATE TABLE `graph_database_connection` (
+DROP TABLE IF EXISTS `graph_connection`;
+CREATE TABLE `graph_connection` (
                                              `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '连接ID',
                                              `name` varchar(255) NOT NULL COMMENT '连接名称',
-                                             `type` varchar(50) NOT NULL COMMENT '数据库类型',
-                                             `host` varchar(255) NOT NULL COMMENT '主机地址',
+                                             `graph_type` varchar(50) NOT NULL COMMENT '数据库类型',
+                                             `hosts` varchar(255) NOT NULL COMMENT '主机地址',
                                              `port` int(11) NOT NULL COMMENT '端口号',
                                              `username` varchar(100) DEFAULT NULL COMMENT '用户名',
                                              `password` varchar(255) DEFAULT NULL COMMENT '密码',
@@ -78,10 +78,10 @@ CREATE TABLE `graph_edge_def` (
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COMMENT='图边定义表';
 
 -- ----------------------------
--- Table structure for graph_node_def
+-- Table structure for graph_vertex_def
 -- ----------------------------
-DROP TABLE IF EXISTS `graph_node_def`;
-CREATE TABLE `graph_node_def` (
+DROP TABLE IF EXISTS `graph_vertex_def`;
+CREATE TABLE `graph_vertex_def` (
                                   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '节点定义ID',
                                   `graph_id` bigint(20) NOT NULL COMMENT '图ID',
                                   `name` varchar(50) NOT NULL COMMENT '节点类型名称',
@@ -104,7 +104,7 @@ CREATE TABLE `graph_property_def` (
                                       `entity_id` bigint(20) NOT NULL COMMENT '节点定义ID或边定义ID',
                                       `code` varchar(255) NOT NULL COMMENT '属性标识',
                                       `name` varchar(255) NOT NULL COMMENT '属性名',
-                                      `type` varchar(50) NOT NULL COMMENT '属性类型',
+                                      `graph_type` varchar(50) NOT NULL COMMENT '属性类型',
                                       `desc` text COMMENT '属性描述',
                                       `status` tinyint(4) DEFAULT '0' COMMENT '状态：0-未发布，1-已发布',
                                       `indexed` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否索引：1-是，0-否',
@@ -117,19 +117,6 @@ CREATE TABLE `graph_property_def` (
 ) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COMMENT='图属性定义表';
 
 -- ----------------------------
--- Table structure for sys_app_config
--- ----------------------------
-DROP TABLE IF EXISTS `sys_app_config`;
-CREATE TABLE `sys_app_config` (
-                                  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-                                  `config_key` varchar(255) NOT NULL COMMENT '配置键',
-                                  `config_value` text COMMENT '配置值',
-                                  `description` varchar(500) DEFAULT NULL COMMENT '配置描述',
-                                  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-                                  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-                                  PRIMARY KEY (`id`),
-                                  UNIQUE KEY `uk_config_key` (`config_key`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COMMENT='系统配置表';
 
 -- ----------------------------
 

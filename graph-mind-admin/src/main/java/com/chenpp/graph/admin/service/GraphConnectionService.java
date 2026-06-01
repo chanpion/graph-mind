@@ -2,7 +2,7 @@ package com.chenpp.graph.admin.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.chenpp.graph.admin.model.GraphDatabaseConnection;
+import com.chenpp.graph.admin.model.GraphConnection;
 
 /**
  * 图数据库连接服务接口
@@ -10,7 +10,7 @@ import com.chenpp.graph.admin.model.GraphDatabaseConnection;
  * @author April.Chen
  * @date 2025/8/1 16:30
  */
-public interface GraphDatabaseConnectionService extends IService<GraphDatabaseConnection> {
+public interface GraphConnectionService extends IService<GraphConnection> {
     
     /**
      * 分页查询连接列表
@@ -19,7 +19,7 @@ public interface GraphDatabaseConnectionService extends IService<GraphDatabaseCo
      * @param type 数据库类型
      * @return 连接列表
      */
-    Page<GraphDatabaseConnection> queryConnections(Page<GraphDatabaseConnection> page, String keyword, String type);
+    Page<GraphConnection> queryConnections(Page<GraphConnection> page, String keyword, String type);
     
     /**
      * 分页查询连接列表
@@ -27,7 +27,7 @@ public interface GraphDatabaseConnectionService extends IService<GraphDatabaseCo
      * @param keyword 搜索关键词
      * @return 连接列表
      */
-    Page<GraphDatabaseConnection> queryConnections(Page<GraphDatabaseConnection> page, String keyword);
+    Page<GraphConnection> queryConnections(Page<GraphConnection> page, String keyword);
     
     /**
      * 测试连接

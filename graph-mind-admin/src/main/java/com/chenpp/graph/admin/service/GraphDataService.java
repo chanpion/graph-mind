@@ -21,12 +21,12 @@ public interface GraphDataService {
      * 导入节点数据到图数据库
      *
      * @param graphId    图ID
-     * @param nodeTypeId 节点类型ID
+     * @param vertexTypeId 节点类型ID
      * @param file       CSV文件
      * @param config     导入配置JSON（含 delimiter、hasHeader 等）
      * @return 导入结果
      */
-    ImportResult importNodeData(Long graphId, Long nodeTypeId, MultipartFile file, String config);
+    ImportResult importNodeData(Long graphId, Long vertexTypeId, MultipartFile file, String config);
 
     /**
      * 导入边数据到图数据库
@@ -43,12 +43,12 @@ public interface GraphDataService {
      * 查询节点数据列表
      *
      * @param graphId    图ID
-     * @param nodeTypeId 节点类型ID
+     * @param vertexTypeId 节点类型ID
      * @param page       页码
      * @param size       每页大小
      * @return 节点数据列表
      */
-    List<GraphVertex> getNodeDataList(Long graphId, Long nodeTypeId, Integer page, Integer size);
+    List<GraphVertex> getNodeDataList(Long graphId, Long vertexTypeId, Integer page, Integer size);
 
     /**
      * 查询边数据列表
@@ -65,10 +65,10 @@ public interface GraphDataService {
      * 获取节点数据详情
      *
      * @param graphId 图ID
-     * @param nodeId  节点ID
+     * @param vertexId  节点ID
      * @return 节点数据详情
      */
-    Map<String, Object> getNodeData(Long graphId, String nodeId);
+    Map<String, Object> getNodeData(Long graphId, String vertexId);
 
     /**
      * 获取边数据详情
@@ -83,11 +83,11 @@ public interface GraphDataService {
      * 新增节点数据
      *
      * @param graphId    图ID
-     * @param nodeTypeId 节点类型ID
+     * @param vertexTypeId 节点类型ID
      * @param data       节点数据
      * @return 是否成功
      */
-    boolean addNodeData(Long graphId, Long nodeTypeId, Map<String, Object> data);
+    boolean addNodeData(Long graphId, Long vertexTypeId, Map<String, Object> data);
 
     /**
      * 新增边数据
@@ -103,11 +103,11 @@ public interface GraphDataService {
      * 更新节点数据
      *
      * @param graphId 图ID
-     * @param nodeId  节点ID
+     * @param vertexId  节点ID
      * @param data    节点数据
      * @return 是否成功
      */
-    boolean updateNodeData(Long graphId, String nodeId, Map<String, Object> data);
+    boolean updateNodeData(Long graphId, String vertexId, Map<String, Object> data);
 
     /**
      * 更新边数据
@@ -123,21 +123,21 @@ public interface GraphDataService {
      * 删除图数据库中的节点
      *
      * @param graphId 图ID
-     * @param nodeId  节点ID
+     * @param vertexId  节点ID
      * @param label   节点标签
      * @return 删除结果
      */
-    boolean deleteNode(Long graphId, String nodeId, String label);
+    boolean deleteNode(Long graphId, String vertexId, String label);
 
     /**
      * 批量删除图数据库中的节点
      *
      * @param graphId 图ID
-     * @param nodeIds 节点ID列表
+     * @param vertexIds 节点ID列表
      * @param label   节点标签
      * @return 删除结果
      */
-    boolean deleteNodes(Long graphId, List<String> nodeIds, String label);
+    boolean deleteNodes(Long graphId, List<String> vertexIds, String label);
     
     /**
      * 获取图统计信息

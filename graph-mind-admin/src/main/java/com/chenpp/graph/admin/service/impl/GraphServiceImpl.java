@@ -5,15 +5,15 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.chenpp.graph.admin.mapper.GraphDao;
 import com.chenpp.graph.admin.mapper.GraphEdgeDefDao;
-import com.chenpp.graph.admin.mapper.GraphNodeDefDao;
+import com.chenpp.graph.admin.mapper.GraphVertexDefDao;
 import com.chenpp.graph.admin.model.Graph;
-import com.chenpp.graph.admin.model.GraphDatabaseConnection;
+import com.chenpp.graph.admin.model.GraphConnection;
 import com.chenpp.graph.admin.model.GraphEdgeDef;
-import com.chenpp.graph.admin.model.GraphNodeDef;
+import com.chenpp.graph.admin.model.GraphVertexDef;
 import com.chenpp.graph.admin.model.GraphPropertyDef;
-import com.chenpp.graph.admin.service.GraphDatabaseConnectionService;
+import com.chenpp.graph.admin.service.GraphConnectionService;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
-import com.chenpp.graph.admin.service.GraphNodeDefService;
+import com.chenpp.graph.admin.service.GraphVertexDefService;
 import com.chenpp.graph.admin.service.GraphPropertyDefService;
 import com.chenpp.graph.admin.service.GraphService;
 import com.chenpp.graph.admin.util.GraphClientFactory;
@@ -26,8 +26,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -41,7 +45,7 @@ import java.util.stream.Collectors;
 public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements GraphService {
 
     @Autowired
-    private GraphNodeDefService nodeDefService;
+    private GraphVertexDefService vertexDefService;
 
     @Autowired
     private GraphEdgeDefService edgeDefService;
@@ -50,10 +54,10 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
     private GraphPropertyDefService propertyDefService;
 
     @Autowired
-    private GraphDatabaseConnectionService connectionService;
+    private GraphConnectionService connectionService;
 
     @Autowired
-    private GraphNodeDefDao graphNodeDefDao;
+    private GraphVertexDefDao graphVertexDefDao;
 
     @Autowired
     private GraphEdgeDefDao graphEdgeDefDao;
@@ -65,10 +69,10 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
         if (records == null || records.isEmpty()) return;
         List<Long> graphIds = records.stream().map(Graph::getId).collect(Collectors.toList());
         // 一次查询全部节点定义，按 graph_id 分组计数
-        List<GraphNodeDef> allNodes = graphNodeDefDao.selectList(
-                new QueryWrapper<GraphNodeDef>().in("graph_id", graphIds).eq("status", 1).select("graph_id"));
+        List<GraphVertexDef> allNodes = graphVertexDefDao.selectList(
+                new QueryWrapper<GraphVertexDef>().in("graph_id", graphIds).eq("status", 1).select("graph_id"));
         Map<Long, Long> nodeCountMap = allNodes.stream()
-                .collect(Collectors.groupingBy(GraphNodeDef::getGraphId, Collectors.counting()));
+                .collect(Collectors.groupingBy(GraphVertexDef::getGraphId, Collectors.counting()));
         // 一次查询全部边定义，按 graph_id 分组计数
         List<GraphEdgeDef> allEdges = graphEdgeDefDao.selectList(
                 new QueryWrapper<GraphEdgeDef>().in("graph_id", graphIds).eq("status", 1).select("graph_id"));
@@ -77,7 +81,7 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
         // 填充统计信息
         for (Graph graph : records) {
             graph.setDatabaseType(graph.getGraphType());
-            graph.setNodeTypeCount(nodeCountMap.getOrDefault(graph.getId(), 0L).intValue());
+            graph.setVertexTypeCount(nodeCountMap.getOrDefault(graph.getId(), 0L).intValue());
             graph.setEdgeTypeCount(edgeCountMap.getOrDefault(graph.getId(), 0L).intValue());
         }
     }
@@ -100,17 +104,79 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
         queryWrapper.eq("connection_id", connectionId);
         queryWrapper.orderByDesc("create_time");
         Page<Graph> pageResult = this.page(page, queryWrapper);
+
+        // 标记本地图为平台创建
+        for (Graph g : pageResult.getRecords()) {
+            g.setSourceType("PLATFORM");
+        }
         fillGraphCounts(pageResult.getRecords());
+
+        // 从图数据库发现已有图
+        List<Graph> discovered = discoverRemoteGraphs(connectionId);
+        if (!discovered.isEmpty()) {
+            Set<String> localCodes = pageResult.getRecords().stream()
+                .map(Graph::getCode).collect(Collectors.toSet());
+            List<Graph> merged = new ArrayList<>(pageResult.getRecords());
+            for (Graph remote : discovered) {
+                if (!localCodes.contains(remote.getCode())) {
+                    merged.add(remote);
+                }
+            }
+            // 重建分页结果（扩大 total 以包含发现的图）
+            Page<Graph> resultPage = new Page<>(page.getCurrent(), page.getSize(), merged.size());
+            int ps = (int) page.getSize();
+            int from = (int) ((page.getCurrent() - 1) * ps);
+            int to = Math.min(from + ps, merged.size());
+            resultPage.setRecords(from < merged.size() ? merged.subList(from, to) : List.of());
+            return resultPage;
+        }
+
         return pageResult;
+    }
+
+    /**
+     * 从图数据库发现已有的图
+     */
+    private List<Graph> discoverRemoteGraphs(Long connectionId) {
+        List<Graph> result = new ArrayList<>();
+        try {
+            GraphConnection connection = connectionService.getById(connectionId);
+            if (connection == null) return result;
+
+            Graph graph = new Graph();
+            graph.setConnectionId(connectionId);
+            GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
+
+            try (GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf)) {
+                GraphOperations graphOperations = graphClient.opsForGraph();
+                List<com.chenpp.graph.core.schema.Graph> remoteGraphs = graphOperations.listGraphs(graphConf);
+
+                AtomicLong idCounter = new AtomicLong(-1);
+                for (com.chenpp.graph.core.schema.Graph rg : remoteGraphs) {
+                    Graph g = new Graph();
+                    g.setId(idCounter.decrementAndGet());
+                    g.setCode(rg.getCode());
+                    g.setName(rg.getName());
+                    g.setConnectionId(connectionId);
+                    g.setGraphType(connection.getGraphType());
+                    g.setSourceType("EXISTING");
+                    g.setStatus(0);
+                    result.add(g);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("发现远程图失败，connectionId={}: {}", connectionId, e.getMessage());
+        }
+        return result;
     }
 
     @Override
     public boolean save(Graph graph) {
-        GraphDatabaseConnection connection = connectionService.getById(graph.getConnectionId());
+        GraphConnection connection = connectionService.getById(graph.getConnectionId());
         if (connection == null) {
             throw new BusinessException("图数据库连接不存在");
         }
-        graph.setGraphType(connection.getType());
+        graph.setGraphType(connection.getGraphType());
         return super.save(graph);
     }
 
@@ -126,7 +192,7 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
             }
 
             // 获取图数据库连接信息
-            GraphDatabaseConnection connection = connectionService.getById(graph.getConnectionId());
+            GraphConnection connection = connectionService.getById(graph.getConnectionId());
             if (connection == null) {
                 log.warn("图数据库连接不存在，connectionId={}", graph.getConnectionId());
                 // 即使连接不存在，也继续删除本地数据
@@ -149,7 +215,7 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
             }
 
             // 删除图关联的节点定义
-            nodeDefService.remove(new QueryWrapper<GraphNodeDef>().eq("graph_id", graphId));
+            vertexDefService.remove(new QueryWrapper<GraphVertexDef>().eq("graph_id", graphId));
 
             // 删除图关联的边定义
             edgeDefService.remove(new QueryWrapper<GraphEdgeDef>().eq("graph_id", graphId));

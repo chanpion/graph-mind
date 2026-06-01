@@ -6,6 +6,9 @@ import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerIntercept
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+
+import java.util.Arrays;
 
 /**
  * @author April.Chen
@@ -20,10 +23,11 @@ public class MyBatisPlusConfig {
      * @return MybatisPlusInterceptor
      */
     @Bean
-    public MybatisPlusInterceptor mybatisPlusInterceptor() {
+    public MybatisPlusInterceptor mybatisPlusInterceptor(Environment environment) {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
-        // 添加分页插件
-        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.H2));
+        String[] activeProfiles = environment.getActiveProfiles();
+        boolean isH2 = Arrays.asList(activeProfiles).contains("h2");
+        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(isH2 ? DbType.H2 : DbType.MYSQL));
         return interceptor;
     }
 }

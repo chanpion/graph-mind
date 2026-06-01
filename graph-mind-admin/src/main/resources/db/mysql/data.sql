@@ -39,9 +39,9 @@ BEGIN;
 -- 初始化图数据库连接数据
 -- ----------------------------
 BEGIN;
-INSERT INTO graph_database_connection (id, name, type, host, port, username, password, status, description, params, create_time, update_time) VALUES (1, 'Neo4j测试环境', 'NEO4J', '192.168.1.100', 7687, 'neo4j', 'password', 1, '用于测试的Neo4j数据库', '{"username":"neo4j","password":"password"}', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-INSERT INTO graph_database_connection (id, name, type, host, port, username, password, status, description, params, create_time, update_time) VALUES (2, 'Nebula生产环境', 'NEBULA', '192.168.1.101', 9669, 'root', 'nebula', 0, '生产环境Nebula数据库', '{"username":"root","password":"nebula"}', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-INSERT INTO graph_database_connection (id, name, type, host, port, username, password, status, description, params, create_time, update_time) VALUES (3, 'Janus开发环境', 'JANUS', '192.168.1.102', 8182, 'admin', 'admin', 2, '开发环境Janus数据库', '{"username":"admin","password":"admin","storageBackend":"cql"}', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO graph_connection (id, name, graph_type, hosts, port, username, password, status, description, params, create_time, update_time) VALUES (1, 'Neo4j测试环境', 'NEO4J', '192.168.1.100', 7687, 'neo4j', 'password', 1, '用于测试的Neo4j数据库', '{"username":"neo4j","password":"password"}', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO graph_connection (id, name, graph_type, hosts, port, username, password, status, description, params, create_time, update_time) VALUES (2, 'Nebula生产环境', 'NEBULA', '192.168.1.101', 9669, 'root', 'nebula', 0, '生产环境Nebula数据库', '{"username":"root","password":"nebula"}', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO graph_connection (id, name, graph_type, hosts, port, username, password, status, description, params, create_time, update_time) VALUES (3, 'Janus开发环境', 'JANUS', '192.168.1.102', 8182, 'admin', 'admin', 2, '开发环境Janus数据库', '{"username":"admin","password":"admin","storageBackend":"cql"}', '2025-08-01 10:00:00', '2025-08-01 10:00:00');
 COMMIT;
 
 -- ----------------------------
@@ -65,16 +65,5 @@ BEGIN;
 -- 管理员角色拥有所有权限
 
 -- ----------------------------
--- 插入系统配置初始数据
--- ----------------------------
-BEGIN;
--- 插入系统配置初始数据
-INSERT INTO `app_config` (`config_key`, `config_value`, `description`) VALUES
-('system.name', 'Graph Mind Platform', '系统名称'),
-('system.version', '1.0.0', '系统版本'),
-('system.description', '智能知识图谱管理系统', '系统描述'),
-('graph.default.pageSize', '20', '图数据默认分页大小'),
-('graph.query.timeout', '30000', '图查询超时时间(毫秒)');
-COMMIT;
 
 SET FOREIGN_KEY_CHECKS = 1;

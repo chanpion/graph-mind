@@ -40,23 +40,23 @@ export const graphApi = {
   // ====== Schema 管理 ======
 
   /** 获取点定义列表 */
-  getNodeDefs(graphId) {
-    return request.get(`/api/graphs/${graphId}/nodes`)
+  getVertexDefs(graphId) {
+    return request.get(`/api/graphs/${graphId}/vertices`)
   },
 
   /** 新增点定义 */
-  addNodeDef(graphId, data) {
-    return request.post(`/api/graphs/${graphId}/nodes`, data)
+  addVertexDef(graphId, data) {
+    return request.post(`/api/graphs/${graphId}/vertices`, data)
   },
 
   /** 更新点定义 */
-  updateNodeDef(graphId, nodeId, data) {
-    return request.put(`/api/graphs/${graphId}/nodes/${nodeId}`, data)
+  updateVertexDef(graphId, nodeId, data) {
+    return request.put(`/api/graphs/${graphId}/vertices/${nodeId}`, data)
   },
 
   /** 删除点定义 */
-  deleteNodeDef(graphId, nodeId) {
-    return request.delete(`/api/graphs/${graphId}/nodes/${nodeId}`)
+  deleteVertexDef(graphId, nodeId) {
+    return request.delete(`/api/graphs/${graphId}/vertices/${nodeId}`)
   },
 
   /** 获取边定义列表 */
@@ -87,8 +87,8 @@ export const graphApi = {
   // ====== 图数据操作 ======
 
   /** 获取点数据列表 */
-  getNodeDataList(graphId, nodeTypeId, params) {
-    return request.get(`/api/graphs/${graphId}/nodes/${nodeTypeId}`, { params })
+  getNodeDataList(graphId, vertexTypeId, params) {
+    return request.get(`/api/graphs/${graphId}/vertices/${vertexTypeId}`, { params })
   },
 
   /** 获取边数据列表 */
@@ -97,8 +97,8 @@ export const graphApi = {
   },
 
   /** 新增点数据 */
-  addNodeData(graphId, nodeTypeId, data) {
-    return request.post(`/api/graphs/${graphId}/data/nodes/${nodeTypeId}`, data)
+  addNodeData(graphId, vertexTypeId, data) {
+    return request.post(`/api/graphs/${graphId}/data/vertices/${vertexTypeId}`, data)
   },
 
   /** 新增边数据 */
@@ -108,7 +108,7 @@ export const graphApi = {
 
   /** 更新点数据 */
   updateNodeData(graphId, nodeId, data) {
-    return request.put(`/api/graphs/${graphId}/data/nodes/${nodeId}`, data)
+    return request.put(`/api/graphs/${graphId}/data/vertices/${nodeId}`, data)
   },
 
   /** 更新边数据 */
@@ -118,7 +118,7 @@ export const graphApi = {
 
   /** 删除节点 */
   deleteNode(graphId, nodeId, label) {
-    return request.delete(`/api/graphs/${graphId}/data/nodes/${nodeId}`, {
+    return request.delete(`/api/graphs/${graphId}/data/vertices/${nodeId}`, {
       params: { label }
     })
   },
@@ -167,8 +167,8 @@ export const graphApi = {
   // ====== 数据导入 ======
 
   /** 导入节点数据（CSV） */
-  importNodeData(graphId, nodeTypeId, formData) {
-    return request.post(`/api/graphs/${graphId}/import/nodes/${nodeTypeId}`, formData, {
+  importNodeData(graphId, vertexTypeId, formData) {
+    return request.post(`/api/graphs/${graphId}/import/vertices/${vertexTypeId}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
   },

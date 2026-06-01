@@ -13,9 +13,9 @@ public class Constants {
     public static final int BEARER_PREFIX_LENGTH = 7;
 
     /**
-     * JWT相关常量
+     * JWT token过期时间：24小时(毫秒)
      */
-    public static final long JWT_EXPIRATION = 24 * 60 * 60 * 1000; // 24小时(毫秒)
+    public static final long JWT_EXPIRATION = 24 * 60 * 60 * 1000;
 
     /**
      * 系统相关常量

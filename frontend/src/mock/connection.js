@@ -68,7 +68,7 @@ export const mockListConnections = async (config) => {
   const page = params.page || 1
   const pageSize = params.pageSize || 10
   const keyword = params.keyword || ''
-  const type = params.type || ''
+  const type = params.graphType || ''
 
   // 按 keyword 和 type 过滤
   let filtered = mockConnections
@@ -76,11 +76,11 @@ export const mockListConnections = async (config) => {
     const kw = keyword.toLowerCase()
     filtered = filtered.filter(item =>
       item.name.toLowerCase().includes(kw) ||
-      (item.host || '').toLowerCase().includes(kw)
+      (item.hosts || '').toLowerCase().includes(kw)
     )
   }
   if (type) {
-    filtered = filtered.filter(item => (item.type || '').toUpperCase() === type.toUpperCase())
+    filtered = filtered.filter(item => (item.graphType || '').toUpperCase() === type.toUpperCase())
   }
 
   const start = (page - 1) * pageSize

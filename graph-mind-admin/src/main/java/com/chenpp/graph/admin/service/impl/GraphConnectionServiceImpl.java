@@ -3,13 +3,12 @@ package com.chenpp.graph.admin.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.chenpp.graph.admin.mapper.GraphDatabaseConnectionDao;
+import com.chenpp.graph.admin.mapper.GraphConnectionDao;
 import com.chenpp.graph.admin.model.Graph;
-import com.chenpp.graph.admin.model.GraphDatabaseConnection;
-import com.chenpp.graph.admin.service.GraphDatabaseConnectionService;
+import com.chenpp.graph.admin.model.GraphConnection;
+import com.chenpp.graph.admin.service.GraphConnectionService;
 import com.chenpp.graph.admin.util.GraphClientFactory;
 import com.chenpp.graph.core.GraphClient;
-import com.chenpp.graph.core.exception.BusinessException;
 import com.chenpp.graph.core.model.GraphConf;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,29 +23,29 @@ import java.time.LocalDateTime;
  */
 @Slf4j
 @Service
-public class GraphDatabaseConnectionServiceImpl extends ServiceImpl<GraphDatabaseConnectionDao, GraphDatabaseConnection> implements GraphDatabaseConnectionService {
+public class GraphConnectionServiceImpl extends ServiceImpl<GraphConnectionDao, GraphConnection> implements GraphConnectionService {
 
     @Override
-    public Page<GraphDatabaseConnection> queryConnections(Page<GraphDatabaseConnection> page, String keyword, String type) {
-        QueryWrapper<GraphDatabaseConnection> queryWrapper = new QueryWrapper<>();
+    public Page<GraphConnection> queryConnections(Page<GraphConnection> page, String keyword, String type) {
+        QueryWrapper<GraphConnection> queryWrapper = new QueryWrapper<>();
         if (keyword != null && !keyword.isEmpty()) {
             queryWrapper.like("name", keyword).or().like("host", keyword);
         }
         if (type != null && !type.isEmpty()) {
-            queryWrapper.eq("type", type);
+            queryWrapper.eq("graph_type", type);
         }
         queryWrapper.orderByDesc("create_time");
         return this.page(page, queryWrapper);
     }
 
     @Override
-    public Page<GraphDatabaseConnection> queryConnections(Page<GraphDatabaseConnection> page, String keyword) {
+    public Page<GraphConnection> queryConnections(Page<GraphConnection> page, String keyword) {
         return queryConnections(page, keyword, null);
     }
 
     @Override
     public boolean testConnection(Long id) {
-        GraphDatabaseConnection connection = this.getById(id);
+        GraphConnection connection = this.getById(id);
         if (connection == null) {
             return false;
         }
@@ -68,7 +67,7 @@ public class GraphDatabaseConnectionServiceImpl extends ServiceImpl<GraphDatabas
 
     @Override
     public boolean connectDatabase(Long id) {
-        GraphDatabaseConnection connection = this.getById(id);
+        GraphConnection connection = this.getById(id);
         if (connection == null) {
             return false;
         }
@@ -81,7 +80,7 @@ public class GraphDatabaseConnectionServiceImpl extends ServiceImpl<GraphDatabas
 
     @Override
     public boolean disconnectDatabase(Long id) {
-        GraphDatabaseConnection connection = this.getById(id);
+        GraphConnection connection = this.getById(id);
         if (connection == null) {
             return false;
         }
@@ -90,5 +89,13 @@ public class GraphDatabaseConnectionServiceImpl extends ServiceImpl<GraphDatabas
         connection.setStatus(0);
         connection.setUpdateTime(LocalDateTime.now());
         return this.updateById(connection);
+    }
+
+    @Override
+    public boolean save(GraphConnection entity) {
+        entity.setCreateTime(LocalDateTime.now());
+        entity.setUpdateTime(LocalDateTime.now());
+        entity.setStatus(0);
+        return super.save(entity);
     }
 }

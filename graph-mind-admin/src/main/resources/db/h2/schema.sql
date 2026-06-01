@@ -22,14 +22,14 @@ CREATE TABLE sys_user (
 );
 
 -- ----------------------------
--- Table structure for graph_database_connection
+-- Table structure for graph_connection
 -- ----------------------------
-DROP TABLE IF EXISTS graph_database_connection;
-CREATE TABLE graph_database_connection (
+DROP TABLE IF EXISTS graph_connection;
+CREATE TABLE graph_connection (
   id BIGINT NOT NULL AUTO_INCREMENT COMMENT '连接ID',
   name VARCHAR(255) NOT NULL COMMENT '连接名称',
-  type VARCHAR(50) NOT NULL COMMENT '数据库类型',
-  host VARCHAR(255) NOT NULL COMMENT '主机地址',
+  graph_type VARCHAR(50) NOT NULL COMMENT '数据库类型',
+  hosts VARCHAR(255) NOT NULL COMMENT '主机地址',
   port INT NOT NULL COMMENT '端口号',
   username VARCHAR(100) DEFAULT NULL COMMENT '用户名',
   password VARCHAR(255) DEFAULT NULL COMMENT '密码',
@@ -62,10 +62,10 @@ CREATE TABLE graph (
 CREATE INDEX idx_connection_id ON graph(connection_id);
 
 -- ----------------------------
--- Table structure for graph_node_def
+-- Table structure for graph_vertex_def
 -- ----------------------------
-DROP TABLE IF EXISTS graph_node_def;
-CREATE TABLE graph_node_def (
+DROP TABLE IF EXISTS graph_vertex_def;
+CREATE TABLE graph_vertex_def (
   id BIGINT NOT NULL AUTO_INCREMENT COMMENT '节点定义ID',
   graph_id BIGINT NOT NULL COMMENT '图ID',
   name VARCHAR(50) NOT NULL COMMENT '节点类型名称',
@@ -76,7 +76,7 @@ CREATE TABLE graph_node_def (
   update_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id)
 );
-CREATE INDEX idx_node_def_graph_id ON graph_node_def(graph_id);
+CREATE INDEX idx_vertex_def_graph_id ON graph_vertex_def(graph_id);
 
 -- ----------------------------
 -- Table structure for graph_edge_def
@@ -121,16 +121,3 @@ CREATE INDEX idx_property_def_entity_id ON graph_property_def(entity_id);
 CREATE INDEX idx_property_def_type ON graph_property_def(property_type);
 
 -- ----------------------------
--- Table structure for sys_app_config
--- ----------------------------
-DROP TABLE IF EXISTS sys_app_config;
-CREATE TABLE sys_app_config (
-  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  config_key VARCHAR(255) NOT NULL COMMENT '配置键',
-  config_value TEXT COMMENT '配置值',
-  description VARCHAR(500) DEFAULT NULL COMMENT '配置描述',
-  create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (id),
-  CONSTRAINT uk_config_key UNIQUE (config_key)
-);

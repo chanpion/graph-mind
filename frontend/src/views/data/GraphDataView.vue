@@ -17,11 +17,11 @@
             <div class="section-header">
               <span class="section-icon"><el-icon><Connection /></el-icon></span>
               <h4>节点类型</h4>
-              <span class="section-count">{{ nodeTypes.length }}</span>
+              <span class="section-count">{{ vertexTypes.length }}</span>
             </div>
-            <div class="label-tags" v-if="nodeTypes.length">
+            <div class="label-tags" v-if="vertexTypes.length">
               <div
-                v-for="t in nodeTypes"
+                v-for="t in vertexTypes"
                 :key="t.id"
                 class="label-tag"
                 :class="{ active: selectedType === 'node' && selectedTypeId === t.id }"
@@ -162,16 +162,16 @@
       <el-form :model="nodeForm" label-width="90px">
         <el-form-item label="标签" required>
           <el-select v-model="nodeForm.label" placeholder="选择节点标签" style="width: 100%" @change="onNodeLabelChange">
-            <el-option v-for="t in nodeTypes" :key="t.id" :label="t.name || t.label" :value="t.label" />
+            <el-option v-for="t in vertexTypes" :key="t.id" :label="t.name || t.label" :value="t.label" />
           </el-select>
         </el-form-item>
         <el-form-item label="UID" required>
           <el-input v-model="nodeForm.uid" placeholder="输入唯一标识符" />
         </el-form-item>
-        <el-form-item label="属性" v-if="currentNodeDef && currentNodeDef.properties?.length">
+        <el-form-item label="属性" v-if="currentVertexDef && currentVertexDef.properties?.length">
           <div class="props-form">
             <el-form-item
-              v-for="prop in currentNodeDef.properties"
+              v-for="prop in currentVertexDef.properties"
               :key="prop.id"
               :label="prop.name || prop.code"
               :prop="`props.${prop.code}`"
@@ -286,7 +286,7 @@ const graphsStore = useGraphsStore()
 
 // ---- 图信息 ----
 const graphId = computed(() => graphsStore.currentGraphId)
-const nodeTypes = ref([])
+const vertexTypes = ref([])
 const edgeTypes = ref([])
 const graphLoaded = ref(false)
 
@@ -376,17 +376,17 @@ async function loadTypes() {
   graphLoaded.value = false
   try {
     const [nodes, edges] = await Promise.all([
-      graphApi.getNodeDefs(graphId.value),
+      graphApi.getVertexDefs(graphId.value),
       graphApi.getEdgeDefs(graphId.value)
     ])
-    nodeTypes.value = Array.isArray(nodes) ? nodes : (nodes?.data || [])
+    vertexTypes.value = Array.isArray(nodes) ? nodes : (nodes?.data || [])
     edgeTypes.value = Array.isArray(edges) ? edges : (edges?.data || [])
     graphLoaded.value = true
 
     // 自动选中第一个类型，右侧直接显示数据
     if (!selectedTypeId.value) {
-      if (nodeTypes.value.length > 0) {
-        selectNodeType(nodeTypes.value[0])
+      if (vertexTypes.value.length > 0) {
+        selectNodeType(vertexTypes.value[0])
       } else if (edgeTypes.value.length > 0) {
         selectEdgeType(edgeTypes.value[0])
       }
@@ -400,12 +400,12 @@ async function loadTypes() {
 const nodeDialogVisible = ref(false)
 const nodeDialogTitle = ref('')
 const nodeForm = ref({ label: '', uid: '', props: {} })
-const currentNodeDef = ref(null)
+const currentVertexDef = ref(null)
 
 function showCreateDialog() {
   if (selectedType.value === 'node') {
     nodeForm.value = { label: '', uid: '', props: {} }
-    currentNodeDef.value = null
+    currentVertexDef.value = null
     nodeDialogTitle.value = '新增节点'
     nodeDialogVisible.value = true
   } else {
@@ -417,7 +417,7 @@ function showCreateDialog() {
 }
 
 function onNodeLabelChange(label) {
-  currentNodeDef.value = nodeTypes.value.find(t => t.label === label) || null
+  currentVertexDef.value = vertexTypes.value.find(t => t.label === label) || null
   nodeForm.value.props = {}
 }
 
@@ -429,8 +429,8 @@ function onEdgeLabelChange(label) {
 function showEditDialog(row) {
   const props = row.properties || {}
   if (selectedType.value === 'node') {
-    const def = nodeTypes.value.find(t => t.label === row.label)
-    currentNodeDef.value = def || null
+    const def = vertexTypes.value.find(t => t.label === row.label)
+    currentVertexDef.value = def || null
     nodeForm.value = {
       uid: row.uid,
       label: row.label,
@@ -602,7 +602,7 @@ const baseFields = computed(() => {
     cols.push('startUid', 'endUid')
   }
   // 从 schema 获取属性列
-  const typeDefs = selectedType.value === 'node' ? nodeTypes.value : edgeTypes.value
+  const typeDefs = selectedType.value === 'node' ? vertexTypes.value : edgeTypes.value
   const currentType = typeDefs.find(t => t.id === selectedTypeId.value)
   const schemaProps = (currentType?.properties || [])
     .filter(p => !cols.includes(p.code))
@@ -663,7 +663,7 @@ function downloadTemplate() {
   const typeLabel = selectedType.value === 'node' ? '节点' : '边'
   const fields = baseFields.value
   const headerRow = fields.join(',')
-  const typeDefs = selectedType.value === 'node' ? nodeTypes.value : edgeTypes.value
+  const typeDefs = selectedType.value === 'node' ? vertexTypes.value : edgeTypes.value
   const currentType = typeDefs.find(t => t.id === selectedTypeId.value)
   const exampleRow = fields.map(f => {
     if (f === 'label') {

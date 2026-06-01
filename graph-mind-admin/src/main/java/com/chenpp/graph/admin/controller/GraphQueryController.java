@@ -1,9 +1,9 @@
 package com.chenpp.graph.admin.controller;
 
 import com.chenpp.graph.admin.model.Graph;
-import com.chenpp.graph.admin.model.GraphDatabaseConnection;
+import com.chenpp.graph.admin.model.GraphConnection;
 import com.chenpp.graph.admin.model.Result;
-import com.chenpp.graph.admin.service.GraphDatabaseConnectionService;
+import com.chenpp.graph.admin.service.GraphConnectionService;
 import com.chenpp.graph.admin.service.GraphService;
 import com.chenpp.graph.admin.util.GraphClientFactory;
 import com.chenpp.graph.core.GraphClient;
@@ -33,7 +33,7 @@ public class GraphQueryController {
     private GraphService graphService;
 
     @Autowired
-    private GraphDatabaseConnectionService connectionService;
+    private GraphConnectionService connectionService;
 
     @PostMapping("/query")
     public Result<GraphData> query(
@@ -51,7 +51,7 @@ public class GraphQueryController {
         }
 
         // 获取图数据库连接信息
-        GraphDatabaseConnection connection = connectionService.getById(graph.getConnectionId());
+        GraphConnection connection = connectionService.getById(graph.getConnectionId());
         if (connection == null) {
             return Result.error("图数据库连接不存在，connectionId=" + graph.getConnectionId());
         }
@@ -71,10 +71,10 @@ public class GraphQueryController {
     public Result<GraphData> expand(
             @PathVariable Long graphId,
             @RequestBody Map<String, Object> request) {
-        String nodeId = (String) request.get("nodeId");
+        String vertexId = (String) request.get("vertexId");
         Integer depth = (Integer) request.get("depth");
 
-        if (nodeId == null || nodeId.isEmpty()) {
+        if (vertexId == null || vertexId.isEmpty()) {
             return Result.error("节点ID不能为空");
         }
 
@@ -89,7 +89,7 @@ public class GraphQueryController {
         }
 
         // 获取图数据库连接信息
-        GraphDatabaseConnection connection = connectionService.getById(graph.getConnectionId());
+        GraphConnection connection = connectionService.getById(graph.getConnectionId());
         if (connection == null) {
             return Result.error("图数据库连接不存在，connectionId=" + graph.getConnectionId());
         }
@@ -100,7 +100,7 @@ public class GraphQueryController {
         GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
         GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
         // 执行查询
-        GraphData graphData = graphDataOperations.expand(nodeId, depth);
+        GraphData graphData = graphDataOperations.expand(vertexId, depth);
         return Result.success(graphData);
     }
 
@@ -131,7 +131,7 @@ public class GraphQueryController {
         }
 
         // 获取图数据库连接信息
-        GraphDatabaseConnection connection = connectionService.getById(graph.getConnectionId());
+        GraphConnection connection = connectionService.getById(graph.getConnectionId());
         if (connection == null) {
             return Result.error("图数据库连接不存在，connectionId=" + graph.getConnectionId());
         }
@@ -144,7 +144,7 @@ public class GraphQueryController {
 
         // 根据图数据库类型构造路径查询语句
         String pathQuery;
-        String dbType = connection.getType();
+        String dbType = connection.getGraphType();
         if ("nebula".equalsIgnoreCase(dbType)) {
             pathQuery = String.format("FIND SHORTEST PATH FROM \"%s\" TO \"%s\" OVER * UPTO %d STEPS YIELD PATH AS p",
                     startNodeId, endNodeId, maxDepth);

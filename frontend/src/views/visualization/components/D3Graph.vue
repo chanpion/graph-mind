@@ -42,8 +42,8 @@ function prepareData(data) {
   const nodeMap = new Map(nodes.map(n => [n.id, n]))
 
   const edges = (data.edges || []).map((e, i) => {
-    const sourceVal = typeof e.source === 'object' ? (e.source.id || e.source.uid || e.source) : (e.source || e.startUid || e.sourceUid)
-    const targetVal = typeof e.target === 'object' ? (e.target.id || e.target.uid || e.target) : (e.target || e.endUid || e.targetUid)
+    const sourceVal = typeof e.source === 'object' ? (e.source.id || e.source.uid || e.source) : (e.source || e.startUid)
+    const targetVal = typeof e.target === 'object' ? (e.target.id || e.target.uid || e.target) : (e.target || e.endUid)
     return {
       ...e,
       id: e.id || e.uid || `edge-${i}`,

@@ -654,8 +654,8 @@ const transformApiResponseToGraphData = (apiResponse) => {
       edges: rawData.edges
         .map(e => ({
           id: e.uid || e.id,
-          source: e.startUid || e.sourceUid || e.source || '',
-          target: e.endUid || e.targetUid || e.target || '',
+          source: e.startUid,
+          target: e.endUid,
           label: e.label,
           properties: e.properties || {}
         }))
@@ -695,9 +695,9 @@ const transformApiResponseToGraphData = (apiResponse) => {
         }
 
         // 如果是边（根据实际API返回的边格式调整）
-        if ((item.startUid || item.sourceUid) && (item.endUid || item.targetUid) && item.label) {
-          const sourceId = item.startUid || item.sourceUid
-          const targetId = item.endUid || item.targetUid
+        if (item.startUid && item.endUid && item.label) {
+          const sourceId = item.startUid
+          const targetId = item.endUid
           const edgeId = `${sourceId}_${item.label}_${targetId}`
           if (!edgeMap.has(edgeId)) {
             edgeMap.set(edgeId, {

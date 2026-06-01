@@ -19,7 +19,7 @@
 
     <div class="card-stats">
       <div class="stat-item">
-        <div class="stat-value">{{ graph.nodeTypeCount != null ? graph.nodeTypeCount : '--' }}</div>
+        <div class="stat-value">{{ graph.vertexTypeCount != null ? graph.vertexTypeCount : '--' }}</div>
         <div class="stat-label">节点类型</div>
       </div>
       <el-divider direction="vertical" />

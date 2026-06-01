@@ -63,15 +63,15 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="type" label="数据库类型" width="130">
+        <el-table-column prop="graphType" label="数据库类型" width="130">
           <template #default="{ row }">
-            <el-tag :type="getTypeTagType(row.type)">
-              {{ getTypeLabel(row.type) }}
+            <el-tag :type="getTypeTagType(row.graphType)">
+              {{ getTypeLabel(row.graphType) }}
             </el-tag>
           </template>
         </el-table-column>
 
-        <el-table-column prop="host" label="主机地址" min-width="160" />
+        <el-table-column prop="hosts" label="主机地址" min-width="160" />
 
         <el-table-column prop="port" label="端口" width="80" />
 
@@ -90,6 +90,7 @@
               :icon="Connection"
               size="small"
               circle
+              :loading="testingId === row.id"
               @click="handleTest(row)"
               title="测试"
             />
@@ -139,16 +140,16 @@
           <el-input v-model="form.name" placeholder="请输入连接名称" maxlength="50" show-word-limit />
         </el-form-item>
 
-        <el-form-item label="数据库类型" prop="type">
-          <el-select v-model="form.type" placeholder="请选择数据库类型" style="width: 100%" @change="handleTypeChange">
+        <el-form-item label="数据库类型" prop="graphType">
+          <el-select v-model="form.graphType" placeholder="请选择数据库类型" style="width: 100%" @change="handleTypeChange">
             <el-option label="Neo4j" value="NEO4J" />
             <el-option label="Nebula" value="NEBULA" />
             <el-option label="Janus" value="JANUS" />
           </el-select>
         </el-form-item>
 
-        <el-form-item label="主机地址" prop="host">
-          <el-input v-model="form.host" placeholder="请输入主机地址，多个地址用逗号分隔" />
+        <el-form-item label="主机地址" prop="hosts">
+          <el-input v-model="form.hosts" placeholder="请输入主机地址，多个地址用逗号分隔" />
         </el-form-item>
 
         <el-form-item label="端口" prop="port">
@@ -163,7 +164,7 @@
           <el-input v-model="form.password" type="password" placeholder="请输入密码" show-password />
         </el-form-item>
 
-        <template v-if="form.type === 'JANUS'">
+        <template v-if="form.graphType === 'JANUS'">
           <el-form-item label="存储后端" prop="storageBackend">
             <el-select v-model="form.storageBackend" placeholder="请选择存储后端">
               <el-option label="Cassandra (CQL)" value="cql" />
@@ -205,6 +206,7 @@ const pageSize = ref(10)
 const total = ref(0)
 const dialogVisible = ref(false)
 const submitLoading = ref(false)
+const testingId = ref(null)
 const formRef = ref()
 
 const connections = ref([])
@@ -231,8 +233,8 @@ const rules = computed(() => {
       { required: true, message: '请输入连接名称', trigger: 'blur' },
       { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
     ],
-    type: [{ required: true, message: '请选择数据库类型', trigger: 'change' }],
-    host: [{ required: true, message: '请输入主机地址', trigger: 'blur' }],
+    graphType: [{ required: true, message: '请选择数据库类型', trigger: 'change' }],
+    hosts: [{ required: true, message: '请输入主机地址', trigger: 'blur' }],
     port: [{ required: true, message: '请输入端口号', trigger: 'blur' }],
     password: isEdit ? [] : [{ required: true, message: '请输入密码', trigger: 'blur' }]
   }
@@ -276,7 +278,7 @@ async function fetchConnections() {
   try {
     const params = { page: currentPage.value, pageSize: pageSize.value }
     if (searchKeyword.value) params.keyword = searchKeyword.value
-    if (searchType.value) params.type = searchType.value
+    if (searchType.value) params.graphType = searchType.value
     const res = await connectionApi.list(params)
     const data = Array.isArray(res) ? { records: res, total: res.length } : (res?.data || { records: [], total: 0 })
     connections.value = data.records || data.list || []
@@ -308,16 +310,16 @@ function handleEdit(row) {
   const editRow = JSON.parse(JSON.stringify(row))
   form.id = editRow.id
   form.name = editRow.name
-  form.type = normalizeType(editRow.type) || 'NEO4J'
-  form.host = editRow.host || ''
-  form.port = editRow.port ?? (defaultPorts[normalizeType(editRow.type)] || 7687)
+  form.graphType = normalizeType(editRow.graphType) || 'NEO4J'
+  form.hosts = editRow.hosts || ''
+  form.port = editRow.port ?? (defaultPorts[normalizeType(editRow.graphType)] || 7687)
   form.description = editRow.description || ''
 
   form.username = editRow.username || ''
 
   // 兼容旧数据：如果实体字段为空，从 params 中获取
+  let params = {}
   if (!editRow.username && !editRow.password) {
-    let params = {}
     if (editRow.params) {
       try {
         params = typeof editRow.params === 'string' ? JSON.parse(editRow.params) : editRow.params
@@ -349,17 +351,20 @@ async function handleDelete(row) {
 }
 
 async function handleTest(row) {
+  testingId.value = row.id
   try {
     const res = await connectionApi.testConnection(row.id)
-    const ok = res?.code === 200
+    const ok = res?.data === true
     if (ok) {
       ElMessage.success('连接测试通过')
       fetchConnections()
     } else {
-      ElMessage.error(res?.message || '连接失败')
+      ElMessage.error('连接测试失败')
     }
   } catch (error) {
     ElMessage.error(error.message || '连接测试失败')
+  } finally {
+    testingId.value = null
   }
 }
 
@@ -386,7 +391,7 @@ async function handleSubmit() {
     if (data.storageHost) params.storageHost = data.storageHost
     data.params = JSON.stringify(params)
     // 确保 type 存为大写
-    data.type = normalizeType(data.type)
+    data.graphType = normalizeType(data.graphType)
     // 清理不存在的字段，避免后端报错
     delete data.username
     delete data.password
@@ -415,8 +420,8 @@ function handleDialogClose() {
 function resetForm() {
   form.id = null
   form.name = ''
-  form.type = 'NEO4J'
-  form.host = ''
+  form.graphType = 'NEO4J'
+  form.hosts = ''
   form.port = 7687
   form.username = ''
   form.password = ''

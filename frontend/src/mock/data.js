@@ -20,12 +20,12 @@ const mockVertices = {
 }
 
 const mockEdges = [
-  { id: 'edge_001', source: 'person_001', sourceLabel: 'Person', target: 'company_001', targetLabel: 'Company', label: 'WORKS_AT', properties: { position: '软件工程师', since: '2020-01-15' } },
-  { id: 'edge_002', source: 'person_002', sourceLabel: 'Person', target: 'company_002', targetLabel: 'Company', label: 'WORKS_AT', properties: { position: '产品经理', since: '2019-06-10' } },
-  { id: 'edge_003', source: 'person_003', sourceLabel: 'Person', target: 'company_003', targetLabel: 'Company', label: 'WORKS_AT', properties: { position: '算法工程师', since: '2021-03-20' } },
-  { id: 'edge_004', source: 'person_001', sourceLabel: 'Person', target: 'person_002', targetLabel: 'Person', label: 'KNOWS', properties: { years: 5 } },
-  { id: 'edge_005', source: 'person_001', sourceLabel: 'Person', target: 'person_003', targetLabel: 'Person', label: 'KNOWS', properties: { years: 3 } },
-  { id: 'edge_006', source: 'person_002', sourceLabel: 'Person', target: 'person_003', targetLabel: 'Person', label: 'KNOWS', properties: { years: 2 } }
+  { id: 'edge_001', startUid: 'person_001', startLabel: 'Person', endUid: 'company_001', endLabel: 'Company', label: 'WORKS_AT', properties: { position: '软件工程师', since: '2020-01-15' } },
+  { id: 'edge_002', startUid: 'person_002', startLabel: 'Person', endUid: 'company_002', endLabel: 'Company', label: 'WORKS_AT', properties: { position: '产品经理', since: '2019-06-10' } },
+  { id: 'edge_003', startUid: 'person_003', startLabel: 'Person', endUid: 'company_003', endLabel: 'Company', label: 'WORKS_AT', properties: { position: '算法工程师', since: '2021-03-20' } },
+  { id: 'edge_004', startUid: 'person_001', startLabel: 'Person', endUid: 'person_002', endLabel: 'Person', label: 'KNOWS', properties: { years: 5 } },
+  { id: 'edge_005', startUid: 'person_001', startLabel: 'Person', endUid: 'person_003', endLabel: 'Person', label: 'KNOWS', properties: { years: 3 } },
+  { id: 'edge_006', startUid: 'person_002', startLabel: 'Person', endUid: 'person_003', endLabel: 'Person', label: 'KNOWS', properties: { years: 2 } }
 ]
 
 export const mockQueryVertices = async (connectionId, graphName, params) => {
@@ -90,18 +90,13 @@ export const mockQueryEdges = async (connectionId, graphName, params) => {
   const pageSize = params.pageSize || 10
   const start = (pageNum - 1) * pageSize
   const end = start + pageSize
-  const pagedEdges = edges.slice(start, end).map(e => ({
-    ...e,
-    uid: e.id,
-    startUid: e.source,
-    endUid: e.target
-  }))
+  const pagedEdges = edges.slice(start, end).map(e => ({ ...e, uid: e.id }))
   return mockSuccess({ list: pagedEdges, total: edges.length, pageNum, pageSize })
 }
 
 export const mockCreateEdge = async (connectionId, graphName, data) => {
   await mockDelay()
-  const newEdge = { id: `edge_${Date.now()}`, source: data.source, sourceLabel: data.sourceLabel, target: data.target, targetLabel: data.targetLabel, label: data.label, properties: data.properties || {} }
+  const newEdge = { id: `edge_${Date.now()}`, startUid: data.startUid, startLabel: data.startLabel, endUid: data.endUid, endLabel: data.endLabel, label: data.label, properties: data.properties || {} }
   mockEdges.push(newEdge)
   return mockSuccess(newEdge)
 }

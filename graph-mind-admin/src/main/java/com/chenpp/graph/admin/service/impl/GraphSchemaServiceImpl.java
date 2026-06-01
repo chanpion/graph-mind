@@ -1,15 +1,15 @@
 package com.chenpp.graph.admin.service.impl;
 
 import com.chenpp.graph.admin.model.Graph;
-import com.chenpp.graph.admin.model.GraphDatabaseConnection;
+import com.chenpp.graph.admin.model.GraphConnection;
 import com.chenpp.graph.admin.model.GraphEdgeDef;
-import com.chenpp.graph.admin.model.GraphNodeDef;
+import com.chenpp.graph.admin.model.GraphVertexDef;
 import com.chenpp.graph.admin.model.GraphPropertyDef;
 import com.chenpp.graph.admin.model.SchemaExportDTO;
 import com.chenpp.graph.admin.model.SchemaImportDTO;
-import com.chenpp.graph.admin.service.GraphDatabaseConnectionService;
+import com.chenpp.graph.admin.service.GraphConnectionService;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
-import com.chenpp.graph.admin.service.GraphNodeDefService;
+import com.chenpp.graph.admin.service.GraphVertexDefService;
 import com.chenpp.graph.admin.service.GraphPropertyDefService;
 import com.chenpp.graph.admin.service.GraphSchemaService;
 import com.chenpp.graph.admin.service.GraphService;
@@ -52,10 +52,10 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
     private GraphService graphService;
 
     @Resource
-    private GraphDatabaseConnectionService connectionService;
+    private GraphConnectionService connectionService;
 
     @Resource
-    private GraphNodeDefService graphNodeDefService;
+    private GraphVertexDefService graphVertexDefService;
 
     @Resource
     private GraphEdgeDefService graphEdgeDefService;
@@ -71,7 +71,7 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             throw new GraphException("图不存在");
         }
         // 获取图数据库连接信息
-        GraphDatabaseConnection connection = connectionService.getById(graph.getConnectionId());
+        GraphConnection connection = connectionService.getById(graph.getConnectionId());
         if (connection == null) {
             throw new GraphException("图数据库连接不存在");
         }
@@ -88,7 +88,7 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
     public GraphSchema getGraphSchema(Long graphId) {
         // 获取图信息
         Graph graph = graphService.getById(graphId);
-        List<GraphNodeDef> nodes = graphNodeDefService.getNodeDefsByGraphId(graphId, 0);
+        List<GraphVertexDef> nodes = graphVertexDefService.getVertexDefsByGraphId(graphId, 0);
         List<GraphEdgeDef> edges = graphEdgeDefService.getEdgeDefsByGraphId(graphId, 0);
         // 构建图模式
         GraphSchema graphSchema = new GraphSchema();
@@ -104,8 +104,8 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         List<GraphRelation> relations = edges.stream().map(edge -> {
             GraphRelation relation = new GraphRelation();
             relation.setLabel(edge.getLabel());
-            relation.setSourceLabel(edge.getFrom());
-            relation.setTargetLabel(edge.getTo());
+            relation.setStartLabel(edge.getFrom());
+            relation.setEndLabel(edge.getTo());
             relation.setProperties(transformGraphProperty(edge.getProperties()));
             relation.setMultiple(edge.getMultiple());
             return relation;
@@ -158,12 +158,12 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
                 return;
             }
             // 获取图数据库连接信息
-            GraphDatabaseConnection connection = connectionService.getById(graph.getConnectionId());
+            GraphConnection connection = connectionService.getById(graph.getConnectionId());
             if (connection == null) {
                 log.error("图数据库连接不存在，connectionId={}", graph.getConnectionId());
                 return;
             }
-            List<GraphNodeDef> nodes = graphNodeDefService.getNodeDefsByGraphId(graphId, 0);
+            List<GraphVertexDef> nodes = graphVertexDefService.getVertexDefsByGraphId(graphId, 0);
             List<GraphEdgeDef> edges = graphEdgeDefService.getEdgeDefsByGraphId(graphId, 0);
 
             // 构建图配置信息
@@ -184,7 +184,7 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
                 node.setStatus(1);
                 propertyList.addAll(node.getProperties());
             });
-            graphNodeDefService.updateBatchById(nodes);
+            graphVertexDefService.updateBatchById(nodes);
             // 更新边定义状态为已发布
             edges.forEach(edge -> {
                 edge.setStatus(1);
@@ -218,7 +218,7 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         if (graph == null) {
             throw new GraphException("图不存在");
         }
-        List<GraphNodeDef> nodes = graphNodeDefService.getNodeDefsByGraphId(graphId, null);
+        List<GraphVertexDef> nodes = graphVertexDefService.getVertexDefsByGraphId(graphId, null);
         List<GraphEdgeDef> edges = graphEdgeDefService.getEdgeDefsByGraphId(graphId, null);
 
         SchemaExportDTO dto = new SchemaExportDTO();
@@ -238,7 +238,7 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             throw new GraphException("导入数据为空");
         }
 
-        List<GraphNodeDef> importNodes = importDTO.getNodes();
+        List<GraphVertexDef> importNodes = importDTO.getNodes();
         List<GraphEdgeDef> importEdges = importDTO.getEdges();
         if ((importNodes == null || importNodes.isEmpty()) && (importEdges == null || importEdges.isEmpty())) {
             throw new GraphException("导入数据为空");
@@ -249,9 +249,9 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
 
         // 替换模式：先删除现有的节点和边定义
         if (replace) {
-            List<GraphNodeDef> existingNodes = graphNodeDefService.getNodeDefsByGraphId(graphId, null);
-            for (GraphNodeDef node : existingNodes) {
-                graphNodeDefService.deleteNodeDefWithProperties(node.getId());
+            List<GraphVertexDef> existingNodes = graphVertexDefService.getVertexDefsByGraphId(graphId, null);
+            for (GraphVertexDef node : existingNodes) {
+                graphVertexDefService.deleteVertexDefWithProperties(node.getId());
             }
             List<GraphEdgeDef> existingEdges = graphEdgeDefService.getEdgeDefsByGraphId(graphId, null);
             for (GraphEdgeDef edge : existingEdges) {
@@ -264,15 +264,15 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         if (replace) {
             existingNodeLabelIdMap = Map.of();
         } else {
-            List<GraphNodeDef> existingNodes = graphNodeDefService.getNodeDefsByGraphId(graphId, null);
+            List<GraphVertexDef> existingNodes = graphVertexDefService.getVertexDefsByGraphId(graphId, null);
             existingNodeLabelIdMap = existingNodes.stream()
                 .filter(n -> n.getLabel() != null)
-                .collect(Collectors.toMap(GraphNodeDef::getLabel, GraphNodeDef::getId, (a, b) -> a));
+                .collect(Collectors.toMap(GraphVertexDef::getLabel, GraphVertexDef::getId, (a, b) -> a));
         }
 
         // 导入节点定义
         if (importNodes != null) {
-            for (GraphNodeDef node : importNodes) {
+            for (GraphVertexDef node : importNodes) {
                 // 合并模式：检查是否已存在（按label去重）
                 if (!replace && existingNodeLabelIdMap.containsKey(node.getLabel())) {
                     continue;
@@ -281,14 +281,14 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
                 node.setId(null);
                 node.setStatus(0);
                 // 保存节点定义及其属性
-                graphNodeDefService.saveNodeDefWithProperties(node);
+                graphVertexDefService.saveVertexDefWithProperties(node);
             }
         }
 
         // 重新获取最新的节点定义映射（包含刚导入的）
-        Map<String, Long> allNodeLabelIdMap = graphNodeDefService.getNodeDefsByGraphId(graphId, null).stream()
+        Map<String, Long> allNodeLabelIdMap = graphVertexDefService.getVertexDefsByGraphId(graphId, null).stream()
             .filter(n -> n.getLabel() != null)
-            .collect(Collectors.toMap(GraphNodeDef::getLabel, GraphNodeDef::getId, (a, b) -> a));
+            .collect(Collectors.toMap(GraphVertexDef::getLabel, GraphVertexDef::getId, (a, b) -> a));
 
         // 导入边定义
         if (importEdges != null) {
