@@ -40,8 +40,8 @@ export const graphApi = {
   // ====== Schema 管理 ======
 
   /** 获取点定义列表 */
-  getVertexDefs(graphId) {
-    return request.get(`/api/graphs/${graphId}/vertices`)
+  getVertexDefs(graphId, params) {
+    return request.get(`/api/graphs/${graphId}/vertices`, { params })
   },
 
   /** 新增点定义 */
@@ -60,8 +60,8 @@ export const graphApi = {
   },
 
   /** 获取边定义列表 */
-  getEdgeDefs(graphId) {
-    return request.get(`/api/graphs/${graphId}/edges`)
+  getEdgeDefs(graphId, params) {
+    return request.get(`/api/graphs/${graphId}/edges`, { params })
   },
 
   /** 新增边定义 */
@@ -133,23 +133,23 @@ export const graphApi = {
   // ====== 查询与分析 ======
 
   /** 执行查询 */
-  queryGraph(graphId, cypher) {
-    return request.post(`/api/graphs/${graphId}/query`, { cypher })
+  queryGraph(graphId, cypher, params) {
+    return request.post(`/api/graphs/${graphId}/query`, { cypher }, { params })
   },
 
   /** 展开节点 */
-  expandNode(graphId, nodeId, depth = 1) {
-    return request.post(`/api/graphs/${graphId}/expand`, { nodeId, depth })
+  expandNode(graphId, nodeId, depth = 1, params) {
+    return request.post(`/api/graphs/${graphId}/expand`, { nodeId, depth }, { params })
   },
 
   /** 查找路径 */
-  findPath(graphId, startNodeId, endNodeId, maxDepth = 5) {
-    return request.post(`/api/graphs/${graphId}/path`, { startNodeId, endNodeId, maxDepth })
+  findPath(graphId, startNodeId, endNodeId, maxDepth = 5, params) {
+    return request.post(`/api/graphs/${graphId}/path`, { startNodeId, endNodeId, maxDepth }, { params })
   },
 
   /** 获取图统计 */
-  getGraphSummary(graphId) {
-    return request.get(`/api/graphs/${graphId}/summary`)
+  getGraphSummary(graphId, params) {
+    return request.get(`/api/graphs/${graphId}/summary`, { params })
   },
 
   // ====== Schema 导入导出 ======

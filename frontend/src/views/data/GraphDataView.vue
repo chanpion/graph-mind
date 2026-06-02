@@ -375,9 +375,14 @@ async function loadTypes() {
   if (!graphId.value) return
   graphLoaded.value = false
   try {
+    const params = {}
+    if (graphId.value < 0 && graphsStore.currentGraph) {
+      params.connectionId = graphsStore.currentGraph.connectionId
+      params.graphCode = graphsStore.currentGraph.code
+    }
     const [nodes, edges] = await Promise.all([
-      graphApi.getVertexDefs(graphId.value),
-      graphApi.getEdgeDefs(graphId.value)
+      graphApi.getVertexDefs(graphId.value, params),
+      graphApi.getEdgeDefs(graphId.value, params)
     ])
     vertexTypes.value = Array.isArray(nodes) ? nodes : (nodes?.data || [])
     edgeTypes.value = Array.isArray(edges) ? edges : (edges?.data || [])
@@ -429,7 +434,7 @@ function onEdgeLabelChange(label) {
 function showEditDialog(row) {
   const props = row.properties || {}
   if (selectedType.value === 'node') {
-    const def = vertexTypes.value.find(t => t.label === row.label)
+    const def = vertexTypes.value.find(t => t.startLabel === row.label)
     currentVertexDef.value = def || null
     nodeForm.value = {
       uid: row.uid,

@@ -65,15 +65,14 @@ public class NebulaGraphOperations implements GraphOperations {
     @Override
     public void dropGraph(GraphConf graphConf) throws GraphException {
         log.info("Dropping graph: {}", graphConf.getGraphCode());
-        NebulaConf nebulaConf = (NebulaConf) graphConf;
-        String nql = NebulaUtil.buildDropSpace(nebulaConf.getGraphCode());
-        ResultSet resultSet = execute(nebulaConf, nql);
+        String nql = NebulaUtil.buildDropSpace(this.nebulaConf.getGraphCode());
+        ResultSet resultSet = execute(this.nebulaConf, nql);
         if (!resultSet.isSucceeded()) {
             log.error("Drop graph failed, errorCode: {}, errorMessage: {}",
                     resultSet.getErrorCode(), resultSet.getErrorMessage());
             throw new GraphException("drop graph failed, errorCode: " + resultSet.getErrorCode() + ", errorMessage: " + resultSet.getErrorMessage());
         }
-        log.info("Drop graph {} success", nebulaConf.getGraphCode());
+        log.info("Drop graph {} success", this.nebulaConf.getGraphCode());
     }
 
     @Override
@@ -90,6 +89,7 @@ public class NebulaGraphOperations implements GraphOperations {
             String space = new String(row.getValues().get(0).getSVal(), StandardCharsets.UTF_8);
             Graph graph = new Graph();
             graph.setCode(space);
+            graph.setName(space);
             return graph;
         }).collect(Collectors.toList());
     }
@@ -133,14 +133,13 @@ public class NebulaGraphOperations implements GraphOperations {
     @Override
     public GraphSchema getPublishedSchema(GraphConf graphConf) throws GraphException {
         log.info("Getting published schema for: {}", graphConf.getGraphCode());
-        NebulaConf nebulaConf = (NebulaConf) graphConf;
         GraphSchema schema = new GraphSchema();
 
-        NebulaPool nebulaPool = NebulaClientFactory.getNebulaPool(nebulaConf);
+        NebulaPool nebulaPool = NebulaClientFactory.getNebulaPool(this.nebulaConf);
 
-        String useSpace = ngqlBuilder.buildUseSpace(nebulaConf.getSpace());
+        String useSpace = ngqlBuilder.buildUseSpace(this.nebulaConf.getSpace());
 
-        try (Session session = nebulaPool.getSession(nebulaConf.getUsername(), nebulaConf.getPassword(), false)) {
+        try (Session session = nebulaPool.getSession(this.nebulaConf.getUsername(), this.nebulaConf.getPassword(), false)) {
             ResultSet rs = session.execute(useSpace);
             if (!rs.isSucceeded()) {
                 log.error("Failed to use space, error code: {}, error message: {}", rs.getErrorCode(), rs.getErrorMessage());
@@ -267,6 +266,7 @@ public class NebulaGraphOperations implements GraphOperations {
             NebulaTag nebulaTag = describeTag(tagName, session);
             List<GraphProperty> properties = nebulaTag.getProperties().stream().map(p -> {
                 GraphProperty property = new GraphProperty();
+                property.setCode(p.getName());
                 property.setName(p.getName());
                 property.setDataType(NebulaUtil.convertToDataType(p.getDataType()));
                 return property;
@@ -313,6 +313,7 @@ public class NebulaGraphOperations implements GraphOperations {
             NebulaEdge nebulaEdge = describeEdge(edgeName, session);
             List<GraphProperty> properties = nebulaEdge.getProperties().stream().map(p -> {
                 GraphProperty property = new GraphProperty();
+                property.setCode(p.getName());
                 property.setName(p.getName());
                 property.setDataType(NebulaUtil.convertToDataType(p.getDataType()));
                 return property;

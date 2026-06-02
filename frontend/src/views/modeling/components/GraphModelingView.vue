@@ -515,13 +515,13 @@ function transformData() {
     x: 0, y: 0
   }))
 
-  // Map edgeDefs to D3 edges using from/to IDs (use == to handle String/Number type mismatch)
+  // Map edgeDefs to D3 edges using startLabel/endLabel IDs (use == to handle String/Number type mismatch)
   edges.value = (props.edgeDefs || []).map(et => {
-    // 优先按 node.id 匹配，兼容按 node.label 匹配
-    let sourceNode = nodes.value.find(n => n.id == et.from)
-    if (!sourceNode) sourceNode = nodes.value.find(n => n.label == et.from)
-    let targetNode = nodes.value.find(n => n.id == et.to)
-    if (!targetNode) targetNode = nodes.value.find(n => n.label == et.to)
+    // 优先按 node.id 匹配，兼容按 node.startLabel 匹配
+    let sourceNode = nodes.value.find(n => n.label == et.startLabel)
+    if (!sourceNode) sourceNode = nodes.value.find(n => n.name == et.startLabel)
+    let targetNode = nodes.value.find(n => n.label == et.endLabel)
+    if (!targetNode) targetNode = nodes.value.find(n => n.name == et.endLabel)
     return {
       id: et.id,
       label: et.label || et.name,

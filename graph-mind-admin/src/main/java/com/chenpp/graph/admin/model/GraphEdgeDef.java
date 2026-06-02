@@ -38,14 +38,14 @@ public class GraphEdgeDef {
     /**
      * 起点类型
      */
-    @TableField("`from`")
-    private String from;
+    @TableField("start_label")
+    private String startLabel;
 
     /**
      * 终点类型
      */
-    @TableField("`to`")
-    private String to;
+    @TableField("end_label")
+    private String endLabel;
 
     /**
      * 描述

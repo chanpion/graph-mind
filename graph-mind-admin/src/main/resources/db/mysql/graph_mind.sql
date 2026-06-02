@@ -96,8 +96,8 @@ CREATE TABLE `graph_edge_def` (
   `graph_id` bigint(20) NOT NULL COMMENT '图ID',
   `name` varchar(50) NOT NULL COMMENT '边类型名称',
   `label` varchar(20) DEFAULT NULL COMMENT '边标识',
-  `from` varchar(255) NOT NULL COMMENT '起点类型',
-  `to` varchar(255) NOT NULL COMMENT '终点类型',
+  `start_label` varchar(255) NOT NULL COMMENT '起点类型',
+  `end_label` varchar(255) NOT NULL COMMENT '终点类型',
   `description` text COMMENT '描述',
   `status` tinyint(4) DEFAULT '0' COMMENT '状态：0-未发布，1-已发布',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -111,10 +111,10 @@ CREATE TABLE `graph_edge_def` (
 -- Records of graph_edge_def
 -- ----------------------------
 BEGIN;
-INSERT INTO `graph_edge_def` (`id`, `graph_id`, `name`, `label`, `from`, `to`, `description`, `status`, `create_time`, `update_time`, `multiple`) VALUES (1, 2, '工作', 'work', '1', '2', '工作', 0, '2025-08-08 14:29:22', '2025-08-15 17:49:28', 0);
-INSERT INTO `graph_edge_def` (`id`, `graph_id`, `name`, `label`, `from`, `to`, `description`, `status`, `create_time`, `update_time`, `multiple`) VALUES (2, 3, '工作', 'work', '4', '5', '', 1, '2025-08-13 14:03:44', '2025-08-13 15:18:46', 0);
-INSERT INTO `graph_edge_def` (`id`, `graph_id`, `name`, `label`, `from`, `to`, `description`, `status`, `create_time`, `update_time`, `multiple`) VALUES (3, 5, '工作', 'work', '6', '7', '', 1, '2025-08-18 19:06:40', '2025-08-18 20:04:28', 0);
-INSERT INTO `graph_edge_def` (`id`, `graph_id`, `name`, `label`, `from`, `to`, `description`, `status`, `create_time`, `update_time`, `multiple`) VALUES (4, 7, '朋友', 'friends', '9', '9', '', 1, '2025-08-25 15:51:40', '2025-08-25 15:51:40', 0);
+INSERT INTO `graph_edge_def` (`id`, `graph_id`, `name`, `label`, `start_label`, `end_label`, `description`, `status`, `create_time`, `update_time`, `multiple`) VALUES (1, 2, '工作', 'work', 'person', 'company', '工作', 0, '2025-08-08 14:29:22', '2025-08-15 17:49:28', 0);
+INSERT INTO `graph_edge_def` (`id`, `graph_id`, `name`, `label`, `start_label`, `end_label`, `description`, `status`, `create_time`, `update_time`, `multiple`) VALUES (2, 3, '工作', 'work', 'person', 'company', '', 1, '2025-08-13 14:03:44', '2025-08-13 15:18:46', 0);
+INSERT INTO `graph_edge_def` (`id`, `graph_id`, `name`, `label`, `start_label`, `end_label`, `description`, `status`, `create_time`, `update_time`, `multiple`) VALUES (3, 5, '工作', 'work', 'person', 'company', '', 1, '2025-08-18 19:06:40', '2025-08-18 20:04:28', 0);
+INSERT INTO `graph_edge_def` (`id`, `graph_id`, `name`, `label`, `start_label`, `end_label`, `description`, `status`, `create_time`, `update_time`, `multiple`) VALUES (4, 7, '朋友', 'friends', 'person', 'person', '', 1, '2025-08-25 15:51:40', '2025-08-25 15:51:40', 0);
 COMMIT;
 
 -- ----------------------------
@@ -138,14 +138,14 @@ CREATE TABLE `graph_vertex_def` (
 -- Records of graph_vertex_def
 -- ----------------------------
 BEGIN;
-INSERT INTO `graph_vertex_def` (`id`, `graph_id`, `name`, `label`, `description`, `status`, `create_time`, `update_time`) VALUES (1, 2, '自然人', 'person', '自然人实体', 0, '2025-08-08 13:57:44', '2025-08-15 17:49:32');
-INSERT INTO `graph_vertex_def` (`id`, `graph_id`, `name`, `label`, `description`, `status`, `create_time`, `update_time`) VALUES (2, 2, '公司', 'company', '公司', 0, '2025-08-08 14:21:41', '2025-08-15 17:49:34');
-INSERT INTO `graph_vertex_def` (`id`, `graph_id`, `name`, `label`, `description`, `status`, `create_time`, `update_time`) VALUES (4, 3, '自然人', 'person', '', 1, '2025-08-13 14:03:02', '2025-08-13 15:18:11');
-INSERT INTO `graph_vertex_def` (`id`, `graph_id`, `name`, `label`, `description`, `status`, `create_time`, `update_time`) VALUES (5, 3, '公司', 'company', '', 1, '2025-08-13 14:03:26', '2025-08-13 14:03:26');
-INSERT INTO `graph_vertex_def` (`id`, `graph_id`, `name`, `label`, `description`, `status`, `create_time`, `update_time`) VALUES (6, 5, '自然人', 'person', '', 1, '2025-08-18 19:05:44', '2025-08-18 20:04:13');
-INSERT INTO `graph_vertex_def` (`id`, `graph_id`, `name`, `label`, `description`, `status`, `create_time`, `update_time`) VALUES (7, 5, '公司', 'company', '', 1, '2025-08-18 19:06:09', '2025-08-18 20:04:20');
-INSERT INTO `graph_vertex_def` (`id`, `graph_id`, `name`, `label`, `description`, `status`, `create_time`, `update_time`) VALUES (8, 6, '自然人', 'person', '', 1, '2025-08-19 10:13:57', '2025-08-19 10:14:02');
-INSERT INTO `graph_vertex_def` (`id`, `graph_id`, `name`, `label`, `description`, `status`, `create_time`, `update_time`) VALUES (9, 7, '自然人', 'person', '', 1, '2025-08-25 15:51:14', '2025-08-25 15:51:14');
+INSERT INTO `graph_vertex_def` (`id`, `graph_id`, `name`, `start_label`, `description`, `status`, `create_time`, `update_time`) VALUES (1, 2, '自然人', 'person', '自然人实体', 0, '2025-08-08 13:57:44', '2025-08-15 17:49:32');
+INSERT INTO `graph_vertex_def` (`id`, `graph_id`, `name`, `start_label`, `description`, `status`, `create_time`, `update_time`) VALUES (2, 2, '公司', 'company', '公司', 0, '2025-08-08 14:21:41', '2025-08-15 17:49:34');
+INSERT INTO `graph_vertex_def` (`id`, `graph_id`, `name`, `start_label`, `description`, `status`, `create_time`, `update_time`) VALUES (4, 3, '自然人', 'person', '', 1, '2025-08-13 14:03:02', '2025-08-13 15:18:11');
+INSERT INTO `graph_vertex_def` (`id`, `graph_id`, `name`, `start_label`, `description`, `status`, `create_time`, `update_time`) VALUES (5, 3, '公司', 'company', '', 1, '2025-08-13 14:03:26', '2025-08-13 14:03:26');
+INSERT INTO `graph_vertex_def` (`id`, `graph_id`, `name`, `start_label`, `description`, `status`, `create_time`, `update_time`) VALUES (6, 5, '自然人', 'person', '', 1, '2025-08-18 19:05:44', '2025-08-18 20:04:13');
+INSERT INTO `graph_vertex_def` (`id`, `graph_id`, `name`, `start_label`, `description`, `status`, `create_time`, `update_time`) VALUES (7, 5, '公司', 'company', '', 1, '2025-08-18 19:06:09', '2025-08-18 20:04:20');
+INSERT INTO `graph_vertex_def` (`id`, `graph_id`, `name`, `start_label`, `description`, `status`, `create_time`, `update_time`) VALUES (8, 6, '自然人', 'person', '', 1, '2025-08-19 10:13:57', '2025-08-19 10:14:02');
+INSERT INTO `graph_vertex_def` (`id`, `graph_id`, `name`, `start_label`, `description`, `status`, `create_time`, `update_time`) VALUES (9, 7, '自然人', 'person', '', 1, '2025-08-25 15:51:14', '2025-08-25 15:51:14');
 COMMIT;
 
 -- ----------------------------

@@ -42,8 +42,8 @@ ALTER TABLE graph_vertex_def ALTER COLUMN id RESTART WITH 5;
 -- 初始化边定义数据
 -- ----------------------------
 BEGIN;
-INSERT INTO graph_edge_def (id, graph_id, name, label, `from`, `to`, description, status, multiple, create_time, update_time) VALUES (1, 1, '属于', 'belongs_to', '1', '2', '用户属于组织', 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
-INSERT INTO graph_edge_def (id, graph_id, name, label, `from`, `to`, description, status, multiple, create_time, update_time) VALUES (2, 2, '属于分类', 'in_category', '3', '4', '商品属于分类', 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO graph_edge_def (id, graph_id, name, label, start_label, end_label, description, status, multiple, create_time, update_time) VALUES (1, 1, '属于', 'belongs_to', 'user', 'org', '用户属于组织', 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
+INSERT INTO graph_edge_def (id, graph_id, name, label, start_label, end_label, description, status, multiple, create_time, update_time) VALUES (2, 2, '属于分类', 'in_category', 'product', 'category', '商品属于分类', 1, 0, '2025-08-01 10:00:00', '2025-08-01 10:00:00');
 COMMIT;
 ALTER TABLE graph_edge_def ALTER COLUMN id RESTART WITH 3;
 ALTER TABLE sys_user ALTER COLUMN user_id RESTART WITH 2;

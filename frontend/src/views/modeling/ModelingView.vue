@@ -70,10 +70,10 @@
           <el-table-column prop="label" label="标签" min-width="120" />
           <el-table-column prop="name" label="名称" min-width="150" />
           <el-table-column label="起点类型" min-width="120">
-            <template #default="{ row }">{{ getNodeNameById(row.from) }}</template>
+            <template #default="{ row }">{{ getNodeNameByLabel(row.startLabel) }}</template>
           </el-table-column>
           <el-table-column label="终点类型" min-width="120">
-            <template #default="{ row }">{{ getNodeNameById(row.to) }}</template>
+            <template #default="{ row }">{{ getNodeNameByLabel(row.endLabel) }}</template>
           </el-table-column>
           <el-table-column prop="description" label="描述" min-width="180" />
           <el-table-column prop="status" label="状态" width="90" align="center">
@@ -183,13 +183,13 @@
           <el-input v-model="edgeForm.name" placeholder="请输入名称" />
         </el-form-item>
         <el-form-item label="起点类型">
-          <el-select v-model="edgeForm.from" placeholder="请选择起点类型" style="width: 100%">
-            <el-option v-for="node in vertexDefs" :key="node.id" :label="node.name" :value="node.id" />
+          <el-select v-model="edgeForm.startLabel" placeholder="请选择起点类型" style="width: 100%">
+            <el-option v-for="node in vertexDefs" :key="node.id" :label="node.name" :value="node.startLabel" />
           </el-select>
         </el-form-item>
         <el-form-item label="终点类型">
-          <el-select v-model="edgeForm.to" placeholder="请选择终点类型" style="width: 100%">
-            <el-option v-for="node in vertexDefs" :key="node.id" :label="node.name" :value="node.id" />
+          <el-select v-model="edgeForm.endLabel" placeholder="请选择终点类型" style="width: 100%">
+            <el-option v-for="node in vertexDefs" :key="node.id" :label="node.name" :value="node.startLabel" />
           </el-select>
         </el-form-item>
         <el-form-item label="描述">
@@ -328,8 +328,8 @@ const edgeDialogTitle = ref('')
 const edgeForm = ref({
   label: '',
   name: '',
-  from: '',
-  to: '',
+  startLabel: '',
+  endLabel: '',
   description: '',
   status: 0,
   properties: []
@@ -348,7 +348,12 @@ async function fetchVertexDefs() {
   if (!currentGraphId.value) return
   loading.value = true
   try {
-    const res = await graphApi.getVertexDefs(currentGraphId.value)
+    const params = {}
+    if (currentGraphId.value < 0 && graphsStore.currentGraph) {
+      params.connectionId = graphsStore.currentGraph.connectionId
+      params.graphCode = graphsStore.currentGraph.code
+    }
+    const res = await graphApi.getVertexDefs(currentGraphId.value, params)
     vertexDefs.value = res?.data || res || []
   } catch (e) {
     ElMessage.error('获取点定义失败')
@@ -361,7 +366,12 @@ async function fetchEdgeDefs() {
   if (!currentGraphId.value) return
   loading.value = true
   try {
-    const res = await graphApi.getEdgeDefs(currentGraphId.value)
+    const params = {}
+    if (currentGraphId.value < 0 && graphsStore.currentGraph) {
+      params.connectionId = graphsStore.currentGraph.connectionId
+      params.graphCode = graphsStore.currentGraph.code
+    }
+    const res = await graphApi.getEdgeDefs(currentGraphId.value, params)
     edgeDefs.value = res?.data || res || []
   } catch (e) {
     ElMessage.error('获取边定义失败')
@@ -378,8 +388,8 @@ function handleTabChange(tab) {
   }
 }
 
-function getNodeNameById(id) {
-  const node = vertexDefs.value.find(n => n.id == id)
+function getNodeNameByLabel(label) {
+  const node = vertexDefs.value.find(n => n.startLabel === label)
   return node ? node.name : '未知节点'
 }
 
@@ -457,8 +467,8 @@ function handleAddEdge() {
   edgeForm.value = {
     label: '',
     name: '',
-    from: '',
-    to: '',
+    startLabel: '',
+    endLabel: '',
     description: '',
     status: 0,
     properties: [{ code: 'uid', name: '唯一标识', type: 'String', status: 0, indexed: true }]

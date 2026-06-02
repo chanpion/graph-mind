@@ -126,7 +126,12 @@ async function fetchStatistics() {
 
   try {
     loading.value = true
-    const response = await graphApi.getGraphSummary(graphsStore.currentGraphId)
+    const params = {}
+    if (graphsStore.currentGraphId < 0 && graphsStore.currentGraph) {
+      params.connectionId = graphsStore.currentGraph.connectionId
+      params.graphCode = graphsStore.currentGraph.code
+    }
+    const response = await graphApi.getGraphSummary(graphsStore.currentGraphId, params)
     const data = response?.data || response
     Object.assign(statistics, data)
   } catch (error) {
@@ -140,7 +145,12 @@ async function fetchStatistics() {
 async function loadGraphSummary(id) {
   try {
     loading.value = true
-    const response = await graphApi.getGraphSummary(id)
+    const params = {}
+    if (id < 0 && graphsStore.currentGraph) {
+      params.connectionId = graphsStore.currentGraph.connectionId
+      params.graphCode = graphsStore.currentGraph.code
+    }
+    const response = await graphApi.getGraphSummary(id, params)
     const data = response?.data || response
     Object.assign(statistics, data)
   } catch (error) {

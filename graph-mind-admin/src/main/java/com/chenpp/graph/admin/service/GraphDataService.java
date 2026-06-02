@@ -145,5 +145,5 @@ public interface GraphDataService {
      * @param graphId 图ID
      * @return 图统计信息
      */
-    GraphSummary getGraphSummary(Long graphId);
+    GraphSummary getGraphSummary(Long graphId, Long connectionId, String graphCode);
 }

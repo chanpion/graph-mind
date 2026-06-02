@@ -139,12 +139,12 @@ function connTagType(conn) {
 }
 
 function dbLabel(graph) {
-  const raw = (graph.graphType || graph.databaseType || '').toLowerCase()
+  const raw = (graph.graphType || '').toLowerCase()
   return DB_TAG_MAP[raw]?.label || raw.toUpperCase()
 }
 
 function dbTagType(graph) {
-  const raw = (graph.graphType || graph.databaseType || '').toLowerCase()
+  const raw = (graph.graphType || '').toLowerCase()
   return DB_TAG_MAP[raw]?.type || 'info'
 }
 

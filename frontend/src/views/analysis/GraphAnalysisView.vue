@@ -665,6 +665,11 @@ const executePathQuery = async () => {
 
     try {
       // 调用后端API进行路径查询
+      const pathParams = {}
+      if (graphsStore.currentGraphId < 0 && graphsStore.currentGraph) {
+        pathParams.connectionId = graphsStore.currentGraph.connectionId
+        pathParams.graphCode = graphsStore.currentGraph.code
+      }
       const apiResponse = await graphApi.findPath(
         graphsStore.currentGraphId,
         analysisForm.sourceValue, // 起点ID
@@ -719,9 +724,14 @@ const fetchGraphSchema = async () => {
   }
 
   try {
+    const params = {}
+    if (graphsStore.currentGraphId < 0 && graphsStore.currentGraph) {
+      params.connectionId = graphsStore.currentGraph.connectionId
+      params.graphCode = graphsStore.currentGraph.code
+    }
     const [nodeRes, edgeRes] = await Promise.all([
-      graphApi.getVertexDefs(graphsStore.currentGraphId),
-      graphApi.getEdgeDefs(graphsStore.currentGraphId)
+      graphApi.getVertexDefs(graphsStore.currentGraphId, params),
+      graphApi.getEdgeDefs(graphsStore.currentGraphId, params)
     ])
     const vertexDefs = nodeRes?.data || nodeRes || []
     const edgeDefs = edgeRes?.data || edgeRes || []
@@ -791,6 +801,11 @@ const executeAnalysis = async () => {
           // K层展开：调用 expandNode API
           const targetEntityType = analysisForm.targetEntity[0];
           const targetEntityProp = analysisForm.targetEntity[1];
+          const opParams = {}
+          if (graphsStore.currentGraphId < 0 && graphsStore.currentGraph) {
+            opParams.connectionId = graphsStore.currentGraph.connectionId
+            opParams.graphCode = graphsStore.currentGraph.code
+          }
           apiResponse = await graphApi.expandNode(
             graphsStore.currentGraphId,
             analysisForm.queryValue, // 使用查询值作为节点ID
@@ -800,6 +815,11 @@ const executeAnalysis = async () => {
 
         case 'shortestPath':
           // 最短路径：调用 findPath API
+          const fpParams = {}
+          if (graphsStore.currentGraphId < 0 && graphsStore.currentGraph) {
+            fpParams.connectionId = graphsStore.currentGraph.connectionId
+            fpParams.graphCode = graphsStore.currentGraph.code
+          }
           apiResponse = await graphApi.findPath(
             graphsStore.currentGraphId,
             analysisForm.sourceValue, // 起点ID
@@ -1357,7 +1377,12 @@ onMounted(() => {
 // 获取点类型列表
 const fetchNodeTypes = async (graphId) => {
   try {
-    const res = await graphApi.getVertexDefs(graphId)
+    const params = {}
+    if (graphId < 0 && graphsStore.currentGraph) {
+      params.connectionId = graphsStore.currentGraph.connectionId
+      params.graphCode = graphsStore.currentGraph.code
+    }
+    const res = await graphApi.getVertexDefs(graphId, params)
     const data = res?.data || res || []
     vertexTypes.value = Array.isArray(data) ? data : []
   } catch (e) {
@@ -1368,7 +1393,12 @@ const fetchNodeTypes = async (graphId) => {
 // 获取边类型列表
 const fetchEdgeTypes = async (graphId) => {
   try {
-    const res = await graphApi.getEdgeDefs(graphId)
+    const params = {}
+    if (graphId < 0 && graphsStore.currentGraph) {
+      params.connectionId = graphsStore.currentGraph.connectionId
+      params.graphCode = graphsStore.currentGraph.code
+    }
+    const res = await graphApi.getEdgeDefs(graphId, params)
     const data = res?.data || res || []
     edgeTypes.value = Array.isArray(data) ? data : []
   } catch (e) {

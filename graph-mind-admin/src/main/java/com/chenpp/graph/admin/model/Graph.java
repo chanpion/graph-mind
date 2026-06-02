@@ -51,13 +51,6 @@ public class Graph {
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 
-    // ====== 非持久化字段（前端展示使用） ======
-
-    /** 数据库类型（展示用，来自 graphType） */
-    @TableField(exist = false)
-    private String databaseType;
-
-    /** 节点数量（展示用，来自图数据库统计） */
     @TableField(exist = false)
     private Integer vertexCount;
 

@@ -160,7 +160,7 @@
         <el-descriptions title="图信息" border :column="1">
           <el-descriptions-item label="图名称">{{ currentGraphDetail.name || currentGraphDetail.graphName }}</el-descriptions-item>
           <el-descriptions-item label="连接名称">{{ getConnectionNameById(currentGraphDetail.connectionId) }}</el-descriptions-item>
-          <el-descriptions-item label="数据库类型">{{ currentGraphDetail.databaseType || '未知' }}</el-descriptions-item>
+          <el-descriptions-item label="数据库类型">{{ currentGraphDetail.graphType || '未知' }}</el-descriptions-item>
           <el-descriptions-item label="节点数">{{ currentGraphDetail.vertexCount || 0 }}</el-descriptions-item>
           <el-descriptions-item label="边数">{{ currentGraphDetail.edgeCount || 0 }}</el-descriptions-item>
           <el-descriptions-item label="状态">
@@ -395,7 +395,7 @@ async function showDetail(graph) {
   const detail = {
     ...graph,
     connectionId: graph.connectionId || selectedConnectionId.value,
-    databaseType: graph.databaseType || graph.graphType || conn?.type || '未知',
+    graphType: graph.graphType || conn?.type || '未知',
     vertexCount: 0,
     edgeCount: 0,
     createTime: graph.createTime || graph.createdAt

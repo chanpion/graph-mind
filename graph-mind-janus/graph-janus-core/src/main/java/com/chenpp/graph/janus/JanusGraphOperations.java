@@ -94,10 +94,21 @@ public class JanusGraphOperations implements GraphOperations {
 
     @Override
     public List<Graph> listGraphs(GraphConf graphConf) throws GraphException {
-        // JanusGraph没有像其他图数据库那样的"图空间"概念，这里返回一个默认的图实例
         try {
             Graph graph = new Graph();
-            graph.setCode(graphConf.getGraphCode());
+            // 检查后端中是否存在对应的 keyspace/namespace
+            if (janusConf.getCassandraConf() != null) {
+                CassandraClient cassandraClient = new CassandraClient(janusConf.getCassandraConf());
+                if (!cassandraClient.keyspaceExists(janusConf.getGraphCode())) {
+                    log.warn("Cassandra keyspace '{}' not found, graph does not exist", janusConf.getGraphCode());
+                    return java.util.Collections.emptyList();
+                }
+                graph.setCode(janusConf.getCassandraConf().getKeyspace());
+                graph.setName(graph.getCode());
+            } else if (janusConf.getHBaseConf() != null) {
+                // HBase 命名空间检查暂未实现，默认返回配置中的图
+                log.warn("HBase namespace existence check not implemented, returning configured graph");
+            }
             log.debug("Listed graphs, returning single graph: {}", graphConf.getGraphCode());
             return java.util.Collections.singletonList(graph);
         } catch (Exception e) {
@@ -215,6 +226,7 @@ public class JanusGraphOperations implements GraphOperations {
         propertyKeys.forEach(key -> {
             GraphProperty property = new GraphProperty();
             property.setCode(key.name());
+            property.setName(key.name());
             property.setDataType(DataType.instanceOf(key.dataType().getSimpleName()));
             properties.add(property);
         });

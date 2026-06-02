@@ -378,11 +378,14 @@ public class GraphDataController {
      * @return 图统计信息
      */
     @GetMapping("/summary")
-    public Result<GraphSummary> getGraphSummary(@PathVariable Long graphId) {
+    public Result<GraphSummary> getGraphSummary(
+            @PathVariable Long graphId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode) {
         try {
-            log.info("获取图统计信息，graphId={}", graphId);
+            log.info("获取图统计信息，graphId={}, connectionId={}, graphCode={}", graphId, connectionId, graphCode);
             
-            GraphSummary summary = graphDataService.getGraphSummary(graphId);
+            GraphSummary summary = graphDataService.getGraphSummary(graphId, connectionId, graphCode);
             
             return Result.success(summary);
         } catch (Exception e) {

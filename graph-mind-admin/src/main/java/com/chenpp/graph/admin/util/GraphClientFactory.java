@@ -13,6 +13,8 @@ import com.chenpp.graph.nebula.NebulaClient;
 import com.chenpp.graph.nebula.NebulaConf;
 import com.chenpp.graph.neo4j.Neo4jClient;
 import com.chenpp.graph.neo4j.Neo4jConf;
+import com.chenpp.graph.admin.service.GraphService;
+import com.chenpp.graph.admin.service.GraphConnectionService;
 
 /**
  * 图客户端工厂类，用于根据数据库类型动态创建对应的图客户端实例
@@ -74,6 +76,34 @@ public class GraphClientFactory {
             default:
                 throw new IllegalArgumentException("Unsupported graph database type: " + type);
         }
+    }
+
+    /**
+     * 解析 GraphConf：优先通过 graphId 查询本地图记录，否则使用 connectionId + graphCode 直接连接
+     */
+    public static GraphConf resolveGraphConf(
+            Long graphId, Long connectionId, String graphCode,
+            GraphService graphService, GraphConnectionService connectionService) {
+        // 尝试通过本地图记录解析
+        if (graphId != null && graphId > 0) {
+            Graph graph = graphService.getById(graphId);
+            if (graph != null && graph.getConnectionId() != null) {
+                GraphConnection connection = connectionService.getById(graph.getConnectionId());
+                if (connection != null) {
+                    return createGraphConf(connection, graph);
+                }
+            }
+        }
+        // 通过 connectionId + graphCode 直接连接
+        if (connectionId != null && graphCode != null) {
+            GraphConnection connection = connectionService.getById(connectionId);
+            if (connection != null) {
+                Graph tempGraph = new Graph();
+                tempGraph.setCode(graphCode);
+                return createGraphConf(connection, tempGraph);
+            }
+        }
+        throw new IllegalArgumentException("无法解析图连接配置，请检查 graphId/connectionId/graphCode");
     }
 
     public static GraphConf createGraphConf(GraphConnection connection, Graph graph) {

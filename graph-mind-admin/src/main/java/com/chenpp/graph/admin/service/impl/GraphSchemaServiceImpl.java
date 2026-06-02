@@ -64,6 +64,20 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
     private GraphPropertyDefService graphPropertyDefService;
 
     @Override
+    public GraphSchema discoverSchema(Long connectionId, String graphCode) {
+        GraphConnection connection = connectionService.getById(connectionId);
+        if (connection == null) {
+            throw new GraphException("图数据库连接不存在");
+        }
+        Graph graph = new Graph();
+        graph.setCode(graphCode);
+        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
+        GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+        GraphOperations graphOperations = graphClient.opsForGraph();
+        return graphOperations.getPublishedSchema(graphConf);
+    }
+
+    @Override
     public GraphSchema discoverSchema(Long graphId) {
         // 获取图信息
         Graph graph = graphService.getById(graphId);
@@ -104,8 +118,8 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         List<GraphRelation> relations = edges.stream().map(edge -> {
             GraphRelation relation = new GraphRelation();
             relation.setLabel(edge.getLabel());
-            relation.setStartLabel(edge.getFrom());
-            relation.setEndLabel(edge.getTo());
+            relation.setStartLabel(edge.getStartLabel());
+            relation.setEndLabel(edge.getEndLabel());
             relation.setProperties(transformGraphProperty(edge.getProperties()));
             relation.setMultiple(edge.getMultiple());
             return relation;
@@ -285,10 +299,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             }
         }
 
-        // 重新获取最新的节点定义映射（包含刚导入的）
-        Map<String, Long> allNodeLabelIdMap = graphVertexDefService.getVertexDefsByGraphId(graphId, null).stream()
-            .filter(n -> n.getLabel() != null)
-            .collect(Collectors.toMap(GraphVertexDef::getLabel, GraphVertexDef::getId, (a, b) -> a));
 
         // 导入边定义
         if (importEdges != null) {
@@ -305,19 +315,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
                 edge.setGraphId(graphId);
                 edge.setId(null);
                 edge.setStatus(0);
-                // 处理from/to引用：如果from/to是label字符串，则解析为id
-                if (edge.getFrom() != null) {
-                    Long fromId = allNodeLabelIdMap.get(edge.getFrom());
-                    if (fromId != null) {
-                        edge.setFrom(String.valueOf(fromId));
-                    }
-                }
-                if (edge.getTo() != null) {
-                    Long toId = allNodeLabelIdMap.get(edge.getTo());
-                    if (toId != null) {
-                        edge.setTo(String.valueOf(toId));
-                    }
-                }
                 // 保存边定义及其属性
                 graphEdgeDefService.saveEdgeDefWithProperties(edge);
             }

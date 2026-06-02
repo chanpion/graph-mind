@@ -34,6 +34,15 @@ public interface GraphSchemaService {
     GraphSchema discoverSchema(Long graphId);
 
     /**
+     * 从图数据库发现Schema（获取图数据库中实际的点边类型）
+     *
+     * @param connectionId 图数据库连接ID
+     * @param graphCode    图编码（图数据库中的空间/图名）
+     * @return 图Schema
+     */
+    GraphSchema discoverSchema(Long connectionId, String graphCode);
+
+    /**
      * 导出图Schema（节点定义和边定义）
      *
      * @param graphId 图id

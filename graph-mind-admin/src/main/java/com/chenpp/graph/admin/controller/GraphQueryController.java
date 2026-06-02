@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.springframework.web.bind.annotation.RequestParam;
 import java.util.Map;
 
 /**
@@ -38,31 +39,17 @@ public class GraphQueryController {
     @PostMapping("/query")
     public Result<GraphData> query(
             @PathVariable Long graphId,
-            @RequestBody Map<String, String> request) {
+            @RequestBody Map<String, String> request,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode) {
         String cypher = request.get("cypher");
         if (cypher == null || cypher.isEmpty()) {
             return Result.error("Cypher查询语句不能为空");
         }
 
-        // 获取图信息
-        Graph graph = graphService.getById(graphId);
-        if (graph == null) {
-            return Result.error("图不存在，graphId=" + graphId);
-        }
-
-        // 获取图数据库连接信息
-        GraphConnection connection = connectionService.getById(graph.getConnectionId());
-        if (connection == null) {
-            return Result.error("图数据库连接不存在，connectionId=" + graph.getConnectionId());
-        }
-
-        // 构建图配置信息
-        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
-        // 创建图客户端
+        GraphConf graphConf = GraphClientFactory.resolveGraphConf(graphId, connectionId, graphCode, graphService, connectionService);
         GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
         GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
-
-        // 执行查询
         GraphData graphData = graphDataOperations.query(cypher);
         return Result.success(graphData);
     }
@@ -70,7 +57,9 @@ public class GraphQueryController {
     @PostMapping("/expand")
     public Result<GraphData> expand(
             @PathVariable Long graphId,
-            @RequestBody Map<String, Object> request) {
+            @RequestBody Map<String, Object> request,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode) {
         String vertexId = (String) request.get("vertexId");
         Integer depth = (Integer) request.get("depth");
 
@@ -82,24 +71,9 @@ public class GraphQueryController {
             depth = 1;
         }
 
-        // 获取图信息
-        Graph graph = graphService.getById(graphId);
-        if (graph == null) {
-            return Result.error("图不存在，graphId=" + graphId);
-        }
-
-        // 获取图数据库连接信息
-        GraphConnection connection = connectionService.getById(graph.getConnectionId());
-        if (connection == null) {
-            return Result.error("图数据库连接不存在，connectionId=" + graph.getConnectionId());
-        }
-
-        // 构建图配置信息
-        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
-        // 创建图客户端
+        GraphConf graphConf = GraphClientFactory.resolveGraphConf(graphId, connectionId, graphCode, graphService, connectionService);
         GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
         GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
-        // 执行查询
         GraphData graphData = graphDataOperations.expand(vertexId, depth);
         return Result.success(graphData);
     }
@@ -107,7 +81,9 @@ public class GraphQueryController {
     @PostMapping("/path")
     public Result<GraphData> findPath(
             @PathVariable Long graphId,
-            @RequestBody Map<String, Object> request) {
+            @RequestBody Map<String, Object> request,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode) {
         String startNodeId = (String) request.get("startNodeId");
         String endNodeId = (String) request.get("endNodeId");
         Integer maxDepth = (Integer) request.get("maxDepth");
@@ -124,27 +100,13 @@ public class GraphQueryController {
             maxDepth = 5;
         }
 
-        // 获取图信息
-        Graph graph = graphService.getById(graphId);
-        if (graph == null) {
-            return Result.error("图不存在，graphId=" + graphId);
-        }
-
-        // 获取图数据库连接信息
-        GraphConnection connection = connectionService.getById(graph.getConnectionId());
-        if (connection == null) {
-            return Result.error("图数据库连接不存在，connectionId=" + graph.getConnectionId());
-        }
-
-        // 构建图配置信息
-        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
-        // 创建图客户端
+        GraphConf graphConf = GraphClientFactory.resolveGraphConf(graphId, connectionId, graphCode, graphService, connectionService);
         GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
         GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
 
-        // 根据图数据库类型构造路径查询语句
+        // 获取图数据库类型（从 graphConf 中读取）
+        String dbType = graphConf.getType();
         String pathQuery;
-        String dbType = connection.getGraphType();
         if ("nebula".equalsIgnoreCase(dbType)) {
             pathQuery = String.format("FIND SHORTEST PATH FROM \"%s\" TO \"%s\" OVER * UPTO %d STEPS YIELD PATH AS p",
                     startNodeId, endNodeId, maxDepth);

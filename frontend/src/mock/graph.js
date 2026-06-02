@@ -9,7 +9,7 @@ const mockGraphs = [
     id: 1,
     name: 'social_network',
     graphName: 'social_network',
-    databaseType: 'NEO4J',
+    graphType: 'NEO4J',
     connectionId: 1,
     vertexCount: 12580,
     edgeCount: 34256,
@@ -23,7 +23,7 @@ const mockGraphs = [
     id: 2,
     name: 'product_graph',
     graphName: 'product_graph',
-    databaseType: 'NEBULA',
+    graphType: 'NEBULA',
     connectionId: 2,
     vertexCount: 8432,
     edgeCount: 15678,
@@ -37,7 +37,7 @@ const mockGraphs = [
     id: 3,
     name: 'knowledge_base',
     graphName: 'knowledge_base',
-    databaseType: 'NEO4J',
+    graphType: 'NEO4J',
     connectionId: 1,
     vertexCount: 45210,
     edgeCount: 78932,
@@ -51,7 +51,7 @@ const mockGraphs = [
     id: 4,
     name: 'archived_graph',
     graphName: 'archived_graph',
-    databaseType: 'JANUS',
+    graphType: 'JANUS',
     connectionId: 3,
     vertexCount: 5620,
     edgeCount: 9843,
@@ -67,7 +67,7 @@ const mockSchemas = {
   1: {
     graphId: 1,
     graphName: 'social_network',
-    databaseType: 'NEO4J',
+    graphType: 'NEO4J',
     vertexLabels: [
       {
         id: 101, label: 'Person', name: '人员',
@@ -117,7 +117,7 @@ const mockSchemas = {
   2: {
     graphId: 2,
     graphName: 'product_graph',
-    databaseType: 'NEBULA',
+    graphType: 'NEBULA',
     vertexLabels: [
       {
         id: 103, label: 'Product', name: '产品',
@@ -166,7 +166,7 @@ export const mockGetGraphSchema = async (connectionId, graphName) => {
   await mockDelay()
   const schema = mockSchemas[graphName] || {
     graphName,
-    databaseType: 'NEO4J',
+    graphType: 'NEO4J',
     vertexLabels: [],
     edgeLabels: []
   }
@@ -182,7 +182,7 @@ export const mockCreateGraph = async (connectionId, data) => {
     name: data.graphName || `graph_${Date.now()}`,
     graphName: data.graphName || `graph_${Date.now()}`,
     connectionId: data.connectionId || connectionId,
-    databaseType: 'NEO4J',
+    graphType: 'NEO4J',
     vertexCount: 0,
     edgeCount: 0,
     sourceType: 'PLATFORM',
@@ -196,7 +196,7 @@ export const mockCreateGraph = async (connectionId, data) => {
   mockSchemas[newId] = {
     graphId: newId,
     graphName: data.graphName || `graph_${Date.now()}`,
-    databaseType: 'NEO4J',
+    graphType: 'NEO4J',
     vertexLabels: [],
     edgeLabels: []
   }

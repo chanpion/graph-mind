@@ -65,8 +65,37 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
     /**
      * 批量填充图列表的节点类型数和边类型数（替代 N+1 循环查询）
      */
+    /**
+     * 批量检查图数据库连接状态，更新图状态
+     */
+    private void fillGraphStatus(List<Graph> graphs) {
+        for (Graph graph : graphs) {
+            if (graph.getConnectionId() == null) {
+                continue;
+            }
+            try {
+                GraphConnection connection = connectionService.getById(graph.getConnectionId());
+                if (connection == null) {
+                    continue;
+                }
+                Graph g = new Graph();
+                g.setCode(graph.getCode());
+                GraphConf graphConf = GraphClientFactory.createGraphConf(connection, g);
+                try (GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf)) {
+                    boolean connected = graphClient.checkConnection();
+                    graph.setStatus(connected ? 0 : 1);
+                }
+            } catch (Exception e) {
+                log.warn("检查图状态失败: graphId={}, code={}", graph.getId(), graph.getCode());
+                graph.setStatus(1);
+            }
+        }
+    }
+
     private void fillGraphCounts(List<Graph> records) {
-        if (records == null || records.isEmpty()) return;
+        if (records == null || records.isEmpty()) {
+            return;
+        }
         List<Long> graphIds = records.stream().map(Graph::getId).collect(Collectors.toList());
         // 一次查询全部节点定义，按 graph_id 分组计数
         List<GraphVertexDef> allNodes = graphVertexDefDao.selectList(
@@ -80,7 +109,6 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
                 .collect(Collectors.groupingBy(GraphEdgeDef::getGraphId, Collectors.counting()));
         // 填充统计信息
         for (Graph graph : records) {
-            graph.setDatabaseType(graph.getGraphType());
             graph.setVertexTypeCount(nodeCountMap.getOrDefault(graph.getId(), 0L).intValue());
             graph.setEdgeTypeCount(edgeCountMap.getOrDefault(graph.getId(), 0L).intValue());
         }
@@ -95,6 +123,7 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
         queryWrapper.orderByDesc("create_time");
         Page<Graph> pageResult = this.page(page, queryWrapper);
         fillGraphCounts(pageResult.getRecords());
+        fillGraphStatus(pageResult.getRecords());
         return pageResult;
     }
 
@@ -115,7 +144,7 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
         List<Graph> discovered = discoverRemoteGraphs(connectionId);
         if (!discovered.isEmpty()) {
             Set<String> localCodes = pageResult.getRecords().stream()
-                .map(Graph::getCode).collect(Collectors.toSet());
+                    .map(Graph::getCode).collect(Collectors.toSet());
             List<Graph> merged = new ArrayList<>(pageResult.getRecords());
             for (Graph remote : discovered) {
                 if (!localCodes.contains(remote.getCode())) {
@@ -128,9 +157,11 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
             int from = (int) ((page.getCurrent() - 1) * ps);
             int to = Math.min(from + ps, merged.size());
             resultPage.setRecords(from < merged.size() ? merged.subList(from, to) : List.of());
+            fillGraphStatus(resultPage.getRecords());
             return resultPage;
         }
 
+        fillGraphStatus(pageResult.getRecords());
         return pageResult;
     }
 
@@ -141,7 +172,9 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
         List<Graph> result = new ArrayList<>();
         try {
             GraphConnection connection = connectionService.getById(connectionId);
-            if (connection == null) return result;
+            if (connection == null) {
+                return result;
+            }
 
             Graph graph = new Graph();
             graph.setConnectionId(connectionId);

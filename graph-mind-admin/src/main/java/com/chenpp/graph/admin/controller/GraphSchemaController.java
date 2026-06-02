@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -60,12 +61,15 @@ public class GraphSchemaController {
      * @return 节点定义列表
      */
     @GetMapping("/vertices")
-    public Result<List<GraphVertexDef>> getVertexDefs(@PathVariable Long graphId, Integer status) {
+    public Result<List<GraphVertexDef>> getVertexDefs(
+            @PathVariable Long graphId, Integer status,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode) {
         List<GraphVertexDef> vertexDefs = vertexDefService.getVertexDefsByGraphId(graphId, status);
         // 元数据为空时，从图数据库发现
         if (vertexDefs == null || vertexDefs.isEmpty()) {
             try {
-                vertexDefs = discoverVertexDefs(graphId);
+                vertexDefs = discoverVertexDefs(graphId, connectionId, graphCode);
             } catch (Exception e) {
                 log.warn("从图数据库发现节点定义失败: {}", e.getMessage());
                 vertexDefs = new ArrayList<>();
@@ -73,7 +77,7 @@ public class GraphSchemaController {
         } else {
             // 有定义但属性为空时，尝试从图数据库发现并合并属性
             boolean hasEmptyProperties = vertexDefs.stream()
-                .anyMatch(n -> n.getProperties() == null || n.getProperties().isEmpty());
+                    .anyMatch(n -> n.getProperties() == null || n.getProperties().isEmpty());
             if (hasEmptyProperties) {
                 try {
                     mergeDiscoveredVertexProperties(vertexDefs, graphId);
@@ -88,7 +92,7 @@ public class GraphSchemaController {
     /**
      * 新增节点定义
      *
-     * @param graphId 图ID
+     * @param graphId   图ID
      * @param vertexDef 节点定义信息
      * @return 是否成功
      */
@@ -108,7 +112,7 @@ public class GraphSchemaController {
     /**
      * 更新节点定义
      *
-     * @param graphId 图ID
+     * @param graphId   图ID
      * @param vertexId  节点定义ID
      * @param vertexDef 节点定义信息
      * @return 是否成功
@@ -128,8 +132,8 @@ public class GraphSchemaController {
     /**
      * 删除节点定义
      *
-     * @param graphId 图ID
-     * @param vertexId  节点定义ID
+     * @param graphId  图ID
+     * @param vertexId 节点定义ID
      * @return 是否成功
      */
     @DeleteMapping("/vertices/{vertexId}")
@@ -150,12 +154,15 @@ public class GraphSchemaController {
      * @return 边定义列表
      */
     @GetMapping("/edges")
-    public Result<List<GraphEdgeDef>> getEdgeDefs(@PathVariable Long graphId, Integer status) {
+    public Result<List<GraphEdgeDef>> getEdgeDefs(
+            @PathVariable Long graphId, Integer status,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode) {
         List<GraphEdgeDef> edgeDefs = edgeDefService.getEdgeDefsByGraphId(graphId, status);
         // 元数据为空时，从图数据库发现
         if (edgeDefs == null || edgeDefs.isEmpty()) {
             try {
-                edgeDefs = discoverEdgeDefs(graphId);
+                edgeDefs = discoverEdgeDefs(graphId, connectionId, graphCode);
             } catch (Exception e) {
                 log.warn("从图数据库发现边定义失败: {}", e.getMessage());
                 edgeDefs = new ArrayList<>();
@@ -163,7 +170,7 @@ public class GraphSchemaController {
         } else {
             // 有定义但属性为空时，尝试从图数据库发现并合并属性
             boolean hasEmptyProperties = edgeDefs.stream()
-                .anyMatch(e -> e.getProperties() == null || e.getProperties().isEmpty());
+                    .anyMatch(e -> e.getProperties() == null || e.getProperties().isEmpty());
             if (hasEmptyProperties) {
                 try {
                     mergeDiscoveredEdgeProperties(edgeDefs, graphId);
@@ -276,8 +283,13 @@ public class GraphSchemaController {
     /**
      * 从图数据库发现节点定义
      */
-    private List<GraphVertexDef> discoverVertexDefs(Long graphId) {
-        GraphSchema schema = graphSchemaService.discoverSchema(graphId);
+    private List<GraphVertexDef> discoverVertexDefs(Long graphId, Long connectionId, String graphCode) {
+        GraphSchema schema;
+        if (connectionId != null && graphCode != null) {
+            schema = graphSchemaService.discoverSchema(connectionId, graphCode);
+        } else {
+            schema = graphSchemaService.discoverSchema(graphId);
+        }
         if (schema == null || schema.getEntities() == null || schema.getEntities().isEmpty()) {
             return new ArrayList<>();
         }
@@ -292,8 +304,8 @@ public class GraphSchemaController {
             vertexDef.setStatus(1);
             if (entity.getProperties() != null) {
                 List<GraphPropertyDef> props = entity.getProperties().stream()
-                    .map(this::buildPropertyDef)
-                    .collect(Collectors.toList());
+                        .map(this::buildPropertyDef)
+                        .collect(Collectors.toList());
                 vertexDef.setProperties(props);
             }
             return vertexDef;
@@ -303,18 +315,15 @@ public class GraphSchemaController {
     /**
      * 从图数据库发现边定义
      */
-    private List<GraphEdgeDef> discoverEdgeDefs(Long graphId) {
-        GraphSchema schema = graphSchemaService.discoverSchema(graphId);
+    private List<GraphEdgeDef> discoverEdgeDefs(Long graphId, Long connectionId, String graphCode) {
+        GraphSchema schema;
+        if (connectionId != null && graphCode != null) {
+            schema = graphSchemaService.discoverSchema(connectionId, graphCode);
+        } else {
+            schema = graphSchemaService.discoverSchema(graphId);
+        }
         if (schema == null || schema.getRelations() == null || schema.getRelations().isEmpty()) {
             return new ArrayList<>();
-        }
-        // 构建节点标签→ID映射（使用负ID，与discoverVertexDefs一致）
-        Map<String, Long> labelIdMap = new HashMap<>();
-        if (schema.getEntities() != null) {
-            AtomicLong counter = new AtomicLong(-1);
-            for (GraphEntity entity : schema.getEntities()) {
-                labelIdMap.put(entity.getLabel(), counter.decrementAndGet());
-            }
         }
         AtomicLong idCounter = new AtomicLong(-1000);
         return schema.getRelations().stream().map(relation -> {
@@ -326,15 +335,13 @@ public class GraphSchemaController {
             edgeDef.setDescription("从图数据库发现");
             edgeDef.setStatus(1);
             edgeDef.setMultiple(relation.getMultiple());
-            // 通过标签映射设置起点/终点节点ID
-            Long fromId = labelIdMap.get(relation.getStartLabel());
-            edgeDef.setFrom(fromId != null ? String.valueOf(fromId) : relation.getStartLabel());
-            Long toId = labelIdMap.get(relation.getEndLabel());
-            edgeDef.setTo(toId != null ? String.valueOf(toId) : relation.getEndLabel());
+            // 直接存储标签名
+            edgeDef.setStartLabel(relation.getStartLabel());
+            edgeDef.setEndLabel(relation.getEndLabel());
             if (relation.getProperties() != null) {
                 List<GraphPropertyDef> props = relation.getProperties().stream()
-                    .map(p -> buildPropertyDef(p))
-                    .collect(Collectors.toList());
+                        .map(p -> buildPropertyDef(p))
+                        .collect(Collectors.toList());
                 edgeDef.setProperties(props);
             }
             return edgeDef;
@@ -350,16 +357,16 @@ public class GraphSchemaController {
             return;
         }
         Map<String, List<GraphProperty>> labelPropsMap = schema.getEntities().stream()
-            .collect(Collectors.toMap(GraphEntity::getLabel, GraphEntity::getProperties, (a, b) -> a));
+                .collect(Collectors.toMap(GraphEntity::getLabel, GraphEntity::getProperties, (a, b) -> a));
         for (GraphVertexDef vertexDef : vertexDefs) {
             if (vertexDef.getLabel() != null) {
                 List<GraphProperty> discovered = labelPropsMap.get(vertexDef.getLabel());
                 if (discovered != null && !discovered.isEmpty()) {
                     List<GraphPropertyDef> existing = vertexDef.getProperties() != null
-                        ? vertexDef.getProperties() : new ArrayList<>();
+                            ? vertexDef.getProperties() : new ArrayList<>();
                     for (GraphProperty p : discovered) {
                         boolean exists = existing.stream()
-                            .anyMatch(e -> p.getCode().equals(e.getCode()));
+                                .anyMatch(e -> p.getCode().equals(e.getCode()));
                         if (!exists) {
                             existing.add(buildPropertyDef(p));
                         }
@@ -379,16 +386,16 @@ public class GraphSchemaController {
             return;
         }
         Map<String, List<GraphProperty>> labelPropsMap = schema.getRelations().stream()
-            .collect(Collectors.toMap(GraphRelation::getLabel, GraphRelation::getProperties, (a, b) -> a));
+                .collect(Collectors.toMap(GraphRelation::getLabel, GraphRelation::getProperties, (a, b) -> a));
         for (GraphEdgeDef edgeDef : edgeDefs) {
             if (edgeDef.getLabel() != null) {
                 List<GraphProperty> discovered = labelPropsMap.get(edgeDef.getLabel());
                 if (discovered != null && !discovered.isEmpty()) {
                     List<GraphPropertyDef> existing = edgeDef.getProperties() != null
-                        ? edgeDef.getProperties() : new ArrayList<>();
+                            ? edgeDef.getProperties() : new ArrayList<>();
                     for (GraphProperty p : discovered) {
                         boolean exists = existing.stream()
-                            .anyMatch(e -> p.getCode().equals(e.getCode()));
+                                .anyMatch(e -> p.getCode().equals(e.getCode()));
                         if (!exists) {
                             existing.add(buildPropertyDef(p));
                         }

@@ -69,7 +69,7 @@ const props = defineProps({
 
 defineEmits(['click', 'open', 'edit', 'detail', 'delete', 'browse'])
 
-const dbType = computed(() => props.graph.databaseType || props.graph.graphType || props.graph.type || '')
+const dbType = computed(() => props.graph.graphType || props.graph.type || '')
 const dbTypeClass = computed(() => {
   const t = dbType.value.toLowerCase()
   if (t.includes('neo4j')) return 'neo4j'

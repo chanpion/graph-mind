@@ -201,9 +201,9 @@ const DEFAULT_QUERIES = {
 // 状态管理
 const graphsStore = useGraphsStore()
 
-// 图类型信息（兼容 mock 的 databaseType 和真实 API 的 graphType）
+// 图类型信息
 const graphType = computed(() => {
-  const raw = graphsStore.currentGraph?.graphType || graphsStore.currentGraph?.databaseType || ''
+  const raw = graphsStore.currentGraph?.graphType || ''
   return raw.toLowerCase()
 })
 
@@ -211,7 +211,7 @@ const graphType = computed(() => {
 const layoutType = ref('force')
 
 // 初始化查询语句（在 watch 之前初始化，避免访问顺序错误）
-const graphTypeRaw = graphsStore.currentGraph?.graphType || graphsStore.currentGraph?.databaseType || ''
+const graphTypeRaw = graphsStore.currentGraph?.graphType || ''
 const queryStatement = ref(DEFAULT_QUERIES[graphTypeRaw.toLowerCase()] || '')
 const queryLoading = ref(false)
 const graphData = ref({
@@ -299,7 +299,12 @@ const onExecuteQuery = async (statement) => {
     }, 100)
 
     // 调用真实API执行查询
-    const response = await graphApi.queryGraph(graphsStore.currentGraphId, statement)
+    const params = {}
+    if (graphsStore.currentGraphId < 0 && graphsStore.currentGraph) {
+      params.connectionId = graphsStore.currentGraph.connectionId
+      params.graphCode = graphsStore.currentGraph.code
+    }
+    const response = await graphApi.queryGraph(graphsStore.currentGraphId, statement, params)
 
     // 根据API返回的数据结构转换格式
     const transformedData = transformApiResponseToGraphData(response)
