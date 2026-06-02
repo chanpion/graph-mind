@@ -184,12 +184,12 @@
         </el-form-item>
         <el-form-item label="起点类型">
           <el-select v-model="edgeForm.startLabel" placeholder="请选择起点类型" style="width: 100%">
-            <el-option v-for="node in vertexDefs" :key="node.id" :label="node.name" :value="node.startLabel" />
+            <el-option v-for="node in vertexDefs" :key="node.id" :label="node.name" :value="node.label" />
           </el-select>
         </el-form-item>
         <el-form-item label="终点类型">
           <el-select v-model="edgeForm.endLabel" placeholder="请选择终点类型" style="width: 100%">
-            <el-option v-for="node in vertexDefs" :key="node.id" :label="node.name" :value="node.startLabel" />
+            <el-option v-for="node in vertexDefs" :key="node.id" :label="node.name" :value="node.label" />
           </el-select>
         </el-form-item>
         <el-form-item label="描述">
@@ -389,7 +389,7 @@ function handleTabChange(tab) {
 }
 
 function getNodeNameByLabel(label) {
-  const node = vertexDefs.value.find(n => n.startLabel === label)
+  const node = vertexDefs.value.find(n => n.label === label)
   return node ? node.name : '未知节点'
 }
 
