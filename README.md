@@ -6,7 +6,7 @@
 
 ## 🌟 平台概述
 
-Graph Mind Platform (GMP) 是一款面向企业级的知识图谱管理平台，覆盖建模、导入、查询、分析与可视化等全流程能力。本仓库包含后端多模块实现与若干前端控制台项目。
+Graph Mind Platform (GMP) 是一款面向企业级的图数据库管理平台，提供统一的、支持多种图数据库（Neo4j、Nebula Graph、JanusGraph）的可视化管理界面，覆盖图数据库连接管理、数据建模、数据管理、图查询、图分析与可视化等全流程能力。本仓库包含后端多模块实现与活跃前端项目。
 
 ## 🚀 快速概览（仓库结构）
 
@@ -60,23 +60,25 @@ mvn test -pl <module> -Dtest=<TestClass>#testMethod
 
 ### 前端：开发与构建
 
-graph-mind-studio（主 UI）:
+当前活跃统一前端 `frontend/`（Vue 3 + Vite + Element Plus）：
+
+```bash
+cd frontend
+npm install
+npm run dev      # 开发服务器（端口 3000）
+npm run build    # 生产构建
+npm run preview  # 预览生产构建
+```
+
+遗留前端 `graph-mind-studio`（Vue 3，保留供参考）：
 
 ```bash
 cd graph-mind-studio
 npm install
-npm run dev   # 默认端口 3000
+npm run dev      # 默认端口 3000
 ```
 
-另一个前端 `app`（基于 Vite）：
-
-```bash
-cd app
-npm install
-npm run dev   # dev 服务器（端口 3000）
-```
-
-更多前端构建与测试命令见各子目录下的 `package.json`。
+更多前端构建与测试命令见各子目录下的 `package.json` 及 [CLAUDE.md](CLAUDE.md)。
 
 ## 📚 模块简要说明
 
@@ -109,6 +111,5 @@ Apache License 2.0
 ## 📮 联系方式
 
 - 项目主页：https://github.com/chanpion/graph-mind
-- 问题反馈：gmp-support@yourorg.com
 
 
