@@ -394,7 +394,7 @@ async function expandNeighbors() {
     return
   }
 
-  const nodeId = selectedElement.value.id
+  const vertexId = selectedElement.value.id
   const depth = 1
 
   // 保存原始数据（首次展开时）
@@ -411,7 +411,7 @@ async function expandNeighbors() {
       params.connectionId = graphsStore.currentGraph.connectionId
       params.graphCode = graphsStore.currentGraph.code
     }
-    const response = await graphApi.expandNode(graphsStore.currentGraphId, nodeId, depth, params)
+    const response = await graphApi.expandVertex(graphsStore.currentGraphId, vertexId, depth, params)
 
     const newData = transformApiResponseToGraphData(response) || { nodes: [], edges: [] }
 
@@ -455,12 +455,12 @@ async function expandNeighbors() {
   } catch (error) {
     console.error('展开邻居失败:', error)
     // 后端调用失败时，回退到本地过滤
-    fallbackLocalExpand(nodeId)
+    fallbackLocalExpand(vertexId)
   }
 }
 
 // 本地过滤兜底：在当前数据中查找邻居
-function fallbackLocalExpand(nodeId) {
+function fallbackLocalExpand(vertexId) {
   const connectedEdges = graphData.value.edges.filter(e => {
     const sourceId = typeof e.source === 'object' ? e.source.id : e.source
     const targetId = typeof e.target === 'object' ? e.target.id : e.target
@@ -472,7 +472,7 @@ function fallbackLocalExpand(nodeId) {
     return
   }
 
-  const neighborIds = new Set([nodeId])
+  const neighborIds = new Set([vertexId])
   connectedEdges.forEach(e => {
     const sourceId = typeof e.source === 'object' ? e.source.id : e.source
     const targetId = typeof e.target === 'object' ? e.target.id : e.target
@@ -502,8 +502,8 @@ function collapseNeighbors() {
     }
   }
 
-  const nodeId = selectedElement.value.id
-  const node = graphData.value.nodes.find(n => n.id === nodeId)
+  const vertexId = selectedElement.value.id
+  const node = graphData.value.nodes.find(n => n.id === vertexId)
 
   graphData.value = {
     nodes: node ? [node] : [],
@@ -752,10 +752,10 @@ const transformApiResponseToGraphData = (apiResponse) => {
       if (item && typeof item === 'object') {
         // 如果是节点
         if (item.uid && item.label) {
-          const nodeId = item.uid
-          if (!nodeMap.has(nodeId)) {
-            nodeMap.set(nodeId, {
-              id: nodeId,
+          const vertexId = item.uid
+          if (!nodeMap.has(vertexId)) {
+            nodeMap.set(vertexId, {
+              id: vertexId,
               label: item.label,
               properties: item.properties || {}
             })

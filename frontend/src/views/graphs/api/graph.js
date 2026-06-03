@@ -32,9 +32,9 @@ export const graphApi = {
     return request.put(`/api/graphs/${id}`, data)
   },
 
-  /** 删除图 */
-  delete(id) {
-    return request.delete(`/api/graphs/${id}`)
+  /** 删除图 — 对于发现的图（负ID）需传入 connectionId + graphCode */
+  delete(id, params) {
+    return request.delete(`/api/graphs/${id}`, { params })
   },
 
   // ====== Schema 管理 ======
@@ -50,13 +50,13 @@ export const graphApi = {
   },
 
   /** 更新点定义 */
-  updateVertexDef(graphId, nodeId, data) {
-    return request.put(`/api/graphs/${graphId}/vertices/${nodeId}`, data)
+  updateVertexDef(graphId, vertexId, data) {
+    return request.put(`/api/graphs/${graphId}/vertices/${vertexId}`, data)
   },
 
   /** 删除点定义 */
-  deleteVertexDef(graphId, nodeId) {
-    return request.delete(`/api/graphs/${graphId}/vertices/${nodeId}`)
+  deleteVertexDef(graphId, vertexId) {
+    return request.delete(`/api/graphs/${graphId}/vertices/${vertexId}`)
   },
 
   /** 获取边定义列表 */
@@ -107,8 +107,8 @@ export const graphApi = {
   },
 
   /** 更新点数据 */
-  updateNodeData(graphId, nodeId, data) {
-    return request.put(`/api/graphs/${graphId}/data/vertices/${nodeId}`, data)
+  updateVertexData(graphId, vertexId, data) {
+    return request.put(`/api/graphs/${graphId}/data/vertices/${vertexId}`, data)
   },
 
   /** 更新边数据 */
@@ -117,8 +117,8 @@ export const graphApi = {
   },
 
   /** 删除节点 */
-  deleteNode(graphId, nodeId, label) {
-    return request.delete(`/api/graphs/${graphId}/data/vertices/${nodeId}`, {
+  deleteVertexData(graphId, vertexId, label) {
+    return request.delete(`/api/graphs/${graphId}/data/vertices/${vertexId}`, {
       params: { label }
     })
   },
@@ -138,13 +138,13 @@ export const graphApi = {
   },
 
   /** 展开节点 */
-  expandNode(graphId, nodeId, depth = 1, params, extraBody = {}) {
-    return request.post(`/api/graphs/${graphId}/expand`, { nodeId, depth, ...extraBody }, { params })
+  expandVertex(graphId, vertexId, depth = 1, params, extraBody = {}) {
+    return request.post(`/api/graphs/${graphId}/expand`, { vertexId, depth, ...extraBody }, { params })
   },
 
   /** 查找路径 */
-  findPath(graphId, startNodeId, endNodeId, maxDepth = 5, params) {
-    return request.post(`/api/graphs/${graphId}/path`, { startNodeId, endNodeId, maxDepth }, { params })
+  findPath(graphId, startVertexId, endVertexId, maxDepth = 5, params) {
+    return request.post(`/api/graphs/${graphId}/path`, { startVertexId, endVertexId, maxDepth }, { params })
   },
 
   /** 获取图统计 */

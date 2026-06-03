@@ -798,7 +798,7 @@ const executeAnalysis = async () => {
       let apiResponse;
       switch (algorithm) {
         case 'kLayerExpand':
-          // K层展开：调用 expandNode API
+          // K层展开：调用 expandVertex API
           const targetEntityType = analysisForm.targetEntity[0];
           const targetEntityProp = analysisForm.targetEntity[1];
           const opParams = {}
@@ -806,7 +806,7 @@ const executeAnalysis = async () => {
             opParams.connectionId = graphsStore.currentGraph.connectionId
             opParams.graphCode = graphsStore.currentGraph.code
           }
-          apiResponse = await graphApi.expandNode(
+          apiResponse = await graphApi.expandVertex(
             graphsStore.currentGraphId,
             analysisForm.queryValue, // 使用查询值作为节点ID
             analysisForm.layers,

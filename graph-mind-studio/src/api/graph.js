@@ -74,13 +74,13 @@ export const graphApi = {
   },
   
   // 更新点定义
-  updateNodeDef(graphId, nodeId, data) {
-    return request.put(`/api/graphs/${graphId}/nodes/${nodeId}`, data)
+  updateNodeDef(graphId, vertexId, data) {
+    return request.put(`/api/graphs/${graphId}/nodes/${vertexId}`, data)
   },
   
   // 删除点定义
-  deleteNodeDef(graphId, nodeId) {
-    return request.delete(`/api/graphs/${graphId}/nodes/${nodeId}`)
+  deleteNodeDef(graphId, vertexId) {
+    return request.delete(`/api/graphs/${graphId}/nodes/${vertexId}`)
   },
   
   // 新增边定义
@@ -116,18 +116,18 @@ export const graphApi = {
   },
   
   // 展开节点（查询与指定节点相关的邻居节点和边）
-  expandNode(graphId, nodeId, depth = 1) {
+  expandVertex(graphId, vertexId, depth = 1) {
     return request.post(`/api/graphs/${graphId}/expand`, { 
-      nodeId, 
+      vertexId, 
       depth 
     })
   },
   
   // 查找两个节点之间的路径
-  findPath(graphId, startNodeId, endNodeId, maxDepth = 5) {
+  findPath(graphId, startVertexId, endVertexId, maxDepth = 5) {
     return request.post(`/api/graphs/${graphId}/path`, { 
-      startNodeId, 
-      endNodeId, 
+      startVertexId, 
+      endVertexId, 
       maxDepth 
     })
   },
@@ -141,8 +141,8 @@ export const graphApi = {
     return request.post(`/api/graphs/${graphId}/publish`)
   },
 
-  deleteNode(graphId, nodeId, label) {
-    return request.delete(`/api/graphs/${graphId}/data/nodes/${nodeId}`, {
+  deleteVertexData(graphId, vertexId, label) {
+    return request.delete(`/api/graphs/${graphId}/data/nodes/${vertexId}`, {
       params: { label }
     })
   },
@@ -159,8 +159,8 @@ export const graphApi = {
   },
   
   // 获取点数据详情
-  getNodeData(graphId, nodeId) {
-    return request.get(`/api/graphs/${graphId}/data/nodes/${nodeId}`)
+  getVertexData(graphId, vertexId) {
+    return request.get(`/api/graphs/${graphId}/data/nodes/${vertexId}`)
   },
   
   // 获取边数据详情
@@ -179,8 +179,8 @@ export const graphApi = {
   },
   
   // 更新点数据
-  updateNodeData(graphId, nodeId, data) {
-    return request.put(`/api/graphs/${graphId}/data/nodes/${nodeId}`, data)
+  updateVertexData(graphId, vertexId, data) {
+    return request.put(`/api/graphs/${graphId}/data/nodes/${vertexId}`, data)
   },
   
   // 更新边数据

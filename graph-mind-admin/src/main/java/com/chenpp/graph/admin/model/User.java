@@ -35,12 +35,14 @@ public class User {
      * 密码（加密后存储）
      */
     @TableField
+    @lombok.ToString.Exclude
     private String password;
 
     /**
      * 原始密码（用于接收明文密码并加密）
      */
     @TableField(exist = false)
+    @lombok.ToString.Exclude
     private transient String rawPassword;
 
     /**

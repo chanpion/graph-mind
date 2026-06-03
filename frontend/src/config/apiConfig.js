@@ -8,7 +8,7 @@ const defaultConfig = {
   useMock: false,
   mockDelay: 300,
   realApiUrl: 'http://localhost:18080',
-  realApiTimeout: 10000
+  realApiTimeout: 60000
 }
 
 export function getApiConfig() {

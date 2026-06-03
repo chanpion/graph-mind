@@ -61,8 +61,41 @@ public class GlobalExceptionHandler {
             log.error("GraphDatabaseException: ", e);
         }
         
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+        int httpStatus = mapToHttpStatus(errorCode);
+        return ResponseEntity.status(httpStatus)
                 .body(Result.error(errorCode.getCode(), message));
+    }
+
+    /**
+     * 将 ErrorCode 映射为 HTTP 状态码
+     */
+    private int mapToHttpStatus(ErrorCode errorCode) {
+        int code = errorCode.getCode();
+        if (code >= 400 && code < 600) {
+            return code;
+        }
+        switch (errorCode) {
+            case CONNECTION_FAILED:
+            case GRAPH_CONNECTION_FAILED:
+            case SERVICE_UNAVAILABLE:
+                return 503;
+            case UNAUTHORIZED:
+            case INVALID_CREDENTIALS:
+                return 401;
+            case FORBIDDEN:
+            case PERMISSION_DENIED:
+                return 403;
+            case NOT_FOUND:
+            case USER_NOT_FOUND:
+            case GRAPH_NOT_FOUND:
+                return 404;
+            case UNSUPPORTED_OPERATION:
+                return 405;
+            case NOT_IMPLEMENTED:
+                return 501;
+            default:
+                return 500;
+        }
     }
 
     /**

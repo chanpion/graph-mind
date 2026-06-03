@@ -293,10 +293,14 @@ const graphLoaded = ref(false)
 // ---- 侧边栏选择 ----
 const selectedType = ref('')   // 'node' | 'edge'
 const selectedTypeId = ref('')
+// 保存当前选中类型的图上下文（discovered graph 需要 connectionId + graphCode）
+const selectedTypeGraph = ref(null)
 
 function selectNodeType(t) {
   selectedType.value = 'node'
   selectedTypeId.value = t.id
+  // 从 store 的 currentGraph 获取图上下文，discovered graph 需要传 connectionId + graphCode
+  selectedTypeGraph.value = graphsStore.currentGraph
   searchText.value = ''
   pageNum.value = 1
   nextTick(() => loadData())
@@ -305,6 +309,7 @@ function selectNodeType(t) {
 function selectEdgeType(t) {
   selectedType.value = 'edge'
   selectedTypeId.value = t.id
+  selectedTypeGraph.value = graphsStore.currentGraph
   searchText.value = ''
   pageNum.value = 1
   nextTick(() => loadData())
@@ -327,6 +332,11 @@ async function loadData() {
   try {
     let res
     const params = { page: pageNum.value, size: pageSize.value }
+    // 对于发现的图（负ID类型），需要传入 connectionId + graphCode
+    if (selectedTypeGraph.value && selectedTypeGraph.value.connectionId) {
+      params.connectionId = selectedTypeGraph.value.connectionId
+      params.graphCode = selectedTypeGraph.value.code
+    }
     if (selectedType.value === 'node') {
       res = await graphApi.getNodeDataList(graphId.value, selectedTypeId.value, params)
     } else {

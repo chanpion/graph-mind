@@ -144,11 +144,40 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             return;
         }
 
-        vertices.forEach(this::addVertex);
+        JanusGraphTransaction tx = null;
+        try {
+            tx = graph.newTransaction();
+            for (GraphVertex vertex : vertices) {
+                JanusGraphVertex janusVertex = tx.addVertex(vertex.getLabel());
+                janusVertex.property(GraphConstants.UID, vertex.getUid());
+                if (vertex.getProperties() != null) {
+                    vertex.getProperties().forEach((key, value) -> {
+                        if (value != null) {
+                            janusVertex.property(key, value);
+                        }
+                    });
+                }
+                if (janusVertex.id() != null) {
+                    vertex.setId(janusVertex.id().toString());
+                }
+            }
+            tx.commit();
+            log.info("Batch inserted {} vertices", vertices.size());
+        } catch (Exception e) {
+            log.error("Failed to batch add vertices", e);
+            if (tx != null && tx.isOpen()) {
+                tx.rollback();
+            }
+            throw new GraphException("Failed to batch add vertices", e);
+        } finally {
+            if (tx != null && tx.isOpen()) {
+                tx.close();
+            }
+        }
     }
 
     @Override
-    public void deleteVertex(GraphVertex vertex) throws GraphException {
+    public boolean deleteVertex(GraphVertex vertex) throws GraphException {
         JanusGraphTransaction tx = null;
         try {
             tx = graph.newTransaction();
@@ -160,6 +189,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
                 janusVertex.remove();
                 // 提交事务
                 tx.commit();
+                return true;
             } else {
                 throw new GraphException("Vertex not found with uid: " + vertex.getUid());
             }
@@ -177,7 +207,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
     }
 
     @Override
-    public void addEdge(GraphEdge edge) throws GraphException {
+    public GraphEdge addEdge(GraphEdge edge) throws GraphException {
         JanusGraphTransaction tx = null;
         try {
             tx = graph.newTransaction();
@@ -214,6 +244,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
 
             // 提交事务
             tx.commit();
+            return edge;
         } catch (Exception e) {
             log.error("Failed to add edge from {} to {}: {}", edge.getStartUid(), edge.getEndUid(), e.getMessage(), e);
             if (tx != null && tx.isOpen()) {
@@ -235,11 +266,51 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             return;
         }
 
-        edges.forEach(this::addEdge);
+        JanusGraphTransaction tx = null;
+        try {
+            tx = graph.newTransaction();
+            for (GraphEdge edge : edges) {
+                Iterator<JanusGraphVertex> startVertices = tx.query().has(GraphConstants.UID, edge.getStartUid()).vertices().iterator();
+                if (!startVertices.hasNext()) {
+                    throw new GraphException("Start vertex not found with uid: " + edge.getStartUid());
+                }
+                JanusGraphVertex startVertex = startVertices.next();
+
+                Iterator<JanusGraphVertex> endVertices = tx.query().has(GraphConstants.UID, edge.getEndUid()).vertices().iterator();
+                if (!endVertices.hasNext()) {
+                    throw new GraphException("End vertex not found with uid: " + edge.getEndUid());
+                }
+                JanusGraphVertex endVertex = endVertices.next();
+
+                JanusGraphEdge janusEdge = startVertex.addEdge(edge.getLabel(), endVertex);
+                if (edge.getProperties() != null) {
+                    edge.getProperties().forEach((key, value) -> {
+                        if (value != null) {
+                            janusEdge.property(key, value);
+                        }
+                    });
+                }
+                if (janusEdge.id() != null) {
+                    edge.setId(janusEdge.id().toString());
+                }
+            }
+            tx.commit();
+            log.info("Batch inserted {} edges", edges.size());
+        } catch (Exception e) {
+            log.error("Failed to batch add edges", e);
+            if (tx != null && tx.isOpen()) {
+                tx.rollback();
+            }
+            throw new GraphException("Failed to batch add edges", e);
+        } finally {
+            if (tx != null && tx.isOpen()) {
+                tx.close();
+            }
+        }
     }
 
     @Override
-    public int updateEdge(GraphEdge edge) throws GraphException {
+    public GraphEdge updateEdge(GraphEdge edge) throws GraphException {
         JanusGraphTransaction tx = null;
         try {
             tx = graph.newTransaction();
@@ -259,7 +330,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
 
                 // 提交事务
                 tx.commit();
-                return 1;
+                return edge;
             } else {
                 throw new GraphException("Edge not found with uid: " + edge.getUid());
             }
@@ -277,7 +348,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
     }
 
     @Override
-    public int deleteEdge(GraphEdge edge) throws GraphException {
+    public boolean deleteEdge(GraphEdge edge) throws GraphException {
         JanusGraphTransaction tx = null;
         try {
             tx = graph.newTransaction();
@@ -289,7 +360,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
                 janusEdge.remove();
                 // 提交事务
                 tx.commit();
-                return 1;
+                return true;
             } else {
                 throw new GraphException("Edge not found with uid: " + edge.getUid());
             }
@@ -468,8 +539,8 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             // 优先使用uid属性作为起点/终点标识
             JanusGraphVertex outVertex = detachedEdge.outVertex();
             JanusGraphVertex inVertex = detachedEdge.inVertex();
-            graphEdge.setStartUid(getJanusVertexUid(outVertex));
-            graphEdge.setEndUid(getJanusVertexUid(inVertex));
+            graphEdge.setStartUid(getVertexUid(outVertex));
+            graphEdge.setEndUid(getVertexUid(inVertex));
 
             graphEdge.setLabel(detachedEdge.label());
             Map<String, Object> map = Maps.newHashMap();
@@ -612,16 +683,6 @@ public class JanusGraphDataOperations implements GraphDataOperations {
     }
 
     /**
-     * 从JanusGraphVertex获取uid属性值
-     */
-    private String getJanusVertexUid(JanusGraphVertex vertex) {
-        if (vertex.property("uid").isPresent()) {
-            return vertex.property("uid").value().toString();
-        }
-        return vertex.id().toString();
-    }
-
-    /**
      * 根据顶点ID列表查询顶点
      *
      * @param vertexIds 顶点ID列表
@@ -692,17 +753,17 @@ public class JanusGraphDataOperations implements GraphDataOperations {
     }
 
     @Override
-    public GraphData expand(String nodeId, int depth) throws GraphException {
+    public GraphData expand(String vertexId, int depth) throws GraphException {
         String gremlinQuery = String.format("g.V().has('%s', '%s').repeat(bothE().bothV().simplePath()).times(%d).path()", 
-                GraphConstants.UID, nodeId, depth);
+                GraphConstants.UID, vertexId, depth);
         log.debug("Executing expand query: {}", gremlinQuery);
         return query(gremlinQuery);
     }
 
     @Override
-    public GraphData findPath(String startNodeId, String endNodeId, int maxDepth) throws GraphException {
+    public GraphData findPath(String startVertexId, String endVertexId, int maxDepth) throws GraphException {
         String gremlinQuery = String.format("g.V().has('%s', '%s').repeat(bothE().bothV().simplePath()).until(has('%s', '%s')).limit(1).path()",
-                GraphConstants.UID, startNodeId, GraphConstants.UID, endNodeId);
+                GraphConstants.UID, startVertexId, GraphConstants.UID, endVertexId);
         log.debug("Executing findPath query: {}", gremlinQuery);
         return query(gremlinQuery);
     }

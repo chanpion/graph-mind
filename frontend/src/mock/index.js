@@ -55,7 +55,7 @@ function register(method, pattern, handler) {
   routes.push({ method: method.toLowerCase(), pattern, handler })
 }
 
-// URL 解析辅助：从 /api/graphs/:graphId/vertices/:nodeId 中提取参数
+// URL 解析辅助：从 /api/graphs/:graphId/vertices/:vertexId 中提取参数
 function extractParams(pattern, url) {
   const regex = new RegExp('^' + pattern.replace(/:\w+/g, '([^/]+)') + '$')
   const match = url.match(regex)

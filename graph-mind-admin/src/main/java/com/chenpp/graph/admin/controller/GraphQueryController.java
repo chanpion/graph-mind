@@ -63,7 +63,7 @@ public class GraphQueryController {
             @RequestParam(required = false) Long connectionId,
             @RequestParam(required = false) String graphCode) {
         // 接收前端参数
-        String queryValue = request.containsKey("nodeId") ? (String) request.get("nodeId") : (String) request.get("vertexId");
+        String queryValue = request.containsKey("vertexId") ? (String) request.get("vertexId") : (String) request.get("vertexId");
         Integer depth = (Integer) request.get("depth");
         String label = (String) request.get("label");
         String propertyName = (String) request.get("property");
@@ -125,21 +125,24 @@ public class GraphQueryController {
             @RequestBody Map<String, Object> request,
             @RequestParam(required = false) Long connectionId,
             @RequestParam(required = false) String graphCode) {
-        String startNodeId = (String) request.get("startNodeId");
-        String endNodeId = (String) request.get("endNodeId");
+        String startVertexId = (String) request.get("startVertexId");
+        String endVertexId = (String) request.get("endVertexId");
         Integer maxDepth = (Integer) request.get("maxDepth");
 
-        if (startNodeId == null || startNodeId.isEmpty()) {
+        if (startVertexId == null || startVertexId.isEmpty()) {
             return Result.error("起始节点ID不能为空");
         }
 
-        if (endNodeId == null || endNodeId.isEmpty()) {
+        if (endVertexId == null || endVertexId.isEmpty()) {
             return Result.error("目标节点ID不能为空");
         }
 
         if (maxDepth == null) {
             maxDepth = 5;
         }
+
+        String escapedStartVertexId = startVertexId.replace("'", "\\'");
+        String escapedEndVertexId = endVertexId.replace("'", "\\'");
 
         GraphConf graphConf = GraphClientFactory.resolveGraphConf(graphId, connectionId, graphCode, graphService, connectionService);
         GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
@@ -150,14 +153,14 @@ public class GraphQueryController {
         String pathQuery;
         if ("nebula".equalsIgnoreCase(dbType)) {
             pathQuery = String.format("FIND SHORTEST PATH FROM \"%s\" TO \"%s\" OVER * UPTO %d STEPS YIELD PATH AS p",
-                    startNodeId, endNodeId, maxDepth);
+                    escapedStartVertexId, escapedEndVertexId, maxDepth);
         } else if ("janus".equalsIgnoreCase(dbType) || "janusgraph".equalsIgnoreCase(dbType)) {
             pathQuery = String.format("g.V().has('uid','%s').repeat(bothE().bothV().simplePath()).until(has('uid','%s')).limit(1).path()",
-                    startNodeId, endNodeId);
+                    escapedStartVertexId, escapedEndVertexId);
         } else {
             // neo4j 或默认
             pathQuery = String.format("MATCH p = (a)-[*1..%d]-(b) WHERE a.uid = '%s' AND b.uid = '%s' RETURN p LIMIT 1",
-                    maxDepth, startNodeId, endNodeId);
+                    maxDepth, escapedStartVertexId, escapedEndVertexId);
         }
         // 执行查询
         GraphData graphData = graphDataOperations.query(pathQuery);

@@ -24,7 +24,7 @@ import com.chenpp.graph.core.model.GraphConf;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -62,30 +62,39 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
     @Autowired
     private GraphEdgeDefDao graphEdgeDefDao;
 
+    @Autowired
+    private TransactionTemplate transactionTemplate;
+
     /**
-     * 批量检查图数据库连接状态，更新图状态
+     * 根据连接状态批量标记图状态（避免 N+1 远程连接检查）
      */
     private void fillGraphStatus(List<Graph> graphs) {
+        if (graphs == null || graphs.isEmpty()) {
+            return;
+        }
+
+        // 收集所有不重复的 connectionId
+        Set<Long> connIds = graphs.stream()
+                .map(Graph::getConnectionId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+
+        if (connIds.isEmpty()) {
+            return;
+        }
+
+        // 批量加载连接信息（单次查询）
+        Map<Long, GraphConnection> connMap = connectionService.listByIds(connIds).stream()
+                .collect(Collectors.toMap(GraphConnection::getId, c -> c, (a, b) -> a));
+
+        // 根据连接状态标记图状态
         for (Graph graph : graphs) {
             if (graph.getConnectionId() == null) {
                 continue;
             }
-            try {
-                GraphConnection connection = connectionService.getById(graph.getConnectionId());
-                if (connection == null) {
-                    continue;
-                }
-                Graph g = new Graph();
-                g.setCode(graph.getCode());
-                GraphConf graphConf = GraphClientFactory.createGraphConf(connection, g);
-                try (GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf)) {
-                    boolean connected = graphClient.checkConnection();
-                    graph.setStatus(connected ? 0 : 1);
-                }
-            } catch (Exception e) {
-                log.warn("检查图状态失败: graphId={}, code={}", graph.getId(), graph.getCode());
-                graph.setStatus(1);
-            }
+            GraphConnection conn = connMap.get(graph.getConnectionId());
+            // 连接不存在或状态异常 → 图状态异常
+            graph.setStatus(conn != null && conn.getStatus() != null && conn.getStatus() == 1 ? 0 : 1);
         }
     }
 
@@ -224,58 +233,51 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
         return super.save(graph);
     }
 
-    @Transactional(rollbackFor = Exception.class)
     @Override
     public boolean removeGraph(Long graphId, Long connectionId, String graphCode) {
-        try {
-            Graph graph = null;
-            GraphConnection connection = null;
+        Graph graph = null;
+        GraphConnection connection = null;
 
-            // 1) 优先通过本地图记录获取图标识和连接
-            if (graphId != null && graphId > 0) {
-                graph = this.getById(graphId);
-                if (graph != null) {
-                    graphCode = graph.getCode();
-                    connection = connectionService.getById(graph.getConnectionId());
-                }
+        // 1) 优先通过本地图记录获取图标识和连接
+        if (graphId != null && graphId > 0) {
+            graph = this.getById(graphId);
+            if (graph != null) {
+                graphCode = graph.getCode();
+                connection = connectionService.getById(graph.getConnectionId());
             }
-
-            // 2) 如果没有本地记录，用传入的 connectionId 构造连接
-            if (graph == null && connectionId != null) {
-                connection = connectionService.getById(connectionId);
-            }
-
-            // 3) 删除图数据库中的远程图
-            if (connection != null && graphCode != null && !graphCode.isEmpty()) {
-                Graph tempGraph = new Graph();
-                tempGraph.setCode(graphCode);
-                GraphConf graphConf = GraphClientFactory.createGraphConf(connection, tempGraph);
-                try (GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf)) {
-                    GraphOperations graphOperations = graphClient.opsForGraph();
-                    graphOperations.dropGraph(graphConf);
-                    log.info("已删除图数据库中的图，code={}, connectionId={}", graphCode, connection.getId());
-                } catch (Exception e) {
-                    log.warn("删除图数据库中的图失败，code={}, connectionId={}, error={}",
-                            graphCode, connection.getId(), e.getMessage());
-                }
-            } else {
-                log.warn("缺少图数据库连接或图标识，跳过删除远程图，graphId={}", graphId);
-            }
-
-            // 4) 删除本地元数据（仅限有本地记录的图）
-            if (graph != null && graph.getId() != null && graph.getId() > 0) {
-                vertexDefService.remove(new QueryWrapper<GraphVertexDef>().eq("graph_id", graph.getId()));
-                edgeDefService.remove(new QueryWrapper<GraphEdgeDef>().eq("graph_id", graph.getId()));
-                propertyDefService.remove(new QueryWrapper<GraphPropertyDef>().eq("graph_id", graph.getId()));
-                boolean result = this.removeById(graph.getId());
-                log.info("已删除本地图元数据，graphId={}, result={}", graph.getId(), result);
-                return result;
-            }
-
-            return true;
-        } catch (Exception e) {
-            log.error("删除图失败，graphId={}", graphId, e);
-            throw new BusinessException("删除图失败", e);
         }
+
+        // 2) 如果没有本地记录，用传入的 connectionId 构造连接
+        if (graph == null && connectionId != null) {
+            connection = connectionService.getById(connectionId);
+        }
+
+        // 3) 删除图数据库中的远程图（非事务，先执行 fail-fast）
+        if (connection != null && graphCode != null && !graphCode.isEmpty()) {
+            Graph tempGraph = new Graph();
+            tempGraph.setCode(graphCode);
+            GraphConf graphConf = GraphClientFactory.createGraphConf(connection, tempGraph);
+            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+            GraphOperations graphOperations = graphClient.opsForGraph();
+            graphOperations.dropGraph(graphConf);
+            log.info("已删除图数据库中的图，code={}, connectionId={}", graphCode, connection.getId());
+        } else {
+            log.warn("缺少图数据库连接或图标识，跳过删除远程图，graphId={}", graphId);
+        }
+
+        // 4) 删除本地元数据（事务内）
+        if (graph != null && graph.getId() != null && graph.getId() > 0) {
+            Long gId = graph.getId();
+            return Boolean.TRUE.equals(transactionTemplate.execute(status -> {
+                vertexDefService.remove(new QueryWrapper<GraphVertexDef>().eq("graph_id", gId));
+                edgeDefService.remove(new QueryWrapper<GraphEdgeDef>().eq("graph_id", gId));
+                propertyDefService.remove(new QueryWrapper<GraphPropertyDef>().eq("graph_id", gId));
+                boolean result = removeById(gId);
+                log.info("已删除本地图元数据，graphId={}, result={}", gId, result);
+                return result;
+            }));
+        }
+
+        return true;
     }
 }

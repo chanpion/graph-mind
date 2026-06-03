@@ -25,11 +25,13 @@ import org.janusgraph.core.EdgeLabel;
 import org.janusgraph.core.JanusGraph;
 import org.janusgraph.core.Multiplicity;
 import org.janusgraph.core.PropertyKey;
+import org.janusgraph.core.VertexLabel;
 import org.janusgraph.core.schema.JanusGraphIndex;
 import org.janusgraph.core.schema.JanusGraphManagement;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -214,6 +216,19 @@ public class JanusGraphOperations implements GraphOperations {
         for (EdgeLabel edgeLabel : edgeLabels) {
             GraphRelation relation = new GraphRelation();
             relation.setLabel(edgeLabel.name());
+            // 获取边的起点和终点顶点标签（从 mappedConnections 中获取）
+            Collection<org.janusgraph.core.Connection> connections = edgeLabel.mappedConnections();
+            if (connections != null && !connections.isEmpty()) {
+                org.janusgraph.core.Connection firstConn = connections.iterator().next();
+                VertexLabel outLabel = firstConn.getOutgoingVertexLabel();
+                VertexLabel inLabel = firstConn.getIncomingVertexLabel();
+                if (outLabel != null) {
+                    relation.setStartLabel(outLabel.name());
+                }
+                if (inLabel != null) {
+                    relation.setEndLabel(inLabel.name());
+                }
+            }
             relations.add(relation);
         }
 

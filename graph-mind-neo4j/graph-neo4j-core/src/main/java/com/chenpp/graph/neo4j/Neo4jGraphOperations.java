@@ -52,8 +52,29 @@ public class Neo4jGraphOperations implements GraphOperations {
     @Override
     public List<Graph> listGraphs(GraphConf graphConf) {
         log.info("Listing graphs in Neo4j");
-        // Neo4j中数据库列表的获取通常由管理员完成，这里返回空列表
-        return new ArrayList<>();
+        List<Graph> result = new ArrayList<>();
+
+        try (Session session = driver.session()) {
+            Result dbResult = session.run("SHOW DATABASES");
+            while (dbResult.hasNext()) {
+                Record record = dbResult.next();
+                String dbName = record.get("name").asString();
+                String status = record.get("currentStatus").asString();
+                // 跳过系统数据库（system）及非 online 状态的数据库
+                if ("system".equalsIgnoreCase(dbName) || !"online".equalsIgnoreCase(status)) {
+                    continue;
+                }
+
+                Graph g = new Graph();
+                g.setCode(dbName);
+                g.setName(dbName);
+                result.add(g);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to list Neo4j databases: {}", e.getMessage());
+        }
+
+        return result;
     }
 
     @Override
@@ -123,7 +144,13 @@ public class Neo4jGraphOperations implements GraphOperations {
                 String propertyName = record.get("propertyName").asString();
                 if (propertyName == null) continue;
 
-                List<String> propertyTypes = record.get("propertyTypes").asList(v -> v.asString());
+                // propertyTypes 可能为 NULL，直接调用 asList 会抛 Uncoercible
+                List<String> propertyTypes = null;
+                try {
+                    propertyTypes = record.get("propertyTypes").asList(v -> v.asString());
+                } catch (Exception ex) {
+                    // NULL 无法转为 List，忽略
+                }
                 String typeStr = (propertyTypes != null && !propertyTypes.isEmpty()) ? propertyTypes.get(0) : "String";
 
                 GraphProperty prop = new GraphProperty();
@@ -176,7 +203,13 @@ public class Neo4jGraphOperations implements GraphOperations {
                 String propertyName = record.get("propertyName").asString();
                 if (propertyName == null) continue;
 
-                List<String> propertyTypes = record.get("propertyTypes").asList(v -> v.asString());
+                // propertyTypes 可能为 NULL（关系无属性定义时），直接调用 asList 会抛 Uncoercible
+                List<String> propertyTypes = null;
+                try {
+                    propertyTypes = record.get("propertyTypes").asList(v -> v.asString());
+                } catch (Exception ex) {
+                    // NULL 无法转为 List，忽略
+                }
                 String typeStr = (propertyTypes != null && !propertyTypes.isEmpty()) ? propertyTypes.get(0) : "String";
 
                 GraphProperty prop = new GraphProperty();

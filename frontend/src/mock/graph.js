@@ -237,13 +237,13 @@ export const mockCreateVertexType = async (connectionId, graphId, data) => {
   return mockSuccess(newVertex)
 }
 
-export const mockDeleteVertexType = async (connectionId, graphId, nodeId) => {
+export const mockDeleteVertexType = async (connectionId, graphId, vertexId) => {
   await mockDelay()
   const schema = mockSchemas[graphId]
   if (!schema) {
     return mockError('图不存在', 404)
   }
-  const id = parseInt(nodeId)
+  const id = parseInt(vertexId)
   schema.vertexLabels = schema.vertexLabels.filter(v => v.id !== id)
   return mockSuccess({ message: '删除成功' })
 }
@@ -270,11 +270,11 @@ export const mockCreateEdgeType = async (connectionId, graphId, data) => {
   return mockSuccess(newEdge)
 }
 
-export const mockUpdateVertexType = async (connectionId, graphId, nodeId, data) => {
+export const mockUpdateVertexType = async (connectionId, graphId, vertexId, data) => {
   await mockDelay()
   const schema = mockSchemas[graphId]
   if (!schema) return mockError('图不存在', 404)
-  const id = parseInt(nodeId)
+  const id = parseInt(vertexId)
   const index = schema.vertexLabels.findIndex(v => v.id === id)
   if (index === -1) return mockError('点定义不存在', 404)
   schema.vertexLabels[index] = { ...schema.vertexLabels[index], ...data }

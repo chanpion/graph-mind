@@ -2,7 +2,10 @@ package com.chenpp.graph.admin.controller;
 
 import com.chenpp.graph.admin.model.ImportResult;
 import com.chenpp.graph.admin.model.Result;
+import com.chenpp.graph.admin.model.GraphVertexDef;
+import com.chenpp.graph.admin.model.GraphEdgeDef;
 import com.chenpp.graph.admin.service.GraphDataService;
+import com.chenpp.graph.admin.service.GraphSchemaService;
 import com.chenpp.graph.core.model.GraphSummary;
 import com.chenpp.graph.core.model.GraphVertex;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +31,9 @@ public class GraphDataController {
 
     @Autowired
     private GraphDataService graphDataService;
+
+    @Autowired
+    private GraphSchemaService graphSchemaService;
 
     /**
      * 导入节点数据（CSV）
@@ -74,20 +81,38 @@ public class GraphDataController {
 
     /**
      * 查询节点数据列表
-     *
+     * 对于发现的图（vertexTypeId < 0），需通过 connectionId + graphCode 发现 label
      */
     @GetMapping("/vertices/{vertexTypeId}")
     public Result<List<GraphVertex>> getNodeDataList(
             @PathVariable Long graphId,
             @PathVariable Long vertexTypeId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
         try {
             log.info("查询节点数据列表，graphId={}, vertexTypeId={}, page={}, size={}", graphId, vertexTypeId, page, size);
-            
-            // TODO: 实现查询节点数据列表逻辑
-            List<GraphVertex> data = graphDataService.getNodeDataList(graphId, vertexTypeId, page, size);
-            
+
+            String label = null;
+            // 对于发现的图（负ID），从 schema discovery 获取 label
+            if (vertexTypeId != null && vertexTypeId < 0) {
+                if (connectionId != null && graphCode != null) {
+                    List<GraphVertexDef> vertexDefs = graphSchemaService.discoverVertexDefs(graphId, connectionId, graphCode);
+                    for (GraphVertexDef vd : vertexDefs) {
+                        if (vd.getId().equals(vertexTypeId)) {
+                            label = vd.getLabel();
+                            break;
+                        }
+                    }
+                }
+                if (label == null) {
+                    log.warn("无法从发现的图中获取节点类型 label，vertexTypeId={}", vertexTypeId);
+                    return Result.success(new ArrayList<>());
+                }
+            }
+
+            List<GraphVertex> data = graphDataService.getNodeDataList(graphId, vertexTypeId, label, page, size);
             return Result.success(data);
         } catch (Exception e) {
             log.error("查询节点数据列表失败", e);
@@ -97,20 +122,38 @@ public class GraphDataController {
 
     /**
      * 查询边数据列表
-     *
+     * 对于发现的图（edgeTypeId < 0），需通过 connectionId + graphCode 发现 label
      */
     @GetMapping("/edges/{edgeTypeId}")
     public Result<List<Map<String, Object>>> getEdgeDataList(
             @PathVariable Long graphId,
             @PathVariable Long edgeTypeId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
         try {
             log.info("查询边数据列表，graphId={}, edgeTypeId={}, page={}, size={}", graphId, edgeTypeId, page, size);
-            
-            // TODO: 实现查询边数据列表逻辑
-            List<Map<String, Object>> data = graphDataService.getEdgeDataList(graphId, edgeTypeId, page, size);
-            
+
+            String label = null;
+            // 对于发现的图（负ID），从 schema discovery 获取 label
+            if (edgeTypeId != null && edgeTypeId < 0) {
+                if (connectionId != null && graphCode != null) {
+                    List<GraphEdgeDef> edgeDefs = graphSchemaService.discoverEdgeDefs(graphId, connectionId, graphCode);
+                    for (GraphEdgeDef ed : edgeDefs) {
+                        if (ed.getId().equals(edgeTypeId)) {
+                            label = ed.getLabel();
+                            break;
+                        }
+                    }
+                }
+                if (label == null) {
+                    log.warn("无法从发现的图中获取边类型 label，edgeTypeId={}", edgeTypeId);
+                    return Result.success(new ArrayList<>());
+                }
+            }
+
+            List<Map<String, Object>> data = graphDataService.getEdgeDataList(graphId, edgeTypeId, label, page, size);
             return Result.success(data);
         } catch (Exception e) {
             log.error("查询边数据列表失败", e);

@@ -7,6 +7,7 @@ import com.chenpp.graph.core.model.GraphData;
 import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphVertex;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.neo4j.driver.AuthTokens;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.GraphDatabase;
@@ -77,7 +78,11 @@ public class Neo4jUtil {
         }
 
         GraphVertex vertex = new GraphVertex();
-        vertex.setUid(getNodePropertyAsString(node, "uid"));
+        String uid = getNodePropertyAsString(node, "uid");
+        if (StringUtils.isBlank(uid)) {
+            uid = node.elementId();
+        }
+        vertex.setUid(uid);
         vertex.setLabel(node.labels().iterator().hasNext() ? node.labels().iterator().next() : "");
         Map<String, Object> properties = node.asMap();
         vertex.setProperties(properties);
@@ -92,8 +97,14 @@ public class Neo4jUtil {
         }
 
         GraphEdge edge = new GraphEdge();
-        edge.setId(relationship.startNodeId());
-        edge.setUid(getRelationshipPropertyAsString(relationship, "uid"));
+
+        String uid = getRelationshipPropertyAsString(relationship, "uid");
+        if (StringUtils.isBlank(uid)) {
+            uid = relationship.elementId();
+        }
+
+        edge.setId(relationship.elementId());
+        edge.setUid(uid);
         edge.setStartUid(relationship.startNodeElementId());
         edge.setEndUid(relationship.endNodeElementId());
         edge.setProperties(relationship.asMap());

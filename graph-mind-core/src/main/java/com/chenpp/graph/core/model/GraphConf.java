@@ -19,6 +19,7 @@ public class GraphConf implements Serializable {
     private String host;
     private int port;
     private String username;
+    @lombok.ToString.Exclude
     private String password;
 
     /**

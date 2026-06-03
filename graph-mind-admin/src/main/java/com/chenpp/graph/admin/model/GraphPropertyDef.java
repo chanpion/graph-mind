@@ -41,6 +41,7 @@ public class GraphPropertyDef {
     /**
      * 属性类型
      */
+    @TableField("graph_type")
     private String type;
 
     /**
@@ -60,7 +61,7 @@ public class GraphPropertyDef {
     private Boolean indexed = false;
     
     /**
-     * 属性类型标记：node-节点属性，edge-边属性
+     * 属性类型标记：vertex-节点属性，edge-边属性
      */
     private String propertyType;
 }

@@ -29,6 +29,7 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -64,6 +65,9 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
     @Resource
     private GraphPropertyDefService graphPropertyDefService;
 
+    @Resource
+    private TransactionTemplate transactionTemplate;
+
     @Override
     public GraphSchema discoverSchema(Long connectionId, String graphCode) {
         GraphConnection connection = connectionService.getById(connectionId);
@@ -95,7 +99,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
         GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
         GraphOperations graphOperations = graphClient.opsForGraph();
-
         return graphOperations.getPublishedSchema(graphConf);
     }
 
@@ -163,8 +166,13 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
     }
 
     @Override
-    public void mergeDiscoveredVertexProperties(List<GraphVertexDef> vertexDefs, Long graphId) {
-        GraphSchema schema = discoverSchema(graphId);
+    public void mergeDiscoveredVertexProperties(List<GraphVertexDef> vertexDefs, Long graphId, Long connectionId, String graphCode) {
+        GraphSchema schema;
+        if (connectionId != null && graphCode != null) {
+            schema = discoverSchema(connectionId, graphCode);
+        } else {
+            schema = discoverSchema(graphId);
+        }
         if (schema == null || schema.getEntities() == null) {
             return;
         }
@@ -190,8 +198,13 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
     }
 
     @Override
-    public void mergeDiscoveredEdgeProperties(List<GraphEdgeDef> edgeDefs, Long graphId) {
-        GraphSchema schema = discoverSchema(graphId);
+    public void mergeDiscoveredEdgeProperties(List<GraphEdgeDef> edgeDefs, Long graphId, Long connectionId, String graphCode) {
+        GraphSchema schema;
+        if (connectionId != null && graphCode != null) {
+            schema = discoverSchema(connectionId, graphCode);
+        } else {
+            schema = discoverSchema(graphId);
+        }
         if (schema == null || schema.getRelations() == null) {
             return;
         }
@@ -230,6 +243,10 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
     public GraphSchema getGraphSchema(Long graphId) {
         // 获取图信息
         Graph graph = graphService.getById(graphId);
+        if (graph == null) {
+            log.warn("图不存在，返回空Schema，graphId={}", graphId);
+            return new GraphSchema();
+        }
         List<GraphVertexDef> nodes = graphVertexDefService.getVertexDefsByGraphId(graphId, 0);
         List<GraphEdgeDef> edges = graphEdgeDefService.getEdgeDefsByGraphId(graphId, 0);
         // 构建图模式
@@ -287,61 +304,54 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         return graphSchema;
     }
 
-    @Transactional(rollbackFor = Exception.class)
     @Override
     public void publishSchema(Long graphId) {
         log.info("发布图Schema: {}", graphId);
-        //todo
-        try {
-            // 获取图信息
-            Graph graph = graphService.getById(graphId);
-            if (graph == null) {
-                log.error("图不存在，graphId={}", graphId);
-                return;
-            }
-            // 获取图数据库连接信息
-            GraphConnection connection = connectionService.getById(graph.getConnectionId());
-            if (connection == null) {
-                log.error("图数据库连接不存在，connectionId={}", graph.getConnectionId());
-                return;
-            }
-            List<GraphVertexDef> nodes = graphVertexDefService.getVertexDefsByGraphId(graphId, 0);
-            List<GraphEdgeDef> edges = graphEdgeDefService.getEdgeDefsByGraphId(graphId, 0);
 
-            // 构建图配置信息
-            GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
+        // 加载元数据
+        Graph graph = graphService.getById(graphId);
+        if (graph == null) {
+            log.warn("图不存在，跳过发布Schema，graphId={}", graphId);
+            return;
+        }
+        GraphConnection connection = connectionService.getById(graph.getConnectionId());
+        if (connection == null) {
+            log.error("图数据库连接不存在，connectionId={}", graph.getConnectionId());
+            return;
+        }
+        List<GraphVertexDef> nodes = graphVertexDefService.getVertexDefsByGraphId(graphId, 0);
+        List<GraphEdgeDef> edges = graphEdgeDefService.getEdgeDefsByGraphId(graphId, 0);
 
-            // 创建图客户端
-            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
-            GraphOperations graphOperations = graphClient.opsForGraph();
+        // 构建图配置信息
+        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
+        GraphSchema graphSchema = getGraphSchema(graphId);
 
+        // Step 1: 将 Schema 应用到图数据库（非事务，fail-fast）
+        GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+        GraphOperations graphOperations = graphClient.opsForGraph();
+        graphOperations.applySchema(graphConf, graphSchema);
+        log.info("Schema 已应用到图数据库，graphId={}", graphId);
 
-            GraphSchema graphSchema = getGraphSchema(graphId);
-            // 应用图模式
-            graphOperations.applySchema(graphConf, graphSchema);
-
-            List<GraphPropertyDef> propertyList = new ArrayList<>();
-            // 更新节点定义状态为已发布
+        // Step 2: 更新 MySQL 元数据状态为已发布（事务内）
+        List<GraphPropertyDef> propertyList = new ArrayList<>();
+        transactionTemplate.executeWithoutResult(status -> {
             nodes.forEach(node -> {
                 node.setStatus(1);
                 propertyList.addAll(node.getProperties());
             });
             graphVertexDefService.updateBatchById(nodes);
-            // 更新边定义状态为已发布
+
             edges.forEach(edge -> {
                 edge.setStatus(1);
                 propertyList.addAll(edge.getProperties());
             });
             graphEdgeDefService.updateBatchById(edges);
-            // 更新属性定义状态为已发布
             graphPropertyDefService.updateBatchById(propertyList);
-            // 更新图状态为已发布
+
             graph.setStatus(1);
             graphService.updateById(graph);
-        } catch (Exception e) {
-            log.error("发布图Schema失败", e);
-            throw new GraphException("发布图Schema失败");
-        }
+        });
+        log.info("Schema 发布完成，graphId={}", graphId);
     }
 
     public List<GraphProperty> transformGraphProperty(List<GraphPropertyDef> properties) {

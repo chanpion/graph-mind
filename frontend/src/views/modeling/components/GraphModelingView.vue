@@ -467,8 +467,8 @@ function isHighlighted(item) {
   return false
 }
 
-function isNodeSelected(nodeId) {
-  return selectedNodes.value.has(nodeId) || (selectedNode.value && selectedNode.value.id === nodeId)
+function isNodeSelected(vertexId) {
+  return selectedNodes.value.has(vertexId) || (selectedNode.value && selectedNode.value.id === vertexId)
 }
 
 function selectNode(node, event) {

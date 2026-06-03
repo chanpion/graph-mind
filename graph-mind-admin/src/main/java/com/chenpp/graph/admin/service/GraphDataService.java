@@ -48,18 +48,19 @@ public interface GraphDataService {
      * @param size       每页大小
      * @return 节点数据列表
      */
-    List<GraphVertex> getNodeDataList(Long graphId, Long vertexTypeId, Integer page, Integer size);
+    List<GraphVertex> getNodeDataList(Long graphId, Long vertexTypeId, String label, Integer page, Integer size);
 
     /**
      * 查询边数据列表
      *
      * @param graphId    图ID
      * @param edgeTypeId 边类型ID
+     * @param label      边类型标签（发现的图为负ID时传入）
      * @param page       页码
      * @param size       每页大小
      * @return 边数据列表
      */
-    List<Map<String, Object>> getEdgeDataList(Long graphId, Long edgeTypeId, Integer page, Integer size);
+    List<Map<String, Object>> getEdgeDataList(Long graphId, Long edgeTypeId, String label, Integer page, Integer size);
 
     /**
      * 获取节点数据详情

@@ -57,8 +57,12 @@ public class GraphSchemaController {
         } else {
             boolean hasEmptyProperties = vertexDefs.stream()
                     .anyMatch(n -> n.getProperties() == null || n.getProperties().isEmpty());
-            if (hasEmptyProperties) {
-                graphSchemaService.mergeDiscoveredVertexProperties(vertexDefs, graphId);
+            if (hasEmptyProperties && connectionId != null && graphCode != null) {
+                try {
+                    graphSchemaService.mergeDiscoveredVertexProperties(vertexDefs, graphId, connectionId, graphCode);
+                } catch (Exception e) {
+                    log.warn("合并节点属性失败: {}", e.getMessage());
+                }
             }
         }
         return Result.success(vertexDefs);
@@ -118,8 +122,12 @@ public class GraphSchemaController {
         } else {
             boolean hasEmptyProperties = edgeDefs.stream()
                     .anyMatch(e -> e.getProperties() == null || e.getProperties().isEmpty());
-            if (hasEmptyProperties) {
-                graphSchemaService.mergeDiscoveredEdgeProperties(edgeDefs, graphId);
+            if (hasEmptyProperties && connectionId != null && graphCode != null) {
+                try {
+                    graphSchemaService.mergeDiscoveredEdgeProperties(edgeDefs, graphId, connectionId, graphCode);
+                } catch (Exception e) {
+                    log.warn("合并边属性失败: {}", e.getMessage());
+                }
             }
         }
         return Result.success(edgeDefs);

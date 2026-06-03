@@ -148,7 +148,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
     }
 
     @Override
-    public void deleteVertex(GraphVertex vertex) throws GraphException {
+    public boolean deleteVertex(GraphVertex vertex) throws GraphException {
         try {
             // 删除顶点及其关联的边
             String nql = String.format("DELETE VERTEX \"%s\" WITH EDGE;", vertex.getUid());
@@ -161,6 +161,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                 throw new GraphException("Failed to delete vertex, errorCode: " + resultSet.getErrorCode()
                         + ", errorMessage: " + resultSet.getErrorMessage());
             }
+            return true;
         } catch (Exception e) {
             log.error("Failed to delete vertex: {}", vertex, e);
             throw new GraphException("Failed to delete vertex", e);
@@ -168,7 +169,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
     }
 
     @Override
-    public void addEdge(GraphEdge edge) throws GraphException {
+    public GraphEdge addEdge(GraphEdge edge) throws GraphException {
         try {
             // 构建插入边的NGQL语句
             // 语法: INSERT EDGE edge_type (prop1, prop2) VALUES src_vid -> dst_vid @rank: (val1, val2)
@@ -187,6 +188,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                 throw new GraphException("Failed to add edge, errorCode: " + resultSet.getErrorCode()
                         + ", errorMessage: " + resultSet.getErrorMessage());
             }
+            return edge;
         } catch (Exception e) {
             log.error("Failed to add edge: {}", edge, e);
             throw new GraphException("Failed to add edge", e);
@@ -248,7 +250,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
     }
 
     @Override
-    public int updateEdge(GraphEdge edge) throws GraphException {
+    public GraphEdge updateEdge(GraphEdge edge) throws GraphException {
         try {
             // 添加SET子句
             String setClause = edge.getProperties().entrySet().stream()
@@ -269,7 +271,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                         + ", errorMessage: " + resultSet.getErrorMessage());
             }
 
-            return 1;
+            return edge;
         } catch (Exception e) {
             log.error("Failed to update edge: {}", edge, e);
             throw new GraphException("Failed to update edge", e);
@@ -277,7 +279,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
     }
 
     @Override
-    public int deleteEdge(GraphEdge edge) throws GraphException {
+    public boolean deleteEdge(GraphEdge edge) throws GraphException {
         try {
             String nql = String.format("DELETE EDGE %s \"%s\" -> \"%s\";", edge.getLabel(), edge.getStartUid(), edge.getEndUid());
             log.info("Execute NGQL: {}", nql);
@@ -290,7 +292,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                         + ", errorMessage: " + resultSet.getErrorMessage());
             }
 
-            return 1;
+            return true;
         } catch (Exception e) {
             log.error("Failed to delete edge: {}", edge, e);
             throw new GraphException("Failed to delete edge", e);
@@ -414,16 +416,16 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
     }
 
     @Override
-    public GraphData expand(String nodeId, int depth) throws GraphException {
+    public GraphData expand(String vertexId, int depth) throws GraphException {
         // 使用 MATCH 匹配从起点出发的所有可达路径，返回点、边、关系
-        String ngql = String.format("MATCH p=(v)-[r*1..%d]-(v2) WHERE id(v) == \"%s\" RETURN p", depth, nodeId);
+        String ngql = String.format("MATCH p=(v)-[r*1..%d]-(v2) WHERE id(v) == \"%s\" RETURN p", depth, vertexId);
         return query(ngql);
     }
 
     @Override
-    public GraphData findPath(String startNodeId, String endNodeId, int maxDepth) throws GraphException {
+    public GraphData findPath(String startVertexId, String endVertexId, int maxDepth) throws GraphException {
         String ngql = String.format("FIND SHORTEST PATH FROM \"%s\" TO \"%s\" OVER * UPTO %d STEPS",
-                startNodeId, endNodeId, maxDepth);
+                startVertexId, endVertexId, maxDepth);
         return query(ngql);
     }
 

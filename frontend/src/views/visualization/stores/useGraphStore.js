@@ -52,8 +52,8 @@ export const useGraphStore = defineStore('graph-viz', () => {
   }
 
   /** 设置选中的节点 */
-  function setSelectedNode(nodeId) {
-    selectedNode.value = nodeId
+  function setSelectedNode(vertexId) {
+    selectedNode.value = vertexId
   }
 
   /** 清除选中的节点 */

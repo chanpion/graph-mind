@@ -259,7 +259,7 @@ public class JanusHBaseTest {
             // 更新边
             edgeProperties.put("since", "2021");
             edge.setProperties(edgeProperties);
-            int updated = graphDataOperations.updateEdge(edge);
+            GraphEdge updated = graphDataOperations.updateEdge(edge);
             assertEquals(1, updated);
 
             // 删除边

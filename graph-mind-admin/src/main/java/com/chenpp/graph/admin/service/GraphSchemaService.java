@@ -47,12 +47,12 @@ public interface GraphSchemaService {
     /**
      * 合并从图数据库发现的节点属性到已有的节点定义中
      */
-    void mergeDiscoveredVertexProperties(List<GraphVertexDef> vertexDefs, Long graphId);
+    void mergeDiscoveredVertexProperties(List<GraphVertexDef> vertexDefs, Long graphId, Long connectionId, String graphCode);
 
     /**
      * 合并从图数据库发现的边属性到已有的边定义中
      */
-    void mergeDiscoveredEdgeProperties(List<GraphEdgeDef> edgeDefs, Long graphId);
+    void mergeDiscoveredEdgeProperties(List<GraphEdgeDef> edgeDefs, Long graphId, Long connectionId, String graphCode);
 
     /**
      * 导出图Schema

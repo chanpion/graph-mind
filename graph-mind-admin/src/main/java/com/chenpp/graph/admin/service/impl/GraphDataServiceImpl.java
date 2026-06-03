@@ -309,16 +309,19 @@ public class GraphDataServiceImpl implements GraphDataService {
     }
 
     @Override
-    public List<GraphVertex> getNodeDataList(Long graphId, Long vertexTypeId, Integer page, Integer size) {
+    public List<GraphVertex> getNodeDataList(Long graphId, Long vertexTypeId, String label, Integer page, Integer size) {
         try {
-            GraphVertexDef vertexDef = vertexDefService.getById(vertexTypeId);
-            if (vertexDef == null) {
-                log.error("节点类型不存在，vertexTypeId={}", vertexTypeId);
-                return new ArrayList<>();
+            // 如果 label 已传入（发现的图），跳过本地 lookup
+            if (label == null) {
+                GraphVertexDef vertexDef = vertexDefService.getById(vertexTypeId);
+                if (vertexDef == null) {
+                    log.error("节点类型不存在，vertexTypeId={}", vertexTypeId);
+                    return new ArrayList<>();
+                }
+                label = vertexDef.getLabel();
             }
 
             GraphDataOperations ops = getGraphDataOperations(graphId);
-            String label = vertexDef.getLabel();
             int skip = (page - 1) * size;
 
             // 根据图类型构建不同的查询语句
@@ -337,16 +340,19 @@ public class GraphDataServiceImpl implements GraphDataService {
     }
 
     @Override
-    public List<Map<String, Object>> getEdgeDataList(Long graphId, Long edgeTypeId, Integer page, Integer size) {
+    public List<Map<String, Object>> getEdgeDataList(Long graphId, Long edgeTypeId, String label, Integer page, Integer size) {
         try {
-            GraphEdgeDef edgeDef = edgeDefService.getById(edgeTypeId);
-            if (edgeDef == null) {
-                log.error("边类型不存在，edgeTypeId={}", edgeTypeId);
-                return new ArrayList<>();
+            // 如果 label 已传入（发现的图），跳过本地 lookup
+            if (label == null) {
+                GraphEdgeDef edgeDef = edgeDefService.getById(edgeTypeId);
+                if (edgeDef == null) {
+                    log.error("边类型不存在，edgeTypeId={}", edgeTypeId);
+                    return new ArrayList<>();
+                }
+                label = edgeDef.getLabel();
             }
 
             GraphDataOperations ops = getGraphDataOperations(graphId);
-            String label = edgeDef.getLabel();
             int skip = (page - 1) * size;
 
             String query = buildEdgeLabelQuery(graphId, label, skip, size);

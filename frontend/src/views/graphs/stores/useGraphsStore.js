@@ -95,11 +95,11 @@ export const useGraphsStore = defineStore('graphs', () => {
     }
   }
 
-  /** 删除图 */
-  async function deleteGraph(id) {
+  /** 删除图 — 对于发现的图（负ID）需传入 connectionId + graphCode */
+  async function deleteGraph(id, params) {
     error.value = null
     try {
-      const res = await graphApi.delete(id)
+      const res = await graphApi.delete(id, params)
       return res
     } catch (err) {
       error.value = err.message || '删除图失败'

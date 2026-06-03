@@ -431,7 +431,10 @@ async function deleteGraph(graph) {
   }
   try {
     await ElMessageBox.confirm(`确定删除图 "${name || id}" 吗？`, '警告', { type: 'warning' })
-    await graphsStore.deleteGraph(id)
+    await graphsStore.deleteGraph(id, {
+      connectionId: graph.connectionId,
+      graphCode: graph.code || graph.graphCode
+    })
     ElMessage.success('图删除成功')
     await loadGraphs()
   } catch (err) {
