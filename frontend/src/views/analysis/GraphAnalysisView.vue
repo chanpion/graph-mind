@@ -809,7 +809,12 @@ const executeAnalysis = async () => {
           apiResponse = await graphApi.expandNode(
             graphsStore.currentGraphId,
             analysisForm.queryValue, // 使用查询值作为节点ID
-            analysisForm.layers
+            analysisForm.layers,
+            opParams,
+            {
+              label: targetEntityType,
+              property: targetEntityProp
+            }
           );
           break
 

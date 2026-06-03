@@ -41,11 +41,6 @@ public class GraphController {
 
     /**
      * 获取图列表
-     *
-     * @param page     页码
-     * @param pageSize 每页数量
-     * @param keyword  搜索关键词
-     * @return 图列表
      */
     @GetMapping
     public Result<Page<Graph>> getGraphs(
@@ -60,11 +55,6 @@ public class GraphController {
 
     /**
      * 根据连接ID获取图列表
-     *
-     * @param connectionId 连接ID
-     * @param page         页码
-     * @param pageSize     每页数量
-     * @return 图列表
      */
     @GetMapping("/connection/{connectionId}")
     public Result<Page<Graph>> getGraphsByConnectionId(
@@ -79,9 +69,6 @@ public class GraphController {
 
     /**
      * 新增图
-     *
-     * @param graph 图信息
-     * @return 是否成功
      */
     @PostMapping
     public Result<Long> createGraph(@RequestBody Graph graph) {
@@ -95,11 +82,11 @@ public class GraphController {
         graph.setStatus(0);
         graphService.save(graph);
 
-        // 自动发布Schema到图数据库（创建图空间/初始化）
         try {
             graphSchemaService.publishSchema(graph.getId());
         } catch (Exception e) {
             log.warn("自动发布Schema失败: {}", e.getMessage());
+            return Result.error("自动发布Schema失败");
         }
 
         return Result.success(graph.getId());
@@ -107,28 +94,24 @@ public class GraphController {
 
     /**
      * 更新图
-     *
-     * @param id    图ID
-     * @param graph 图信息
-     * @return 是否成功
      */
     @PutMapping("/{id}")
     public Result<String> updateGraph(@PathVariable Long id, @RequestBody Graph graph) {
         graph.setId(id);
-        graph.setUpdateTime(LocalDateTime.now());
         graphService.updateById(graph);
         return Result.success("更新成功");
     }
 
     /**
      * 删除图
-     *
-     * @param id 图ID
-     * @return 是否成功
+     * <p>对于平台创建的图，传 graphId 即可；对于从图数据库发现的已有图，需额外传 connectionId + graphCode。</p>
      */
     @DeleteMapping("/{id}")
-    public Result<String> deleteGraph(@PathVariable Long id) {
-        boolean result = graphService.removeGraph(id);
+    public Result<String> deleteGraph(
+            @PathVariable Long id,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode) {
+        boolean result = graphService.removeGraph(id, connectionId, graphCode);
         if (!result) {
             return Result.error(ErrorCode.GRAPH_NOT_FOUND);
         }
@@ -137,9 +120,6 @@ public class GraphController {
 
     /**
      * 获取图详情
-     *
-     * @param id 图ID
-     * @return 图信息
      */
     @GetMapping("/{id}")
     public Result<Graph> getGraph(@PathVariable Long id) {

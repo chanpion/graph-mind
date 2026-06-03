@@ -80,7 +80,7 @@ export const routes = [
         path: 'user',
         name: 'User',
         component: () => import('@/views/system/UserView.vue'),
-        meta: { title: '用户管理', icon: 'User', roles: ['admin'] }
+        meta: { title: '用户管理', icon: 'User' }
       },
       // 系统设置
       {

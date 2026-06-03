@@ -196,10 +196,11 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
 
     @Override
     public GraphData expand(String nodeId, int depth) throws GraphException {
-        String cypher = "MATCH p = (n {uid: $nodeId})-[*1..$depth]-(m)  RETURN P";
+        // Neo4j 不支持在 MATCH 模式内使用参数，depth 用 String.format 拼入，nodeId 用参数传入
+        String cypher = String.format("MATCH p = (n)-[*1..%d]-(m) WHERE n.uid = $nodeId RETURN p", depth);
         try (Session session = driver.session()) {
             return session.executeRead(tx -> {
-                Result result = tx.run(cypher, Values.parameters("nodeId", nodeId, "depth", depth));
+                Result result = tx.run(cypher, Values.parameters("nodeId", nodeId));
                 return Neo4jUtil.parseResult(result);
             });
         } catch (Exception e) {

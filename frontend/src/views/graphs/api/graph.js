@@ -138,8 +138,8 @@ export const graphApi = {
   },
 
   /** 展开节点 */
-  expandNode(graphId, nodeId, depth = 1, params) {
-    return request.post(`/api/graphs/${graphId}/expand`, { nodeId, depth }, { params })
+  expandNode(graphId, nodeId, depth = 1, params, extraBody = {}) {
+    return request.post(`/api/graphs/${graphId}/expand`, { nodeId, depth, ...extraBody }, { params })
   },
 
   /** 查找路径 */

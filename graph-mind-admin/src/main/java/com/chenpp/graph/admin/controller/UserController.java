@@ -34,13 +34,6 @@ public class UserController {
 
     /**
      * 获取用户列表
-     *
-     * @param pageNum     页码
-     * @param pageSize    每页大小
-     * @param username    用户名
-     * @param phoneNumber 手机号
-     * @param status      状态
-     * @return 用户列表
      */
     @GetMapping
     public Result<PageResult<User>> getUsers(
@@ -55,9 +48,6 @@ public class UserController {
 
     /**
      * 获取用户详情
-     *
-     * @param userId 用户ID
-     * @return 用户详情
      */
     @GetMapping("/{userId}")
     public Result<User> getUser(@PathVariable Long userId) {
@@ -109,9 +99,6 @@ public class UserController {
 
     /**
      * 新增用户
-     *
-     * @param user 用户信息
-     * @return 新增结果
      */
     @PostMapping
     public Result<String> addUser(@RequestBody User user) {
@@ -121,10 +108,6 @@ public class UserController {
 
     /**
      * 更新用户
-     *
-     * @param userId 用户ID
-     * @param user   用户信息
-     * @return 更新结果
      */
     @PutMapping("/{userId}")
     public Result<String> updateUser(@PathVariable Long userId, @RequestBody User user) {
@@ -135,9 +118,6 @@ public class UserController {
 
     /**
      * 删除用户
-     *
-     * @param userIds 用户ID列表
-     * @return 删除结果
      */
     @DeleteMapping
     public Result<String> deleteUsers(@RequestBody List<Long> userIds) {

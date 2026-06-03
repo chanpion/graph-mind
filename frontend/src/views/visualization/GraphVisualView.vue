@@ -382,12 +382,20 @@ const closeDetailPanel = () => {
   selectedElement.value = null
 }
 
-// 展开邻居：仅显示选中节点及其直接邻居
-function expandNeighbors() {
+// 展开邻居：从图数据库加载选中节点的邻居并合并到当前图中
+async function expandNeighbors() {
   if (!selectedElement.value || selectedElement.value.type !== 'node') {
     ElMessage.warning('请先选择一个节点')
     return
   }
+
+  if (!graphsStore.currentGraphId) {
+    ElMessage.warning('请先选择图')
+    return
+  }
+
+  const nodeId = selectedElement.value.id
+  const depth = 1
 
   // 保存原始数据（首次展开时）
   if (!isFiltered.value) {
@@ -397,16 +405,73 @@ function expandNeighbors() {
     }
   }
 
-  const nodeId = selectedElement.value.id
+  try {
+    const params = {}
+    if (graphsStore.currentGraphId < 0 && graphsStore.currentGraph) {
+      params.connectionId = graphsStore.currentGraph.connectionId
+      params.graphCode = graphsStore.currentGraph.code
+    }
+    const response = await graphApi.expandNode(graphsStore.currentGraphId, nodeId, depth, params)
 
-  // 找到所有与选中节点直接相连的边
+    const newData = transformApiResponseToGraphData(response) || { nodes: [], edges: [] }
+
+    if (newData.nodes.length === 0 && newData.edges.length === 0) {
+      ElMessage.info('该节点没有邻居')
+      return
+    }
+
+    // 合并新数据到现有图中（去重）
+    const existingNodeIds = new Set(graphData.value.nodes.map(n => n.id))
+    const existingEdgeKeys = new Set(
+      graphData.value.edges.map(e => {
+        const s = typeof e.source === 'object' ? e.source.id : e.source
+        const t = typeof e.target === 'object' ? e.target.id : e.target
+        return `${s}-${e.label}-${t}`
+      })
+    )
+
+    const mergedNodes = [...graphData.value.nodes]
+    for (const node of newData.nodes) {
+      if (!existingNodeIds.has(node.id)) {
+        mergedNodes.push(node)
+        existingNodeIds.add(node.id)
+      }
+    }
+
+    const mergedEdges = [...graphData.value.edges]
+    for (const edge of newData.edges) {
+      const sk = typeof edge.source === 'object' ? edge.source.id : edge.source
+      const tk = typeof edge.target === 'object' ? edge.target.id : edge.target
+      const key = `${sk}-${edge.label}-${tk}`
+      if (!existingEdgeKeys.has(key)) {
+        mergedEdges.push(edge)
+        existingEdgeKeys.add(key)
+      }
+    }
+
+    graphData.value = { nodes: mergedNodes, edges: mergedEdges }
+    isFiltered.value = false
+    ElMessage.success(`已展开 ${newData.nodes.length} 个邻居节点`)
+  } catch (error) {
+    console.error('展开邻居失败:', error)
+    // 后端调用失败时，回退到本地过滤
+    fallbackLocalExpand(nodeId)
+  }
+}
+
+// 本地过滤兜底：在当前数据中查找邻居
+function fallbackLocalExpand(nodeId) {
   const connectedEdges = graphData.value.edges.filter(e => {
     const sourceId = typeof e.source === 'object' ? e.source.id : e.source
     const targetId = typeof e.target === 'object' ? e.target.id : e.target
     return sourceId === nodeId || targetId === nodeId
   })
 
-  // 收集邻居节点 ID
+  if (connectedEdges.length === 0) {
+    ElMessage.warning('当前数据中没有找到该节点的邻居，请先执行查询加载更多数据')
+    return
+  }
+
   const neighborIds = new Set([nodeId])
   connectedEdges.forEach(e => {
     const sourceId = typeof e.source === 'object' ? e.source.id : e.source
@@ -415,12 +480,10 @@ function expandNeighbors() {
     neighborIds.add(targetId)
   })
 
-  // 过滤节点和边
   graphData.value = {
     nodes: graphData.value.nodes.filter(n => neighborIds.has(n.id)),
     edges: connectedEdges
   }
-
   isFiltered.value = true
   ElMessage.success(`展开节点邻居: ${neighborIds.size - 1} 个邻居`)
 }

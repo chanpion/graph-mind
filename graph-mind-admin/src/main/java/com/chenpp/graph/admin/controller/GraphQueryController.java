@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import org.springframework.web.bind.annotation.RequestParam;
+import com.chenpp.graph.core.model.GraphVertex;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -60,22 +62,61 @@ public class GraphQueryController {
             @RequestBody Map<String, Object> request,
             @RequestParam(required = false) Long connectionId,
             @RequestParam(required = false) String graphCode) {
-        String vertexId = (String) request.get("vertexId");
+        // 接收前端参数
+        String queryValue = request.containsKey("nodeId") ? (String) request.get("nodeId") : (String) request.get("vertexId");
         Integer depth = (Integer) request.get("depth");
+        String label = (String) request.get("label");
+        String propertyName = (String) request.get("property");
 
-        if (vertexId == null || vertexId.isEmpty()) {
-            return Result.error("节点ID不能为空");
+        if (queryValue == null || queryValue.isEmpty()) {
+            return Result.error("查询值不能为空");
         }
 
         if (depth == null) {
             depth = 1;
         }
 
+        log.info("展开邻居: queryValue={}, depth={}, label={}, property={}, graphId={}", queryValue, depth, label, propertyName, graphId);
+
         GraphConf graphConf = GraphClientFactory.resolveGraphConf(graphId, connectionId, graphCode, graphService, connectionService);
         GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
         GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
-        GraphData graphData = graphDataOperations.expand(vertexId, depth);
+
+        // 如果传入了 label + property，先用属性值查找节点 uid，再展开
+        String nodeUid = queryValue;
+        if (label != null && !label.isEmpty() && propertyName != null && !propertyName.isEmpty()) {
+            String lookupQuery = buildFindNodeByPropertyQuery(graphConf.getType(), label, propertyName, queryValue);
+            log.debug("查找节点: {}", lookupQuery);
+            GraphData lookupResult = graphDataOperations.query(lookupQuery);
+            if (lookupResult != null && lookupResult.getVertices() != null && !lookupResult.getVertices().isEmpty()) {
+                String foundUid = lookupResult.getVertices().get(0).getUid();
+                if (foundUid != null && !foundUid.isEmpty()) {
+                    nodeUid = foundUid;
+                    log.info("通过属性找到节点 uid={}", nodeUid);
+                }
+            } else {
+                log.warn("未找到匹配的节点: label={}, property={}, value={}", label, propertyName, queryValue);
+            }
+        }
+
+        GraphData graphData = graphDataOperations.expand(nodeUid, depth);
         return Result.success(graphData);
+    }
+
+    /**
+     * 构建按 Label + 属性查找节点的查询语句
+     */
+    private String buildFindNodeByPropertyQuery(String dbType, String label, String property, String value) {
+        String escapedValue = value.replace("'", "\\'");
+        if ("nebula".equalsIgnoreCase(dbType)) {
+            return String.format("LOOKUP ON `%s` WHERE `%s`.`%s` == '%s' YIELD id(vertex) AS uid, properties(vertex) AS props",
+                    label, label, property, escapedValue);
+        } else if ("janus".equalsIgnoreCase(dbType) || "janusgraph".equalsIgnoreCase(dbType)) {
+            return String.format("g.V().hasLabel('%s').has('%s', '%s')", label, property, escapedValue);
+        } else {
+            // neo4j 或默认
+            return String.format("MATCH (n:`%s`) WHERE n.`%s` = '%s' RETURN n", label, property, escapedValue);
+        }
     }
 
     @PostMapping("/path")

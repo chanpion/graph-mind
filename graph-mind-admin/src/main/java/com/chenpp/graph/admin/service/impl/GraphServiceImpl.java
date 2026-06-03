@@ -63,9 +63,6 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
     private GraphEdgeDefDao graphEdgeDefDao;
 
     /**
-     * 批量填充图列表的节点类型数和边类型数（替代 N+1 循环查询）
-     */
-    /**
      * 批量检查图数据库连接状态，更新图状态
      */
     private void fillGraphStatus(List<Graph> graphs) {
@@ -96,18 +93,16 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
         if (records == null || records.isEmpty()) {
             return;
         }
+        // 按 graph_id 分组统计本地记录（不限制 status，统计所有定义）
         List<Long> graphIds = records.stream().map(Graph::getId).collect(Collectors.toList());
-        // 一次查询全部节点定义，按 graph_id 分组计数
         List<GraphVertexDef> allNodes = graphVertexDefDao.selectList(
-                new QueryWrapper<GraphVertexDef>().in("graph_id", graphIds).eq("status", 1).select("graph_id"));
+                new QueryWrapper<GraphVertexDef>().in("graph_id", graphIds).select("graph_id"));
         Map<Long, Long> nodeCountMap = allNodes.stream()
                 .collect(Collectors.groupingBy(GraphVertexDef::getGraphId, Collectors.counting()));
-        // 一次查询全部边定义，按 graph_id 分组计数
         List<GraphEdgeDef> allEdges = graphEdgeDefDao.selectList(
-                new QueryWrapper<GraphEdgeDef>().in("graph_id", graphIds).eq("status", 1).select("graph_id"));
+                new QueryWrapper<GraphEdgeDef>().in("graph_id", graphIds).select("graph_id"));
         Map<Long, Long> edgeCountMap = allEdges.stream()
                 .collect(Collectors.groupingBy(GraphEdgeDef::getGraphId, Collectors.counting()));
-        // 填充统计信息
         for (Graph graph : records) {
             graph.setVertexTypeCount(nodeCountMap.getOrDefault(graph.getId(), 0L).intValue());
             graph.setEdgeTypeCount(edgeCountMap.getOrDefault(graph.getId(), 0L).intValue());
@@ -143,15 +138,13 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
         // 从图数据库发现已有图
         List<Graph> discovered = discoverRemoteGraphs(connectionId);
         if (!discovered.isEmpty()) {
-            Set<String> localCodes = pageResult.getRecords().stream()
-                    .map(Graph::getCode).collect(Collectors.toSet());
+            Set<String> localCodes = pageResult.getRecords().stream().map(Graph::getCode).collect(Collectors.toSet());
             List<Graph> merged = new ArrayList<>(pageResult.getRecords());
             for (Graph remote : discovered) {
                 if (!localCodes.contains(remote.getCode())) {
                     merged.add(remote);
                 }
             }
-            // 重建分页结果（扩大 total 以包含发现的图）
             Page<Graph> resultPage = new Page<>(page.getCurrent(), page.getSize(), merged.size());
             int ps = (int) page.getSize();
             int from = (int) ((page.getCurrent() - 1) * ps);
@@ -166,7 +159,7 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
     }
 
     /**
-     * 从图数据库发现已有的图
+     * 从图数据库发现已有的图，并获取节点/边类型数量
      */
     private List<Graph> discoverRemoteGraphs(Long connectionId) {
         List<Graph> result = new ArrayList<>();
@@ -187,13 +180,31 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
                 AtomicLong idCounter = new AtomicLong(-1);
                 for (com.chenpp.graph.core.schema.Graph rg : remoteGraphs) {
                     Graph g = new Graph();
-                    g.setId(idCounter.decrementAndGet());
+                    Long negId = idCounter.decrementAndGet();
+                    g.setId(negId);
                     g.setCode(rg.getCode());
                     g.setName(rg.getName());
                     g.setConnectionId(connectionId);
                     g.setGraphType(connection.getGraphType());
                     g.setSourceType("EXISTING");
                     g.setStatus(0);
+
+                    // 尝试从远程图数据库获取节点/边类型数量（复用已打开的客户端）
+                    try {
+                        // 构造该远程图的 GraphConf，指定 graphCode
+                        Graph remoteGraph = new Graph();
+                        remoteGraph.setCode(rg.getCode());
+                        GraphConf schemaConf = GraphClientFactory.createGraphConf(connection, remoteGraph);
+                        com.chenpp.graph.core.schema.GraphSchema schema =
+                                graphOperations.getPublishedSchema(schemaConf);
+                        if (schema != null) {
+                            g.setVertexTypeCount(schema.getEntities() != null ? schema.getEntities().size() : 0);
+                            g.setEdgeTypeCount(schema.getRelations() != null ? schema.getRelations().size() : 0);
+                        }
+                    } catch (Exception e) {
+                        log.debug("获取远程图类型数量失败，code={}: {}", rg.getCode(), e.getMessage());
+                    }
+
                     result.add(g);
                 }
             }
@@ -215,49 +226,53 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
 
     @Transactional(rollbackFor = Exception.class)
     @Override
-    public boolean removeGraph(Long graphId) {
+    public boolean removeGraph(Long graphId, Long connectionId, String graphCode) {
         try {
-            // 获取图信息
-            Graph graph = this.getById(graphId);
-            if (graph == null) {
-                log.warn("图不存在，graphId={}", graphId);
-                return false;
-            }
+            Graph graph = null;
+            GraphConnection connection = null;
 
-            // 获取图数据库连接信息
-            GraphConnection connection = connectionService.getById(graph.getConnectionId());
-            if (connection == null) {
-                log.warn("图数据库连接不存在，connectionId={}", graph.getConnectionId());
-                // 即使连接不存在，也继续删除本地数据
-            } else {
-                // 创建图客户端并删除图数据库中的数据和schema
-                try {
-                    GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
-                    GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
-                    GraphOperations graphOperations = graphClient.opsForGraph();
-
-                    // 删除图数据库中的图
-                    graphOperations.dropGraph(graphConf);
-
-                    // 关闭图客户端
-                    graphClient.close();
-                } catch (Exception e) {
-                    log.warn("删除图数据库中的数据和schema失败，graphId={}, error={}", graphId, e.getMessage());
-                    // 即使删除图数据库中的数据失败，也继续删除本地数据
+            // 1) 优先通过本地图记录获取图标识和连接
+            if (graphId != null && graphId > 0) {
+                graph = this.getById(graphId);
+                if (graph != null) {
+                    graphCode = graph.getCode();
+                    connection = connectionService.getById(graph.getConnectionId());
                 }
             }
 
-            // 删除图关联的节点定义
-            vertexDefService.remove(new QueryWrapper<GraphVertexDef>().eq("graph_id", graphId));
+            // 2) 如果没有本地记录，用传入的 connectionId 构造连接
+            if (graph == null && connectionId != null) {
+                connection = connectionService.getById(connectionId);
+            }
 
-            // 删除图关联的边定义
-            edgeDefService.remove(new QueryWrapper<GraphEdgeDef>().eq("graph_id", graphId));
+            // 3) 删除图数据库中的远程图
+            if (connection != null && graphCode != null && !graphCode.isEmpty()) {
+                Graph tempGraph = new Graph();
+                tempGraph.setCode(graphCode);
+                GraphConf graphConf = GraphClientFactory.createGraphConf(connection, tempGraph);
+                try (GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf)) {
+                    GraphOperations graphOperations = graphClient.opsForGraph();
+                    graphOperations.dropGraph(graphConf);
+                    log.info("已删除图数据库中的图，code={}, connectionId={}", graphCode, connection.getId());
+                } catch (Exception e) {
+                    log.warn("删除图数据库中的图失败，code={}, connectionId={}, error={}",
+                            graphCode, connection.getId(), e.getMessage());
+                }
+            } else {
+                log.warn("缺少图数据库连接或图标识，跳过删除远程图，graphId={}", graphId);
+            }
 
-            // 删除关联的属性定义
-            propertyDefService.remove(new QueryWrapper<GraphPropertyDef>().eq("graph_id", graphId));
+            // 4) 删除本地元数据（仅限有本地记录的图）
+            if (graph != null && graph.getId() != null && graph.getId() > 0) {
+                vertexDefService.remove(new QueryWrapper<GraphVertexDef>().eq("graph_id", graph.getId()));
+                edgeDefService.remove(new QueryWrapper<GraphEdgeDef>().eq("graph_id", graph.getId()));
+                propertyDefService.remove(new QueryWrapper<GraphPropertyDef>().eq("graph_id", graph.getId()));
+                boolean result = this.removeById(graph.getId());
+                log.info("已删除本地图元数据，graphId={}, result={}", graph.getId(), result);
+                return result;
+            }
 
-            // 删除图本身
-            return this.removeById(graphId);
+            return true;
         } catch (Exception e) {
             log.error("删除图失败，graphId={}", graphId, e);
             throw new BusinessException("删除图失败", e);

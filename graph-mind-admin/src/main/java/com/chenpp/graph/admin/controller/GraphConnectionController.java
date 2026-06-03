@@ -27,19 +27,13 @@ import java.time.LocalDateTime;
 @Slf4j
 @RestController
 @RequestMapping("/api/connections")
-public class GraphDatabaseController {
+public class GraphConnectionController {
 
     @Autowired
     private GraphConnectionService connectionService;
 
     /**
      * 获取连接列表
-     *
-     * @param page     页码
-     * @param pageSize 每页数量
-     * @param keyword  搜索关键词
-     * @param type     数据库类型
-     * @return 连接列表
      */
     @GetMapping
     public Result<Page<GraphConnection>> getConnections(
@@ -55,9 +49,6 @@ public class GraphDatabaseController {
 
     /**
      * 新增连接
-     *
-     * @param connection 连接信息
-     * @return 是否成功
      */
     @PostMapping
     public Result<Boolean> createConnection(@RequestBody GraphConnection connection) {
@@ -67,10 +58,6 @@ public class GraphDatabaseController {
 
     /**
      * 更新连接
-     *
-     * @param id         连接ID
-     * @param connection 连接信息
-     * @return 是否成功
      */
     @PutMapping("/{id}")
     public Result<Boolean> updateConnection(@PathVariable Long id, @RequestBody GraphConnection connection) {
@@ -82,9 +69,6 @@ public class GraphDatabaseController {
 
     /**
      * 删除连接
-     *
-     * @param id 连接ID
-     * @return 是否成功
      */
     @DeleteMapping("/{id}")
     public Result<Boolean> deleteConnection(@PathVariable Long id) {
@@ -94,9 +78,6 @@ public class GraphDatabaseController {
 
     /**
      * 测试连接
-     *
-     * @param id 连接ID
-     * @return 测试是否成功
      */
     @PostMapping("/{id}/test")
     public Result<Boolean> testConnection(@PathVariable Long id) {

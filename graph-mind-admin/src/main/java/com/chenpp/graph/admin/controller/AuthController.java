@@ -36,9 +36,6 @@ public class AuthController {
 
     /**
      * 用户登录接口
-     *
-     * @param loginRequest 登录请求参数
-     * @return 登录结果
      */
     @PostMapping("/login")
     public ResponseEntity<Result<LoginResponse>> login(@RequestBody LoginRequest loginRequest) {
@@ -65,8 +62,6 @@ public class AuthController {
 
     /**
      * 用户登出接口
-     *
-     * @return 登出结果
      */
     @PostMapping("/logout")
     public ResponseEntity<Result<String>> logout() {

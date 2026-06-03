@@ -31,11 +31,6 @@ public class GraphDataController {
     /**
      * 导入节点数据（CSV）
      *
-     * @param graphId    图ID
-     * @param vertexTypeId 节点类型ID
-     * @param file       CSV文件
-     * @param config     导入配置（JSON，含 delimiter、hasHeader 等）
-     * @return 导入结果
      */
     @PostMapping("/import/vertices/{vertexTypeId}")
     public Result<ImportResult> importNodeData(
@@ -58,11 +53,6 @@ public class GraphDataController {
     /**
      * 导入边数据（CSV）
      *
-     * @param graphId    图ID
-     * @param edgeTypeId 边类型ID
-     * @param file       CSV文件
-     * @param config     导入配置（JSON，含 delimiter、hasHeader 等）
-     * @return 导入结果
      */
     @PostMapping("/import/edges/{edgeTypeId}")
     public Result<ImportResult> importEdgeData(
@@ -85,11 +75,6 @@ public class GraphDataController {
     /**
      * 查询节点数据列表
      *
-     * @param graphId    图ID
-     * @param vertexTypeId 节点类型ID
-     * @param page       页码
-     * @param size       每页大小
-     * @return 节点数据列表
      */
     @GetMapping("/vertices/{vertexTypeId}")
     public Result<List<GraphVertex>> getNodeDataList(
@@ -113,11 +98,6 @@ public class GraphDataController {
     /**
      * 查询边数据列表
      *
-     * @param graphId    图ID
-     * @param edgeTypeId 边类型ID
-     * @param page       页码
-     * @param size       每页大小
-     * @return 边数据列表
      */
     @GetMapping("/edges/{edgeTypeId}")
     public Result<List<Map<String, Object>>> getEdgeDataList(
@@ -141,9 +121,6 @@ public class GraphDataController {
     /**
      * 获取节点数据详情
      *
-     * @param graphId 图ID
-     * @param vertexId  节点ID
-     * @return 节点数据详情
      */
     @GetMapping("/data/vertices/{vertexId}")
     public Result<Map<String, Object>> getNodeData(
@@ -165,9 +142,6 @@ public class GraphDataController {
     /**
      * 获取边数据详情
      *
-     * @param graphId 图ID
-     * @param edgeId  边ID
-     * @return 边数据详情
      */
     @GetMapping("/data/edges/{edgeId}")
     public Result<Map<String, Object>> getEdgeData(
@@ -189,10 +163,6 @@ public class GraphDataController {
     /**
      * 新增节点数据
      *
-     * @param graphId    图ID
-     * @param vertexTypeId 节点类型ID
-     * @param data       节点数据
-     * @return 是否成功
      */
     @PostMapping("/data/vertices/{vertexTypeId}")
     public Result<Boolean> addNodeData(
@@ -219,10 +189,6 @@ public class GraphDataController {
     /**
      * 新增边数据
      *
-     * @param graphId    图ID
-     * @param edgeTypeId 边类型ID
-     * @param data       边数据
-     * @return 是否成功
      */
     @PostMapping("/data/edges/{edgeTypeId}")
     public Result<Boolean> addEdgeData(
@@ -249,10 +215,6 @@ public class GraphDataController {
     /**
      * 更新节点数据
      *
-     * @param graphId 图ID
-     * @param vertexId  节点ID
-     * @param data    节点数据
-     * @return 是否成功
      */
     @PutMapping("/data/vertices/{vertexId}")
     public Result<Boolean> updateNodeData(
@@ -279,10 +241,6 @@ public class GraphDataController {
     /**
      * 更新边数据
      *
-     * @param graphId 图ID
-     * @param edgeId  边ID
-     * @param data    边数据
-     * @return 是否成功
      */
     @PutMapping("/data/edges/{edgeId}")
     public Result<Boolean> updateEdgeData(
@@ -309,10 +267,6 @@ public class GraphDataController {
     /**
      * 删除节点
      *
-     * @param graphId 图ID
-     * @param vertexId  节点ID
-     * @param label   节点标签
-     * @return 删除结果
      */
     @DeleteMapping("/data/vertices/{vertexId}")
     public Result<Boolean> deleteNode(
@@ -339,9 +293,6 @@ public class GraphDataController {
     /**
      * 批量删除节点
      *
-     * @param graphId 图ID
-     * @param request 包含节点ID列表的请求体
-     * @return 删除结果
      */
     @DeleteMapping("/data/vertices")
     public Result<Boolean> deleteNodes(
@@ -374,8 +325,6 @@ public class GraphDataController {
     /**
      * 获取图统计信息
      *
-     * @param graphId 图ID
-     * @return 图统计信息
      */
     @GetMapping("/summary")
     public Result<GraphSummary> getGraphSummary(

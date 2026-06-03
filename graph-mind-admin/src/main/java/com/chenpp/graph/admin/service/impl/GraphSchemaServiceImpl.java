@@ -36,6 +36,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 
@@ -96,6 +97,133 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         GraphOperations graphOperations = graphClient.opsForGraph();
 
         return graphOperations.getPublishedSchema(graphConf);
+    }
+
+    @Override
+    public List<GraphVertexDef> discoverVertexDefs(Long graphId, Long connectionId, String graphCode) {
+        GraphSchema schema;
+        if (connectionId != null && graphCode != null) {
+            schema = discoverSchema(connectionId, graphCode);
+        } else {
+            schema = discoverSchema(graphId);
+        }
+        if (schema == null || schema.getEntities() == null || schema.getEntities().isEmpty()) {
+            return new ArrayList<>();
+        }
+        AtomicLong idCounter = new AtomicLong(-1);
+        return schema.getEntities().stream().map(entity -> {
+            GraphVertexDef vertexDef = new GraphVertexDef();
+            vertexDef.setId(idCounter.decrementAndGet());
+            vertexDef.setGraphId(graphId);
+            vertexDef.setLabel(entity.getLabel());
+            vertexDef.setName(entity.getLabel());
+            vertexDef.setDescription("从图数据库发现");
+            vertexDef.setStatus(1);
+            if (entity.getProperties() != null) {
+                List<GraphPropertyDef> props = entity.getProperties().stream()
+                        .map(this::buildPropertyDef)
+                        .collect(Collectors.toList());
+                vertexDef.setProperties(props);
+            }
+            return vertexDef;
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<GraphEdgeDef> discoverEdgeDefs(Long graphId, Long connectionId, String graphCode) {
+        GraphSchema schema;
+        if (connectionId != null && graphCode != null) {
+            schema = discoverSchema(connectionId, graphCode);
+        } else {
+            schema = discoverSchema(graphId);
+        }
+        if (schema == null || schema.getRelations() == null || schema.getRelations().isEmpty()) {
+            return new ArrayList<>();
+        }
+        AtomicLong idCounter = new AtomicLong(-1000);
+        return schema.getRelations().stream().map(relation -> {
+            GraphEdgeDef edgeDef = new GraphEdgeDef();
+            edgeDef.setId(idCounter.decrementAndGet());
+            edgeDef.setGraphId(graphId);
+            edgeDef.setLabel(relation.getLabel());
+            edgeDef.setName(relation.getLabel());
+            edgeDef.setDescription("从图数据库发现");
+            edgeDef.setStatus(1);
+            edgeDef.setMultiple(relation.getMultiple());
+            edgeDef.setStartLabel(relation.getStartLabel());
+            edgeDef.setEndLabel(relation.getEndLabel());
+            if (relation.getProperties() != null) {
+                List<GraphPropertyDef> props = relation.getProperties().stream()
+                        .map(this::buildPropertyDef)
+                        .collect(Collectors.toList());
+                edgeDef.setProperties(props);
+            }
+            return edgeDef;
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    public void mergeDiscoveredVertexProperties(List<GraphVertexDef> vertexDefs, Long graphId) {
+        GraphSchema schema = discoverSchema(graphId);
+        if (schema == null || schema.getEntities() == null) {
+            return;
+        }
+        Map<String, List<GraphProperty>> labelPropsMap = schema.getEntities().stream()
+                .collect(Collectors.toMap(GraphEntity::getLabel, GraphEntity::getProperties, (a, b) -> a));
+        for (GraphVertexDef vertexDef : vertexDefs) {
+            if (vertexDef.getLabel() != null) {
+                List<GraphProperty> discovered = labelPropsMap.get(vertexDef.getLabel());
+                if (discovered != null && !discovered.isEmpty()) {
+                    List<GraphPropertyDef> existing = vertexDef.getProperties() != null
+                            ? vertexDef.getProperties() : new ArrayList<>();
+                    for (GraphProperty p : discovered) {
+                        boolean exists = existing.stream()
+                                .anyMatch(e -> p.getCode().equals(e.getCode()));
+                        if (!exists) {
+                            existing.add(buildPropertyDef(p));
+                        }
+                    }
+                    vertexDef.setProperties(existing);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void mergeDiscoveredEdgeProperties(List<GraphEdgeDef> edgeDefs, Long graphId) {
+        GraphSchema schema = discoverSchema(graphId);
+        if (schema == null || schema.getRelations() == null) {
+            return;
+        }
+        Map<String, List<GraphProperty>> labelPropsMap = schema.getRelations().stream()
+                .collect(Collectors.toMap(GraphRelation::getLabel, GraphRelation::getProperties, (a, b) -> a));
+        for (GraphEdgeDef edgeDef : edgeDefs) {
+            if (edgeDef.getLabel() != null) {
+                List<GraphProperty> discovered = labelPropsMap.get(edgeDef.getLabel());
+                if (discovered != null && !discovered.isEmpty()) {
+                    List<GraphPropertyDef> existing = edgeDef.getProperties() != null
+                            ? edgeDef.getProperties() : new ArrayList<>();
+                    for (GraphProperty p : discovered) {
+                        boolean exists = existing.stream()
+                                .anyMatch(e -> p.getCode().equals(e.getCode()));
+                        if (!exists) {
+                            existing.add(buildPropertyDef(p));
+                        }
+                    }
+                    edgeDef.setProperties(existing);
+                }
+            }
+        }
+    }
+
+    private GraphPropertyDef buildPropertyDef(GraphProperty p) {
+        GraphPropertyDef prop = new GraphPropertyDef();
+        prop.setCode(p.getCode());
+        prop.setName(p.getName());
+        prop.setType(p.getDataType() != null ? p.getDataType().name() : "String");
+        prop.setStatus(1);
+        prop.setIndexed(false);
+        return prop;
     }
 
     @Override
