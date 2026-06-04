@@ -13,7 +13,7 @@ public class CypherBuilder {
         if (indexName == null || indexName.isEmpty()) {
             indexName = String.format("idx_%s_%s", labelName, propertyName);
         }
-        return "CREATE INDEX " + indexName + " ON " + labelName + "(" + propertyName + ")";
+        return String.format("CREATE INDEX %s FOR (n:%s) ON (n.%s)", indexName, labelName, propertyName);
     }
 
     public static String buildCreateCompositeIndex(String indexName, String labelName, String... propertyNames) {

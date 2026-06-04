@@ -124,4 +124,22 @@ public interface GraphDataOperations {
      * @throws GraphException 查询异常
      */
     GraphSummary getSummary() throws GraphException;
+
+    /**
+     * 统计指定标签的节点数量
+     *
+     * @param label 节点标签
+     * @return 节点总数
+     * @throws GraphException 查询异常
+     */
+    long countVertices(String label) throws GraphException;
+
+    /**
+     * 统计指定类型的关系数量
+     *
+     * @param label 关系类型标签
+     * @return 关系总数
+     * @throws GraphException 查询异常
+     */
+    long countEdges(String label) throws GraphException;
 }

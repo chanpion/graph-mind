@@ -59,12 +59,4 @@ public interface UserService extends IService<User> {
      * @param userIds 用户ID列表
      */
     void deleteUsers(List<Long> userIds);
-
-    /**
-     * 更新用户状态
-     *
-     * @param userId 用户ID
-     * @param status 状态
-     */
-    void updateUserStatus(Long userId, Integer status);
 }

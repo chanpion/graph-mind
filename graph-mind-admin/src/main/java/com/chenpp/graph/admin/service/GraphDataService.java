@@ -1,5 +1,6 @@
 package com.chenpp.graph.admin.service;
 
+import com.chenpp.graph.admin.model.PageResult;
 import com.chenpp.graph.admin.model.ImportResult;
 import com.chenpp.graph.core.model.GraphSummary;
 import com.chenpp.graph.core.model.GraphVertex;
@@ -44,11 +45,12 @@ public interface GraphDataService {
      *
      * @param graphId    图ID
      * @param vertexTypeId 节点类型ID
+     * @param label      节点标签（发现的图为负ID时传入）
      * @param page       页码
      * @param size       每页大小
-     * @return 节点数据列表
+     * @return 分页节点数据
      */
-    List<GraphVertex> getNodeDataList(Long graphId, Long vertexTypeId, String label, Integer page, Integer size);
+    PageResult<GraphVertex> getNodeDataList(Long graphId, Long vertexTypeId, String label, Integer page, Integer size);
 
     /**
      * 查询边数据列表
@@ -58,9 +60,9 @@ public interface GraphDataService {
      * @param label      边类型标签（发现的图为负ID时传入）
      * @param page       页码
      * @param size       每页大小
-     * @return 边数据列表
+     * @return 分页边数据
      */
-    List<Map<String, Object>> getEdgeDataList(Long graphId, Long edgeTypeId, String label, Integer page, Integer size);
+    PageResult<Map<String, Object>> getEdgeDataList(Long graphId, Long edgeTypeId, String label, Integer page, Integer size);
 
     /**
      * 获取节点数据详情

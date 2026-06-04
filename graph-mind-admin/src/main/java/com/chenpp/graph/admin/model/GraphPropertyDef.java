@@ -41,7 +41,6 @@ public class GraphPropertyDef {
     /**
      * 属性类型
      */
-    @TableField("graph_type")
     private String type;
 
     /**

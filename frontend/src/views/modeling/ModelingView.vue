@@ -12,7 +12,7 @@
       </div>
     </div>
 
-    <div class="content-card">
+    <div v-show="viewMode === 'list'" class="content-card">
       <div class="list-toolbar">
         <el-button type="primary" :icon="Plus" size="small" @click="handleAdd">新增</el-button>
         <el-button size="small" @click="handleExport" :loading="exporting">
@@ -281,7 +281,7 @@
     </el-dialog>
 
     <!-- 图析视图 -->
-    <div v-if="viewMode === 'graph'" class="graph-view-wrapper">
+    <div v-show="viewMode === 'graph'" class="graph-view-wrapper">
       <GraphModelingView :node-defs="vertexDefs" :edge-defs="edgeDefs" />
     </div>
 

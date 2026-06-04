@@ -28,13 +28,8 @@ public class UserServiceImpl extends ServiceImpl<UserDao, User> implements UserS
 
     @Override
     public PageResult<User> getUsers(Integer pageNum, Integer pageSize, String username, String phoneNumber, Integer status) {
-        // 创建分页对象
         Page<User> page = new Page<>(pageNum, pageSize);
-
-        // 执行分页查询
         IPage<User> userIPage = this.baseMapper.selectUserPage(page, username, phoneNumber, status);
-
-        // 封装分页结果
         return new PageResult<>(userIPage.getRecords(), userIPage.getTotal(), pageNum, pageSize);
     }
 
@@ -48,20 +43,17 @@ public class UserServiceImpl extends ServiceImpl<UserDao, User> implements UserS
         return this.getOne(new QueryWrapper<>(User.class).eq("username", username));
     }
 
-    @Transactional(rollbackFor = Exception.class)
+
     @Override
     public void addUser(User user) {
-        // 对密码进行加密
         if (user.getPassword() != null) {
             user.setPassword(passwordEncoder.encode(user.getPassword()));
         }
         this.save(user);
     }
 
-    @Transactional(rollbackFor = Exception.class)
     @Override
     public void updateUser(User user) {
-        // 如果密码不为空，则进行加密
         if (user.getPassword() != null && !user.getPassword().isEmpty()) {
             user.setPassword(passwordEncoder.encode(user.getPassword()));
         }
@@ -72,14 +64,5 @@ public class UserServiceImpl extends ServiceImpl<UserDao, User> implements UserS
     @Override
     public void deleteUsers(List<Long> userIds) {
         this.removeBatchByIds(userIds);
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    @Override
-    public void updateUserStatus(Long userId, Integer status) {
-        User user = new User();
-        user.setUserId(userId);
-        user.setStatus(status);
-        this.updateById(user);
     }
 }

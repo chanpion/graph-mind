@@ -162,7 +162,7 @@
                 font-weight="600"
                 class="node-label"
               >
-                {{ (node.label || node.name).substring(0, 6) }}
+                {{ ((node.label || node.name) || '?').substring(0, 6) }}
               </text>
               <text
                 :dy="getNodeRadius(node) + 16"
@@ -626,16 +626,34 @@ function handleKeyDown(event) {
   }
 }
 
-watch(() => [props.vertexDefs, props.edgeDefs], () => { transformData() }, { deep: true })
+watch(() => [props.vertexDefs, props.edgeDefs], () => {
+  transformData()
+}, { deep: true })
 
 onMounted(() => {
   transformData()
-  nextTick(() => applyLayout())
-  window.addEventListener('keydown', handleKeyDown)
-})
 
-onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeyDown)
+  // 监听容器尺寸变化：从隐藏(0x0)变为可见时重新布局
+  let wasZero = true
+  const resizeObserver = new ResizeObserver(entries => {
+    for (const entry of entries) {
+      const { width, height } = entry.contentRect
+      if (wasZero && width > 0 && height > 0) {
+        wasZero = false
+        if (nodes.value.length > 0) applyLayout()
+      } else if (width === 0 || height === 0) {
+        wasZero = true
+      }
+    }
+  })
+  if (containerRef.value) resizeObserver.observe(containerRef.value)
+
+  window.addEventListener('keydown', handleKeyDown)
+
+  onUnmounted(() => {
+    window.removeEventListener('keydown', handleKeyDown)
+    resizeObserver.disconnect()
+  })
 })
 </script>
 

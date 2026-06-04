@@ -267,4 +267,38 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
             throw new GraphException("Failed to get graph summary from Neo4j", e);
         }
     }
+
+    @Override
+    public long countVertices(String label) throws GraphException {
+        String cypher = String.format("MATCH (n:`%s`) RETURN count(n) AS count", label);
+        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+            return session.executeRead(tx -> {
+                Result result = tx.run(cypher);
+                if (result.hasNext()) {
+                    return result.next().get("count").asLong();
+                }
+                return 0L;
+            });
+        } catch (Exception e) {
+            log.error("Failed to count vertices with label {} from Neo4j", label, e);
+            throw new GraphException("Failed to count vertices", e);
+        }
+    }
+
+    @Override
+    public long countEdges(String label) throws GraphException {
+        String cypher = String.format("MATCH ()-[r:`%s`]->() RETURN count(r) AS count", label);
+        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+            return session.executeRead(tx -> {
+                Result result = tx.run(cypher);
+                if (result.hasNext()) {
+                    return result.next().get("count").asLong();
+                }
+                return 0L;
+            });
+        } catch (Exception e) {
+            log.error("Failed to count edges with label {} from Neo4j", label, e);
+            throw new GraphException("Failed to count edges", e);
+        }
+    }
 }

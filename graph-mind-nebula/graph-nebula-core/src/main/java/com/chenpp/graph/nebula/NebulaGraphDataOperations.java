@@ -521,6 +521,34 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
         }
     }
 
+    @Override
+    public long countVertices(String label) throws GraphException {
+        String nql = String.format("MATCH (v:%s) RETURN count(v) AS count;", label);
+        try {
+            ResultSet resultSet = sessionPool.execute(nql);
+            if (resultSet.isSucceeded() && resultSet.rowsSize() > 0) {
+                return resultSet.rowValues(0).get(0).asLong();
+            }
+        } catch (Exception e) {
+            log.error("Failed to count vertices with label {} from Nebula", label, e);
+        }
+        return 0L;
+    }
+
+    @Override
+    public long countEdges(String label) throws GraphException {
+        String nql = String.format("MATCH ()-[e:%s]->() RETURN count(e) AS count;", label);
+        try {
+            ResultSet resultSet = sessionPool.execute(nql);
+            if (resultSet.isSucceeded() && resultSet.rowsSize() > 0) {
+                return resultSet.rowValues(0).get(0).asLong();
+            }
+        } catch (Exception e) {
+            log.error("Failed to count edges with label {} from Nebula", label, e);
+        }
+        return 0L;
+    }
+
     private String edgeKey(GraphEdge edge) {
         if (edge.getUid() != null) {
             return edge.getUid();

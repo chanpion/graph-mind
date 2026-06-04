@@ -887,4 +887,38 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             }
         }
     }
+
+    @Override
+    public long countVertices(String label) throws GraphException {
+        JanusGraphTransaction tx = null;
+        try {
+            tx = graph.newTransaction();
+            long count = tx.traversal().V().hasLabel(label).count().next();
+            tx.commit();
+            return count;
+        } catch (Exception e) {
+            log.error("Failed to count vertices with label {} from JanusGraph", label, e);
+            if (tx != null && tx.isOpen()) tx.rollback();
+            return 0L;
+        } finally {
+            if (tx != null && tx.isOpen()) tx.close();
+        }
+    }
+
+    @Override
+    public long countEdges(String label) throws GraphException {
+        JanusGraphTransaction tx = null;
+        try {
+            tx = graph.newTransaction();
+            long count = tx.traversal().E().hasLabel(label).count().next();
+            tx.commit();
+            return count;
+        } catch (Exception e) {
+            log.error("Failed to count edges with label {} from JanusGraph", label, e);
+            if (tx != null && tx.isOpen()) tx.rollback();
+            return 0L;
+        } finally {
+            if (tx != null && tx.isOpen()) tx.close();
+        }
+    }
 }

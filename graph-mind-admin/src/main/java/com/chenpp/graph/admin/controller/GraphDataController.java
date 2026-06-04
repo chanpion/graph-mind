@@ -4,6 +4,7 @@ import com.chenpp.graph.admin.model.ImportResult;
 import com.chenpp.graph.admin.model.Result;
 import com.chenpp.graph.admin.model.GraphVertexDef;
 import com.chenpp.graph.admin.model.GraphEdgeDef;
+import com.chenpp.graph.admin.model.PageResult;
 import com.chenpp.graph.admin.service.GraphDataService;
 import com.chenpp.graph.admin.service.GraphSchemaService;
 import com.chenpp.graph.core.model.GraphSummary;
@@ -84,7 +85,7 @@ public class GraphDataController {
      * 对于发现的图（vertexTypeId < 0），需通过 connectionId + graphCode 发现 label
      */
     @GetMapping("/vertices/{vertexTypeId}")
-    public Result<List<GraphVertex>> getNodeDataList(
+    public Result<PageResult<GraphVertex>> getNodeDataList(
             @PathVariable Long graphId,
             @PathVariable Long vertexTypeId,
             @RequestParam(required = false) Long connectionId,
@@ -108,11 +109,11 @@ public class GraphDataController {
                 }
                 if (label == null) {
                     log.warn("无法从发现的图中获取节点类型 label，vertexTypeId={}", vertexTypeId);
-                    return Result.success(new ArrayList<>());
+                    return Result.success(PageResult.empty(page, size));
                 }
             }
 
-            List<GraphVertex> data = graphDataService.getNodeDataList(graphId, vertexTypeId, label, page, size);
+            PageResult<GraphVertex> data = graphDataService.getNodeDataList(graphId, vertexTypeId, label, page, size);
             return Result.success(data);
         } catch (Exception e) {
             log.error("查询节点数据列表失败", e);
@@ -125,7 +126,7 @@ public class GraphDataController {
      * 对于发现的图（edgeTypeId < 0），需通过 connectionId + graphCode 发现 label
      */
     @GetMapping("/edges/{edgeTypeId}")
-    public Result<List<Map<String, Object>>> getEdgeDataList(
+    public Result<PageResult<Map<String, Object>>> getEdgeDataList(
             @PathVariable Long graphId,
             @PathVariable Long edgeTypeId,
             @RequestParam(required = false) Long connectionId,
@@ -149,11 +150,11 @@ public class GraphDataController {
                 }
                 if (label == null) {
                     log.warn("无法从发现的图中获取边类型 label，edgeTypeId={}", edgeTypeId);
-                    return Result.success(new ArrayList<>());
+                    return Result.success(PageResult.empty(page, size));
                 }
             }
 
-            List<Map<String, Object>> data = graphDataService.getEdgeDataList(graphId, edgeTypeId, label, page, size);
+            PageResult<Map<String, Object>> data = graphDataService.getEdgeDataList(graphId, edgeTypeId, label, page, size);
             return Result.success(data);
         } catch (Exception e) {
             log.error("查询边数据列表失败", e);

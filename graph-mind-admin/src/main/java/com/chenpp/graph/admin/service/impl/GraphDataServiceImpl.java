@@ -9,6 +9,7 @@ import com.chenpp.graph.admin.model.GraphEdgeDef;
 import com.chenpp.graph.admin.model.GraphVertexDef;
 import com.chenpp.graph.admin.model.GraphPropertyDef;
 import com.chenpp.graph.admin.model.ImportResult;
+import com.chenpp.graph.admin.model.PageResult;
 import com.chenpp.graph.admin.service.GraphDataService;
 import com.chenpp.graph.admin.service.GraphConnectionService;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
@@ -309,14 +310,14 @@ public class GraphDataServiceImpl implements GraphDataService {
     }
 
     @Override
-    public List<GraphVertex> getNodeDataList(Long graphId, Long vertexTypeId, String label, Integer page, Integer size) {
+    public PageResult<GraphVertex> getNodeDataList(Long graphId, Long vertexTypeId, String label, Integer page, Integer size) {
         try {
             // 如果 label 已传入（发现的图），跳过本地 lookup
             if (label == null) {
                 GraphVertexDef vertexDef = vertexDefService.getById(vertexTypeId);
                 if (vertexDef == null) {
                     log.error("节点类型不存在，vertexTypeId={}", vertexTypeId);
-                    return new ArrayList<>();
+                    return PageResult.empty(page, size);
                 }
                 label = vertexDef.getLabel();
             }
@@ -324,30 +325,33 @@ public class GraphDataServiceImpl implements GraphDataService {
             GraphDataOperations ops = getGraphDataOperations(graphId);
             int skip = (page - 1) * size;
 
-            // 根据图类型构建不同的查询语句
+            // 查询总记录数
+            long total = ops.countVertices(label);
+
+            // 根据图类型构建分页查询语句
             String query = buildLabelQuery(graphId, label, skip, size);
             GraphData graphData = ops.query(query);
 
-            if (graphData == null || graphData.getVertices() == null) {
-                return new ArrayList<>();
-            }
+            List<GraphVertex> records = (graphData == null || graphData.getVertices() == null)
+                    ? new ArrayList<>()
+                    : graphData.getVertices();
 
-            return graphData.getVertices();
+            return new PageResult<>(records, total, page, size);
         } catch (Exception e) {
             log.error("查询节点数据列表失败，graphId={}, vertexTypeId={}", graphId, vertexTypeId, e);
-            return new ArrayList<>();
+            return PageResult.empty(page, size);
         }
     }
 
     @Override
-    public List<Map<String, Object>> getEdgeDataList(Long graphId, Long edgeTypeId, String label, Integer page, Integer size) {
+    public PageResult<Map<String, Object>> getEdgeDataList(Long graphId, Long edgeTypeId, String label, Integer page, Integer size) {
         try {
             // 如果 label 已传入（发现的图），跳过本地 lookup
             if (label == null) {
                 GraphEdgeDef edgeDef = edgeDefService.getById(edgeTypeId);
                 if (edgeDef == null) {
                     log.error("边类型不存在，edgeTypeId={}", edgeTypeId);
-                    return new ArrayList<>();
+                    return PageResult.empty(page, size);
                 }
                 label = edgeDef.getLabel();
             }
@@ -355,21 +359,22 @@ public class GraphDataServiceImpl implements GraphDataService {
             GraphDataOperations ops = getGraphDataOperations(graphId);
             int skip = (page - 1) * size;
 
+            // 查询总记录数
+            long total = ops.countEdges(label);
+
             String query = buildEdgeLabelQuery(graphId, label, skip, size);
             GraphData graphData = ops.query(query);
 
-            if (graphData == null || graphData.getEdges() == null) {
-                return new ArrayList<>();
+            List<Map<String, Object>> records = new ArrayList<>();
+            if (graphData != null && graphData.getEdges() != null) {
+                for (GraphEdge edge : graphData.getEdges()) {
+                    records.add(edgeToMap(edge));
+                }
             }
-
-            List<Map<String, Object>> result = new ArrayList<>();
-            for (GraphEdge edge : graphData.getEdges()) {
-                result.add(edgeToMap(edge));
-            }
-            return result;
+            return new PageResult<>(records, total, page, size);
         } catch (Exception e) {
             log.error("查询边数据列表失败，graphId={}, edgeTypeId={}", graphId, edgeTypeId, e);
-            return new ArrayList<>();
+            return PageResult.empty(page, size);
         }
     }
 
