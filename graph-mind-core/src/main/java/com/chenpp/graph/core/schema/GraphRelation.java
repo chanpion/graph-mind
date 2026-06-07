@@ -2,6 +2,7 @@ package com.chenpp.graph.core.schema;
 
 import lombok.Data;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -43,4 +44,18 @@ public class GraphRelation {
      * 是否多边
      */
     private Boolean multiple;
+
+    public GraphRelation() {
+        properties = new ArrayList<>();
+    }
+
+    public GraphRelation(String label) {
+        this.label = label;
+        this.properties = new ArrayList<>();
+    }
+
+    public GraphRelation(String label, List<GraphProperty> properties) {
+        this.label = label;
+        this.properties = properties;
+    }
 }

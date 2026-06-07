@@ -2,10 +2,12 @@ package com.chenpp.graph.core.schema;
 
 import lombok.Data;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * 实体定义
+ *
  * @author April.Chen
  * @date 2024/3/28 11:37
  */
@@ -25,4 +27,16 @@ public class GraphEntity {
      * 是否已发布
      */
     private Boolean deployed;
+
+    public GraphEntity() {
+        this(null, new ArrayList<>());
+    }
+
+    public GraphEntity(String label, List<GraphProperty> properties) {
+        this.label = label;
+        this.properties = properties;
+        if (properties == null) {
+            this.properties = new ArrayList<>();
+        }
+    }
 }
