@@ -41,7 +41,7 @@
           <!-- 边 -->
           <g class="edges">
             <g
-              v-for="edge in filteredEdges"
+              v-for="edge in edges"
               :key="edge.id"
               class="edge"
               :class="{ highlighted: isHighlighted(edge), 'is-loop': isSelfLoop(edge) }"
@@ -57,68 +57,72 @@
                   class="edge-line"
                   @click="selectEdge(edge)"
                 />
+                <rect
+                  :x="getSelfLoopLabelPos(edge).x - 28"
+                  :y="getSelfLoopLabelPos(edge).y - 8"
+                  width="56"
+                  height="16"
+                  rx="3"
+                  fill="var(--el-bg-color)"
+                  class="edge-label-bg"
+                />
+                <text
+                  :x="getSelfLoopLabelPos(edge).x"
+                  :y="getSelfLoopLabelPos(edge).y + 3"
+                  text-anchor="middle"
+                  font-size="10"
+                  fill="var(--el-text-color-regular)"
+                  class="edge-label"
+                >
+                  {{ edge.label || edge.name }}
+                </text>
+              </template>
+              <!-- 普通边用曲线渲染（同源同目标的边自动错开弧度） -->
+              <template v-else>
                 <path
-                  :d="getSelfLoopPath(edge)"
+                  v-if="isHighlighted(edge)"
+                  :d="getEdgePath(edge, getEdgeLabelMid(edge))"
+                  stroke="var(--el-color-primary)"
+                  stroke-width="3"
+                  fill="none"
+                  stroke-opacity="0.6"
+                  stroke-dasharray="10, 5"
+                  class="edge-flow"
+                />
+                <path
+                  :d="getEdgePath(edge, getEdgeLabelMid(edge))"
                   stroke="transparent"
                   stroke-width="12"
                   fill="none"
                   @click="selectEdge(edge)"
                   class="edge-hit-area"
                 />
-                <text
-                  :x="getSelfLoopLabelX(edge)"
-                  :y="getSelfLoopLabelY(edge)"
-                  text-anchor="middle"
-                  font-size="11"
-                  fill="var(--el-text-color-secondary)"
-                  class="edge-label"
-                >
-                  {{ edge.label }}
-                </text>
-              </template>
-              <!-- 普通边用线段渲染 -->
-              <template v-else>
-                <line
-                  v-if="isHighlighted(edge)"
-                  :x1="edge.source.x"
-                  :y1="edge.source.y"
-                  :x2="getEdgeTarget(edge).x"
-                  :y2="getEdgeTarget(edge).y"
-                  stroke="var(--el-color-primary)"
-                  stroke-width="3"
-                  stroke-opacity="0.6"
-                  stroke-dasharray="10, 5"
-                  class="edge-flow"
-                />
-                <line
-                  :x1="edge.source.x"
-                  :y1="edge.source.y"
-                  :x2="edge.target.x"
-                  :y2="edge.target.y"
-                  stroke="transparent"
-                  stroke-width="12"
-                  @click="selectEdge(edge)"
-                  class="edge-hit-area"
-                />
-                <line
-                  :x1="edge.source.x"
-                  :y1="edge.source.y"
-                  :x2="getEdgeTarget(edge).x"
-                  :y2="getEdgeTarget(edge).y"
+                <path
+                  :d="getEdgePath(edge, getEdgeLabelMid(edge))"
                   :stroke="getEdgeColor(edge)"
                   stroke-width="2"
+                  fill="none"
                   marker-end="url(#arrowhead)"
                   class="edge-line"
                 />
+                <rect
+                  :x="getEdgeLabelMid(edge).x - 28"
+                  :y="getEdgeLabelMid(edge).y - 8"
+                  width="56"
+                  height="16"
+                  rx="3"
+                  fill="var(--el-bg-color)"
+                  class="edge-label-bg"
+                />
                 <text
-                  :x="(edge.source.x + edge.target.x) / 2"
-                  :y="(edge.source.y + edge.target.y) / 2 - 5"
+                  :x="getEdgeLabelMid(edge).x"
+                  :y="getEdgeLabelMid(edge).y + 3"
                   text-anchor="middle"
-                  font-size="11"
-                  fill="var(--el-text-color-secondary)"
+                  font-size="10"
+                  fill="var(--el-text-color-regular)"
                   class="edge-label"
                 >
-                  {{ edge.label }}
+                  {{ edge.label || edge.name }}
                 </text>
               </template>
             </g>
@@ -167,7 +171,7 @@
               <text
                 :dy="getNodeRadius(node) + 16"
                 text-anchor="middle"
-                fill="var(--el-text-color-secondary)"
+                :fill="edgeAccentColor"
                 font-size="11"
                 class="node-type"
               >
@@ -206,7 +210,7 @@
             orient="auto"
             markerUnits="userSpaceOnUse"
           >
-            <polygon points="0 0, 12 4, 0 8" fill="var(--el-text-color-secondary)" />
+            <polygon points="0 0, 12 4, 0 8" :fill="edgeAccentColor" />
           </marker>
           <marker
             id="arrowhead-loop"
@@ -217,7 +221,7 @@
             orient="auto"
             markerUnits="userSpaceOnUse"
           >
-            <polygon points="0 0, 12 4, 0 8" fill="var(--el-text-color-secondary)" />
+            <polygon points="0 0, 12 4, 0 8" :fill="edgeAccentColor" />
           </marker>
         </defs>
       </svg>
@@ -358,6 +362,7 @@ const drawerTitle = ref('')
 
 const zoom = ref(1)
 const showLegend = ref(false)
+const edgeAccentColor = ref('#909399')
 
 const isDragging = ref(false)
 const isPanning = ref(false)
@@ -368,8 +373,6 @@ const panOffset = ref({ x: 0, y: 0 })
 const selectedNodes = ref(new Set())
 
 const filteredNodes = computed(() => nodes.value)
-const filteredEdges = computed(() => edges.value)
-
 const mergedNodeProperties = computed(() => {
   if (!selectedNode.value) return []
   return (selectedNode.value.properties || []).map(p => ({ ...p, isBuiltIn: false }))
@@ -393,7 +396,11 @@ const colorMap = [
 
 function getNodeColor(node) {
   const index = nodes.value.findIndex(n => n.id === node.id)
-  return colorMap[index % colorMap.length]
+  const raw = colorMap[index % colorMap.length]
+  if (raw.startsWith('var(--el-')) {
+    return getCssVar(raw)
+  }
+  return raw
 }
 
 function adjustColorBrightness(hexColor, percent) {
@@ -405,8 +412,17 @@ function adjustColorBrightness(hexColor, percent) {
   return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)
 }
 
+function getCssVar(varName, fallback = '#909399') {
+  const temp = document.createElement('div')
+  temp.style.color = varName
+  document.body.appendChild(temp)
+  const color = getComputedStyle(temp).color
+  document.body.removeChild(temp)
+  return color || fallback
+}
+
 function getEdgeColor() {
-  return 'var(--el-text-color-secondary)'
+  return edgeAccentColor.value
 }
 
 function getNodeRadius(node) {
@@ -433,12 +449,19 @@ function getSelfLoopPath(edge) {
   return `M ${startX} ${startY} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${endX} ${endY}`
 }
 
-function getSelfLoopLabelX(edge) {
-  return edge.source.x
-}
-
-function getSelfLoopLabelY(edge) {
-  return edge.source.y - getNodeRadius(edge.source) - 75
+function getSelfLoopLabelPos(edge) {
+  const cx = edge.source.x
+  const cy = edge.source.y
+  const r = getNodeRadius(edge.source)
+  const loopRadius = 60
+  const p0x = cx + r, p0y = cy
+  const p1x = cx + r + loopRadius, p1y = cy - loopRadius - 20
+  const p2x = cx - r - loopRadius, p2y = cy - loopRadius - 20
+  const p3x = cx - r, p3y = cy
+  // 三次贝塞尔曲线中点 (t=0.5)
+  const mx = 0.125 * p0x + 0.375 * p1x + 0.375 * p2x + 0.125 * p3x
+  const my = 0.125 * p0y + 0.375 * p1y + 0.375 * p2y + 0.125 * p3y
+  return { x: mx, y: my }
 }
 
 // 计算边的终点（在目标节点边缘处截断，露出箭头）
@@ -452,6 +475,72 @@ function getEdgeTarget(edge) {
   const radius = getNodeRadius(t)
   const ratio = (dist - radius - 2) / dist
   return { x: s.x + dx * ratio, y: s.y + dy * ratio }
+}
+
+// 计算边的贝塞尔曲线（同源同目标的边通过不同弧度分开）
+function getEdgePath(edge, labelMid) {
+  const s = edge.source, t = edge.target
+  if (!s || !t) return ''
+  const mx = (s.x + t.x) / 2
+  const my = (s.y + t.y) / 2
+  const dx = t.x - s.x
+  const dy = t.y - s.y
+  const dist = Math.sqrt(dx * dx + dy * dy)
+  if (dist === 0) return ''
+
+  // 垂直于边的法向量
+  const nx = -dy / dist
+  const ny = dx / dist
+
+  const offset = edge._pairOffset || 0
+  // 弧度随偏移量增大，正偏移向上弯，负偏移向下弯（中间直，两边弯）
+  const curvature = 15 + Math.abs(offset) * 40
+  // 正偏移向法向量正方向弯，负偏移向反方向弯
+  const dir = offset >= 0 ? 1 : -1
+  const cpX = mx + nx * curvature * dir
+  const cpY = my + ny * curvature * dir
+
+  // 计算曲线两端截断在节点边缘附近
+  const r = 26
+  const t1 = Math.min(0.5, r / dist)
+  const startX = s.x + dx * t1
+  const startY = s.y + dy * t1
+  const endX = t.x - dx * t1
+  const endY = t.y - dy * t1
+
+  return `M ${startX} ${startY} Q ${cpX} ${cpY} ${endX} ${endY}`
+}
+
+// 计算贝塞尔曲线的中点（标签位置）
+function getEdgeLabelMid(edge) {
+  const s = edge.source, t = edge.target
+  if (!s || !t) return { x: 0, y: 0 }
+  const mx = (s.x + t.x) / 2
+  const my = (s.y + t.y) / 2
+  const dx = t.x - s.x
+  const dy = t.y - s.y
+  const dist = Math.sqrt(dx * dx + dy * dy)
+  if (dist === 0) return { x: mx, y: my }
+
+  const nx = -dy / dist
+  const ny = dx / dist
+  const offset = edge._pairOffset || 0
+  const curvature = 15 + Math.abs(offset) * 40
+  const dir = offset >= 0 ? 1 : -1
+  const cpX = mx + nx * curvature * dir
+  const cpY = my + ny * curvature * dir
+
+  const r = 26
+  const t1 = Math.min(0.5, r / dist)
+  const startX = s.x + dx * t1
+  const startY = s.y + dy * t1
+  const endX = t.x - dx * t1
+  const endY = t.y - dy * t1
+
+  // 贝塞尔曲线中点 (t=0.5)
+  const labelX = 0.25 * startX + 0.5 * cpX + 0.25 * endX
+  const labelY = 0.25 * startY + 0.5 * cpY + 0.25 * endY
+  return { x: labelX, y: labelY }
 }
 
 function isHighlighted(item) {
@@ -533,6 +622,21 @@ function transformData() {
     }
   }).filter(e => e.source && e.target) // only valid edges
 
+  // 计算同源同目标边的偏移量，从中间向两边对称展开
+  const pairEdges = new Map()
+  edges.value.forEach((e, i) => {
+    const key = `${e.source.id}-${e.target.id}`
+    if (!pairEdges.has(key)) pairEdges.set(key, [])
+    pairEdges.get(key).push(e)
+  })
+  pairEdges.forEach(pair => {
+    const count = pair.length
+    if (count > 1) {
+      const mid = (count - 1) / 2
+      pair.forEach((e, i) => { e._pairOffset = i - mid })
+    }
+  })
+
   if (nodes.value.length > 0) applyLayout()
 }
 
@@ -543,14 +647,32 @@ function applyLayout() {
 }
 
 function applyForceLayout(width, height) {
+  const cx = width / 2, cy = height / 2
+
+  // 初始位置分散在容器中心附近，避免从(0,0)开始互相排斥到画布外
+  nodes.value.forEach((n, i) => {
+    const angle = (2 * Math.PI * i) / nodes.value.length
+    n.x = cx + 120 * Math.cos(angle)
+    n.y = cy + 120 * Math.sin(angle)
+  })
+
   const simulation = d3.forceSimulation(nodes.value)
-    .force('link', d3.forceLink(edges.value).id(d => d.id).distance(120))
-    .force('charge', d3.forceManyBody().strength(-250))
-    .force('center', d3.forceCenter(width / 2, height / 2))
-    .force('collide', d3.forceCollide().radius(50))
+    .force('link', d3.forceLink(edges.value).id(d => d.id).distance(220))
+    .force('charge', d3.forceManyBody().strength(-350))
+    .force('center', d3.forceCenter(cx, cy))
+    .force('collide', d3.forceCollide().radius(60))
 
   simulation.on('tick', () => { /* Vue reactivity handles update */ })
-  setTimeout(() => { simulation.stop(); nextTick(() => updateZoom()) }, 800)
+
+  // 模拟自然稳定后居中显示
+  simulation.on('end', () => { nextTick(() => fitToScreen()) })
+
+  // 最长等待 3s 后强制停止
+  setTimeout(() => {
+    if (!simulation.alpha()) return
+    simulation.stop()
+    nextTick(() => fitToScreen())
+  }, 3000)
 }
 
 function zoomIn() { zoom.value = Math.min(zoom.value + 0.1, 3); updateZoom() }
@@ -631,9 +753,10 @@ watch(() => [props.vertexDefs, props.edgeDefs], () => {
 }, { deep: true })
 
 onMounted(() => {
+  edgeAccentColor.value = getCssVar('--el-text-color-secondary')
   transformData()
 
-  // 监听容器尺寸变化：从隐藏(0x0)变为可见时重新布局
+  // 监听容器尺寸变化：从隐藏(0x0)变为可见或尺寸变化时重新布局
   let wasZero = true
   const resizeObserver = new ResizeObserver(entries => {
     for (const entry of entries) {
@@ -641,6 +764,8 @@ onMounted(() => {
       if (wasZero && width > 0 && height > 0) {
         wasZero = false
         if (nodes.value.length > 0) applyLayout()
+      } else if (width > 0 && height > 0 && nodes.value.length > 0) {
+        applyLayout()
       } else if (width === 0 || height === 0) {
         wasZero = true
       }
@@ -710,7 +835,7 @@ onMounted(() => {
 
 .graph-svg:active { cursor: grabbing; }
 
-.node { cursor: move; }
+.node { cursor: pointer; }
 
 .node .node-circle {
   transition: filter 0.2s, stroke-width 0.2s;
@@ -750,9 +875,10 @@ onMounted(() => {
 }
 
 .edge .edge-line {
-  cursor: pointer;
+  pointer-events: none;
   transition: stroke 0.2s, stroke-width 0.2s;
 }
+.edge { cursor: pointer; }
 
 .edge:hover .edge-line {
   stroke: var(--el-color-primary) !important;
@@ -772,6 +898,7 @@ onMounted(() => {
 .edge .edge-flow { animation: edgeFlow 1.5s linear infinite; }
 
 .edge-label { pointer-events: none; }
+.edge-label-bg { opacity: 0.85; pointer-events: none; }
 
 .edge:hover .edge-label,
 .edge.highlighted .edge-label {

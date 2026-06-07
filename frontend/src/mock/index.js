@@ -68,6 +68,30 @@ function extractParams(pattern, url) {
   return params
 }
 
+/**
+ * Mock 请求分发处理器
+ * 根据请求的 method + URL 匹配已注册路由，调用对应处理器
+ */
+export async function mockHandler(config) {
+  const { method, url } = config
+  const pathname = url.split('?')[0] // strip query params
+
+  for (const route of routes) {
+    if (route.method !== method.toLowerCase()) continue
+    const params = extractParams(route.pattern, pathname)
+    if (!params) continue
+    try {
+      return await route.handler(config, params)
+    } catch (e) {
+      console.error('[Mock] handler error:', route.pattern, e)
+      return { code: 500, data: null, message: e.message || 'Mock handler error' }
+    }
+  }
+
+  console.warn('[Mock] no route matched:', method, url)
+  return { code: 404, data: null, message: `[Mock] no route: ${method} ${url}` }
+}
+
 // ====== 认证 ======
 register('post', '/api/auth/login', async (config) => {
   await mockDelay(500)

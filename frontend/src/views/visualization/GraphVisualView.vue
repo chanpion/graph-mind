@@ -194,8 +194,7 @@ import {
 const DEFAULT_QUERIES = {
   neo4j: 'MATCH p=(n)-[r]->() RETURN p LIMIT 10',
   nebula: 'MATCH p=(v)-[e]->(v2) RETURN p LIMIT 10',
-  janus: 'g.V().limit(10).union(identity(), bothE().limit(25))',
-  janus: 'g.V().limit(10).union(identity(), bothE().limit(25))'
+  janus: 'g.V().limit(10).fold().as("v").unfold().union(identity(), bothE().limit(25))'
 }
 
 // 状态管理

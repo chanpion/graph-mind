@@ -142,9 +142,14 @@ export const graphApi = {
     return request.post(`/api/graphs/${graphId}/expand`, { vertexId, depth, ...extraBody }, { params })
   },
 
-  /** 查找路径 */
-  findPath(graphId, startVertexId, endVertexId, maxDepth = 5, params) {
-    return request.post(`/api/graphs/${graphId}/path`, { startVertexId, endVertexId, maxDepth }, { params })
+  /** 查找路径 — 支持按 label+property+value 查找起点/终点 */
+  findPath(graphId, startVertexId, endVertexId, maxDepth = 5, params, extraBody = {}) {
+    return request.post(`/api/graphs/${graphId}/path`, {
+      startVertexId,
+      endVertexId,
+      maxDepth,
+      ...extraBody
+    }, { params })
   },
 
   /** 获取图统计 */

@@ -235,8 +235,7 @@ const rules = computed(() => {
     ],
     graphType: [{ required: true, message: '请选择数据库类型', trigger: 'change' }],
     hosts: [{ required: true, message: '请输入主机地址', trigger: 'blur' }],
-    port: [{ required: true, message: '请输入端口号', trigger: 'blur' }],
-    password: isEdit ? [] : [{ required: true, message: '请输入密码', trigger: 'blur' }]
+    port: [{ required: true, message: '请输入端口号', trigger: 'blur' }]
   }
 })
 

@@ -34,10 +34,13 @@ axiosRequest.interceptors.response.use(
     if (data.code === 200) {
       return data
     }
-    ElMessage.error(data.message || '请求失败')
     return Promise.reject(new Error(data.message || '请求失败'))
   },
   error => {
+    // 被取消的请求不弹出错误提示，由外层 request 函数静默处理
+    if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
+      return Promise.reject(error)
+    }
     if (error.response) {
       const { status, data } = error.response
       switch (status) {
@@ -136,14 +139,11 @@ const request = async (config) => {
 
   // 真实API请求 - 添加请求取消机制
   const requestKey = generateRequestKey(config)
-  
-  // 取消重复的待处理请求
-  cancelPendingRequest(requestKey, `重复的请求已取消: ${config.url}`)
-  
-  // 创建AbortController用于取消请求
+
+  // 创建AbortController用于取消请求（供外部手动取消或页面切换时批量取消）
   const controller = new AbortController()
   config.signal = controller.signal
-  
+
   // 存储到pending map
   pendingRequests.set(requestKey, controller)
   

@@ -282,7 +282,7 @@
 
     <!-- 图析视图 -->
     <div v-show="viewMode === 'graph'" class="graph-view-wrapper">
-      <GraphModelingView :node-defs="vertexDefs" :edge-defs="edgeDefs" />
+      <GraphModelingView :vertex-defs="vertexDefs" :edge-defs="edgeDefs" />
     </div>
 
   </div>
@@ -389,8 +389,9 @@ function handleTabChange(tab) {
 }
 
 function getNodeNameByLabel(label) {
+  if (!label) return '未定义'
   const node = vertexDefs.value.find(n => n.label === label)
-  return node ? node.name : '未知节点'
+  return node ? node.name : label
 }
 
 function handleAdd() {

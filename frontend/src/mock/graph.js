@@ -94,6 +94,7 @@ const mockSchemas = {
     edgeLabels: [
       {
         id: 201, label: 'WORKS_AT', name: '就职于',
+        startLabel: 'Person', endLabel: 'Company',
         from: 101, to: 102,
         description: '工作关系',
         status: 1,
@@ -105,6 +106,7 @@ const mockSchemas = {
       },
       {
         id: 202, label: 'KNOWS', name: '认识',
+        startLabel: 'Person', endLabel: 'Person',
         from: 101, to: 101,
         description: '认识关系',
         status: 1,

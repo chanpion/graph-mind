@@ -120,7 +120,7 @@
         <el-form-item label="图标识" required>
           <el-input v-model="createForm.graphName" placeholder="请输入图标识（英文）" />
         </el-form-item>
-        <el-form-item label="图名称" required>
+        <el-form-item label="图名称">
           <el-input v-model="createForm.graphDisplayName" placeholder="请输入图名称（中文）" />
         </el-form-item>
       </el-form>
@@ -136,7 +136,7 @@
         <el-form-item label="关联连接">
           <el-input :model-value="getConnectionNameById(editForm.connectionId)" disabled />
         </el-form-item>
-        <el-form-item label="图名称" required>
+        <el-form-item label="图名称">
           <el-input v-model="editForm.graphName" placeholder="请输入图名称" disabled />
         </el-form-item>
         <el-form-item label="描述">
@@ -339,7 +339,6 @@ async function handleCreate() {
   if (!createForm.connectionId) { ElMessage.warning('请选择连接'); return }
   if (!createForm.graphName.trim()) { ElMessage.warning('请输入图标识'); return }
   if (!/^[a-zA-Z0-9_]+$/.test(createForm.graphName)) { ElMessage.warning('图标识只能包含字母、数字和下划线'); return }
-  if (!createForm.graphDisplayName.trim()) { ElMessage.warning('请输入图名称'); return }
 
   creating.value = true
   try {
@@ -369,7 +368,6 @@ function handleEdit(graph) {
 }
 
 async function handleUpdateEdit() {
-  if (!editForm.graphName.trim()) { ElMessage.warning('请输入图名称'); return }
   const id = editForm.graphId
   if (!id) { ElMessage.error('无法确定图ID'); return }
 

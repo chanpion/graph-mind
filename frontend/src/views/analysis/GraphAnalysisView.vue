@@ -672,9 +672,18 @@ const executePathQuery = async () => {
       }
       const apiResponse = await graphApi.findPath(
         graphsStore.currentGraphId,
-        analysisForm.sourceValue, // 起点ID
-        analysisForm.targetValue, // 终点ID
-        analysisForm.maxLength // 最大路径长度
+        '', // startVertexId（空，走属性查找）
+        '', // endVertexId（空，走属性查找）
+        analysisForm.maxLength, // 最大路径长度
+        pathParams,
+        {
+          startLabel: analysisForm.sourceEntity[0],
+          startProp: analysisForm.sourceEntity[1],
+          startValue: analysisForm.sourceValue,
+          endLabel: analysisForm.targetEntity[0],
+          endProp: analysisForm.targetEntity[1],
+          endValue: analysisForm.targetValue
+        }
       )
 
       // 转换API响应数据为图数据
@@ -827,9 +836,18 @@ const executeAnalysis = async () => {
           }
           apiResponse = await graphApi.findPath(
             graphsStore.currentGraphId,
-            analysisForm.sourceValue, // 起点ID
-            analysisForm.targetValue, // 终点ID
-            analysisForm.maxLength // 最大路径长度
+            '',
+            '',
+            analysisForm.maxLength,
+            fpParams,
+            {
+              startLabel: analysisForm.sourceEntity[0],
+              startProp: analysisForm.sourceEntity[1],
+              startValue: analysisForm.sourceValue,
+              endLabel: analysisForm.targetEntity[0],
+              endProp: analysisForm.targetEntity[1],
+              endValue: analysisForm.targetValue
+            }
           );
           break
 

@@ -11,7 +11,7 @@
         <span class="app-title">Graph Mind</span>
       </div>
       <div class="header-right">
-        <div class="connection-selector-wrapper">
+        <div v-if="!hideSelectors" class="connection-selector-wrapper">
           <el-icon class="selector-icon"><Connection /></el-icon>
           <el-select
             v-model="selectedConnectionId"
@@ -37,7 +37,7 @@
             </el-option>
           </el-select>
         </div>
-        <div class="graph-selector-wrapper">
+        <div v-if="!hideSelectors" class="graph-selector-wrapper">
           <el-icon class="selector-icon"><Grid /></el-icon>
           <el-select
             :model-value="currentGraphId"
@@ -99,7 +99,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/views/auth/stores/useAuthStore'
 import { useGraphsStore } from '@/views/graphs/stores/useGraphsStore'
@@ -110,6 +110,7 @@ import { Grid, Connection } from '@element-plus/icons-vue'
 import { connectionApi } from '@/views/connections/api/connection'
 
 const router = useRouter()
+const route = useRoute()
 const appStore = useAppStore()
 const authStore = useAuthStore()
 const graphsStore = useGraphsStore()
@@ -117,6 +118,12 @@ const { currentGraphId, graphs, selectedConnectionId } = storeToRefs(graphsStore
 const { toggleTheme, isDark } = useTheme()
 
 const sidebarCollapsed = computed(() => appStore.sidebarCollapsed)
+
+// 不需要显示连接/图选择器的页面
+const hideSelectors = computed(() => {
+  const hiddenRoutes = ['Dashboard', 'Connections', 'Graphs', 'User']
+  return hiddenRoutes.includes(route.name)
+})
 
 // 连接列表
 const connections = ref([])

@@ -50,7 +50,21 @@ function prepareData(data) {
       source: sourceVal,
       target: targetVal
     }
-  }).filter(e => nodeMap.has(e.source) && nodeMap.has(e.target))
+  })
+
+  // 为边中引用了但节点列表中没有的节点创建占位节点
+  edges.forEach(e => {
+    if (e.source && !nodeMap.has(e.source)) {
+      const placeholder = { id: e.source, label: '?', properties: {} }
+      nodes.push(placeholder)
+      nodeMap.set(e.source, placeholder)
+    }
+    if (e.target && !nodeMap.has(e.target)) {
+      const placeholder = { id: e.target, label: '?', properties: {} }
+      nodes.push(placeholder)
+      nodeMap.set(e.target, placeholder)
+    }
+  })
 
   // 将边的 source 和 target 从 ID 转换为对象引用（供层次图等非力导布局使用）
   edges.forEach(e => {
