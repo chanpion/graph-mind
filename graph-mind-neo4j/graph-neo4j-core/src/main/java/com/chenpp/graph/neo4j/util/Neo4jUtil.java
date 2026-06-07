@@ -31,6 +31,40 @@ import java.util.Optional;
  */
 @Slf4j
 public class Neo4jUtil {
+    public static String buildCreateSingleIndex(String indexName, String labelName, String propertyName) {
+        if (indexName == null || indexName.isEmpty()) {
+            indexName = String.format("idx_%s_%s", labelName, propertyName);
+        }
+        return String.format("CREATE INDEX %s FOR (n:%s) ON (n.%s)", indexName, labelName, propertyName);
+    }
+
+    public static String buildCreateCompositeIndex(String indexName, String labelName, String... propertyNames) {
+        if (propertyNames == null || propertyNames.length == 0) {
+            log.warn("Property names array is null or empty");
+            return "";
+        }
+
+        if (indexName == null || indexName.isEmpty()) {
+            indexName = String.format("idx_%s_%s", labelName, String.join("_", propertyNames));
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("CREATE INDEX ").append(indexName).append(" ON ");
+
+        sb.append(labelName).append("(");
+        for (int i = 0; i < propertyNames.length; i++) {
+            if (propertyNames[i] == null || propertyNames[i].isEmpty()) {
+                log.warn("Property name at index {} is null or empty, skipping", i);
+                continue;
+            }
+
+            sb.append(propertyNames[i]);
+            if (i < propertyNames.length - 1) {
+                sb.append(",");
+            }
+        }
+        sb.append(")");
+        return sb.toString();
+    }
 
     public static String buildPropertiesClause(Map<String, Object> properties) {
         if (properties == null || properties.isEmpty()) {
@@ -134,7 +168,11 @@ public class Neo4jUtil {
 
     private static String getNodePropertyAsString(Node node, String propertyName) {
         try {
-            return node.get(propertyName).asString();
+            Value value = node.get(propertyName);
+            if (value == null || value.isNull()) {
+                return "";
+            }
+            return value.asString();
         } catch (Exception e) {
             log.debug("Failed to get property {} from node: {}", propertyName, e.getMessage());
             return "";
@@ -143,7 +181,11 @@ public class Neo4jUtil {
 
     private static String getRelationshipPropertyAsString(Relationship relationship, String propertyName) {
         try {
-            return relationship.get(propertyName).asString();
+            Value value = relationship.get(propertyName);
+            if (value == null || value.isNull()) {
+                return "";
+            }
+            return value.asString();
         } catch (Exception e) {
             log.debug("Failed to get property {} from relationship: {}", propertyName, e.getMessage());
             return String.valueOf(relationship.id());
@@ -196,11 +238,15 @@ public class Neo4jUtil {
         if (graphData.getEdges() != null) {
             graphData.getEdges().forEach(edge -> {
                 GraphVertex start = elementIdVertexMap.get(edge.getStartUid());
-                edge.setStartUid(start.getUid());
-                edge.setStartLabel(start.getLabel());
+                if (start != null) {
+                    edge.setStartUid(start.getUid());
+                    edge.setStartLabel(start.getLabel());
+                }
                 GraphVertex end = elementIdVertexMap.get(edge.getEndUid());
-                edge.setEndUid(end.getUid());
-                edge.setEndLabel(end.getLabel());
+                if (end != null) {
+                    edge.setEndUid(end.getUid());
+                    edge.setEndLabel(end.getLabel());
+                }
             });
         }
         return graphData;

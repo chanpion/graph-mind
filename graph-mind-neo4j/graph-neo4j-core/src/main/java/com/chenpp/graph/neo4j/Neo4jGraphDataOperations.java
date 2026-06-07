@@ -43,11 +43,9 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
     @Override
     public GraphVertex addVertex(GraphVertex vertex) throws GraphException {
         try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
-            // 动态构建Cypher语句和参数
             String cypher = String.format("CREATE (n:%s {uid: $uid}) SET n += $properties RETURN n", vertex.getLabel());
 
             Map<String, Object> parameters = Neo4jUtil.convertToMap(vertex);
-            // 执行写入操作
             Record record = session.executeWrite(tx -> tx.run(cypher, parameters).single());
             Node node = record.get(0).asNode();
             return Neo4jUtil.parseVertex(node);
@@ -195,8 +193,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
 
     @Override
     public GraphData expand(String vertexId, int depth) throws GraphException {
-        // Neo4j 不支持在 MATCH 模式内使用参数，depth 用 String.format 拼入，vertexId 用参数传入
-        String cypher = String.format("MATCH p = (n)-[*1..%d]-(m) WHERE n.uid = $vertexId RETURN p", depth);
+        String cypher = String.format("MATCH p = (n)-[*1..%d]-(m) WHERE n.uid = $vertexId OR elementId(n) = $vertexId RETURN p", depth);
         try (Session session = driver.session()) {
             return session.executeRead(tx -> {
                 Result result = tx.run(cypher, Values.parameters("vertexId", vertexId));
