@@ -12,7 +12,6 @@ import java.util.List;
 @Data
 public class SchemaExportDTO {
 
-    private String version;
     private String exportedAt;
     private Long graphId;
     private String graphCode;

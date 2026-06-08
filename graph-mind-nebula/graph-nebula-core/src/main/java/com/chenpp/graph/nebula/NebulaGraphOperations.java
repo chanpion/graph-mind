@@ -137,7 +137,7 @@ public class NebulaGraphOperations implements GraphOperations {
 
         NebulaPool nebulaPool = NebulaClientFactory.getNebulaPool(this.nebulaConf);
 
-        String useSpace = ngqlBuilder.buildUseSpace(this.nebulaConf.getSpace());
+        String useSpace = ngqlBuilder.buildUseSpace(graphConf.getGraphCode());
 
         try (Session session = nebulaPool.getSession(this.nebulaConf.getUsername(), this.nebulaConf.getPassword(), false)) {
             ResultSet rs = session.execute(useSpace);
@@ -369,11 +369,32 @@ public class NebulaGraphOperations implements GraphOperations {
                             index.getName(), resultSet.getErrorCode(), resultSet.getErrorMessage());
                 } else {
                     log.info("Successfully created index: {}", index.getName());
+                    // 创建成功后立即 Rebuild，使索引生效
+                    rebuildIndex(nebulaIndex.getIndexType(), index.getName(), session);
                 }
             } catch (Exception e) {
                 log.error("Error creating index: " + index.getName(), e);
             }
         });
+    }
+
+    /**
+     * Rebuild 指定的索引，使其生效
+     */
+    private void rebuildIndex(SchemaType schemaType, String indexName, Session session) {
+        try {
+            String rebuildNql = ngqlBuilder.buildRebuildIndex(schemaType, indexName);
+            log.debug("Execute rebuild index NGQL: {}", rebuildNql);
+            ResultSet rs = session.execute(rebuildNql);
+            if (!rs.isSucceeded()) {
+                log.warn("Failed to rebuild index: {}, errorCode: {}, errorMessage: {}",
+                        indexName, rs.getErrorCode(), rs.getErrorMessage());
+            } else {
+                log.info("Successfully rebuild index: {}", indexName);
+            }
+        } catch (Exception e) {
+            log.warn("Error rebuilding index: " + indexName, e);
+        }
     }
 
     public List<GraphIndex> showIndexes(Session session) throws GraphException {

@@ -1,5 +1,6 @@
 package com.chenpp.graph.admin.service;
 
+import com.chenpp.graph.admin.model.Graph;
 import com.chenpp.graph.admin.model.GraphEdgeDef;
 import com.chenpp.graph.admin.model.GraphVertexDef;
 import com.chenpp.graph.admin.model.SchemaExportDTO;
@@ -63,4 +64,9 @@ public interface GraphSchemaService {
      * 导入图Schema
      */
     void importSchema(Long graphId, SchemaImportDTO importDTO);
+
+    /**
+     * 在图数据库中创建图（不发布Schema）
+     */
+    Long createGraphInDatabase(Graph graph);
 }

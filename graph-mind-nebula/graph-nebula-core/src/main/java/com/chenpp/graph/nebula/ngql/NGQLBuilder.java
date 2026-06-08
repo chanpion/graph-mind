@@ -258,4 +258,12 @@ public class NGQLBuilder {
         return "DROP " + schemaType + " INDEX IF EXISTS " + indexName;
     }
 
+    public String buildRebuildIndex(SchemaType schemaType, String indexName) {
+        return "REBUILD " + schemaType + " INDEX " + indexName;
+    }
+
+    public String buildRebuildAllIndexes(SchemaType schemaType) {
+        return "REBUILD " + schemaType + " INDEXES";
+    }
+
 }

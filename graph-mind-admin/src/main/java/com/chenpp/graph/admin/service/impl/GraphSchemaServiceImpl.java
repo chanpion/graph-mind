@@ -27,6 +27,7 @@ import com.chenpp.graph.core.schema.GraphSchema;
 import com.chenpp.graph.core.schema.IndexType;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -84,7 +85,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
 
     @Override
     public GraphSchema discoverSchema(Long graphId) {
-        // 获取图信息
         Graph graph = graphService.getById(graphId);
         if (graph == null) {
             throw new GraphException("图不存在");
@@ -95,7 +95,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             throw new GraphException("图数据库连接不存在");
         }
 
-        // 创建图客户端并查询图数据库
         GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
         GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
         GraphOperations graphOperations = graphClient.opsForGraph();
@@ -179,20 +178,17 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         Map<String, List<GraphProperty>> labelPropsMap = schema.getEntities().stream()
                 .collect(Collectors.toMap(GraphEntity::getLabel, GraphEntity::getProperties, (a, b) -> a));
         for (GraphVertexDef vertexDef : vertexDefs) {
-            if (vertexDef.getLabel() != null) {
-                List<GraphProperty> discovered = labelPropsMap.get(vertexDef.getLabel());
-                if (discovered != null && !discovered.isEmpty()) {
-                    List<GraphPropertyDef> existing = vertexDef.getProperties() != null
-                            ? vertexDef.getProperties() : new ArrayList<>();
-                    for (GraphProperty p : discovered) {
-                        boolean exists = existing.stream()
-                                .anyMatch(e -> p.getCode().equals(e.getCode()));
-                        if (!exists) {
-                            existing.add(buildPropertyDef(p));
-                        }
+            List<GraphProperty> discovered = labelPropsMap.get(vertexDef.getLabel());
+            if (discovered != null && !discovered.isEmpty()) {
+                List<GraphPropertyDef> existing = vertexDef.getProperties() != null
+                        ? vertexDef.getProperties() : new ArrayList<>();
+                for (GraphProperty p : discovered) {
+                    boolean exists = existing.stream().anyMatch(e -> p.getCode().equals(e.getCode()));
+                    if (!exists) {
+                        existing.add(buildPropertyDef(p));
                     }
-                    vertexDef.setProperties(existing);
                 }
+                vertexDef.setProperties(existing);
             }
         }
     }
@@ -211,20 +207,18 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         Map<String, List<GraphProperty>> labelPropsMap = schema.getRelations().stream()
                 .collect(Collectors.toMap(GraphRelation::getLabel, GraphRelation::getProperties, (a, b) -> a));
         for (GraphEdgeDef edgeDef : edgeDefs) {
-            if (edgeDef.getLabel() != null) {
-                List<GraphProperty> discovered = labelPropsMap.get(edgeDef.getLabel());
-                if (discovered != null && !discovered.isEmpty()) {
-                    List<GraphPropertyDef> existing = edgeDef.getProperties() != null
-                            ? edgeDef.getProperties() : new ArrayList<>();
-                    for (GraphProperty p : discovered) {
-                        boolean exists = existing.stream()
-                                .anyMatch(e -> p.getCode().equals(e.getCode()));
-                        if (!exists) {
-                            existing.add(buildPropertyDef(p));
-                        }
+            List<GraphProperty> discovered = labelPropsMap.get(edgeDef.getLabel());
+            if (discovered != null && !discovered.isEmpty()) {
+                List<GraphPropertyDef> existing = edgeDef.getProperties() != null
+                        ? edgeDef.getProperties() : new ArrayList<>();
+                for (GraphProperty p : discovered) {
+                    boolean exists = existing.stream()
+                            .anyMatch(e -> p.getCode().equals(e.getCode()));
+                    if (!exists) {
+                        existing.add(buildPropertyDef(p));
                     }
-                    edgeDef.setProperties(existing);
                 }
+                edgeDef.setProperties(existing);
             }
         }
     }
@@ -241,7 +235,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
 
     @Override
     public GraphSchema getGraphSchema(Long graphId) {
-        // 获取图信息
         Graph graph = graphService.getById(graphId);
         if (graph == null) {
             log.warn("图不存在，返回空Schema，graphId={}", graphId);
@@ -249,7 +242,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         }
         List<GraphVertexDef> nodes = graphVertexDefService.getVertexDefsByGraphId(graphId, 0);
         List<GraphEdgeDef> edges = graphEdgeDefService.getEdgeDefsByGraphId(graphId, 0);
-        // 构建图模式
         GraphSchema graphSchema = new GraphSchema();
         graphSchema.setGraphCode(graph.getCode());
 
@@ -322,7 +314,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         List<GraphVertexDef> nodes = graphVertexDefService.getVertexDefsByGraphId(graphId, 0);
         List<GraphEdgeDef> edges = graphEdgeDefService.getEdgeDefsByGraphId(graphId, 0);
 
-        // 构建图配置信息
         GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
         GraphSchema graphSchema = getGraphSchema(graphId);
 
@@ -374,7 +365,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         List<GraphEdgeDef> edges = graphEdgeDefService.getEdgeDefsByGraphId(graphId, null);
 
         SchemaExportDTO dto = new SchemaExportDTO();
-        dto.setVersion("1.0");
         dto.setExportedAt(LocalDateTime.now().toString());
         dto.setGraphId(graphId);
         dto.setGraphCode(graph.getCode());
@@ -392,7 +382,7 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
 
         List<GraphVertexDef> importNodes = importDTO.getNodes();
         List<GraphEdgeDef> importEdges = importDTO.getEdges();
-        if ((importNodes == null || importNodes.isEmpty()) && (importEdges == null || importEdges.isEmpty())) {
+        if (CollectionUtils.isEmpty(importNodes) && CollectionUtils.isEmpty(importEdges)) {
             throw new GraphException("导入数据为空");
         }
 
@@ -418,8 +408,8 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         } else {
             List<GraphVertexDef> existingNodes = graphVertexDefService.getVertexDefsByGraphId(graphId, null);
             existingNodeLabelIdMap = existingNodes.stream()
-                .filter(n -> n.getLabel() != null)
-                .collect(Collectors.toMap(GraphVertexDef::getLabel, GraphVertexDef::getId, (a, b) -> a));
+                    .filter(n -> n.getLabel() != null)
+                    .collect(Collectors.toMap(GraphVertexDef::getLabel, GraphVertexDef::getId, (a, b) -> a));
         }
 
         // 导入节点定义
@@ -432,7 +422,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
                 node.setGraphId(graphId);
                 node.setId(null);
                 node.setStatus(0);
-                // 保存节点定义及其属性
                 graphVertexDefService.saveVertexDefWithProperties(node);
             }
         }
@@ -445,7 +434,7 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
                 if (!replace) {
                     List<GraphEdgeDef> existingEdges = graphEdgeDefService.getEdgeDefsByGraphId(graphId, null);
                     boolean exists = existingEdges.stream()
-                        .anyMatch(e -> Objects.equals(e.getLabel(), edge.getLabel()));
+                            .anyMatch(e -> Objects.equals(e.getLabel(), edge.getLabel()));
                     if (exists) {
                         continue;
                     }
@@ -453,14 +442,37 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
                 edge.setGraphId(graphId);
                 edge.setId(null);
                 edge.setStatus(0);
-                // 保存边定义及其属性
                 graphEdgeDefService.saveEdgeDefWithProperties(edge);
             }
         }
 
-        log.info("Schema导入完成，graphId={}, mode={}, nodes={}, edges={}",
-            graphId, mode,
-            importNodes != null ? importNodes.size() : 0,
-            importEdges != null ? importEdges.size() : 0);
+        log.info("Schema导入完成，graphId={}, mode={}, nodes={}, edges={}", graphId, mode,
+                importNodes != null ? importNodes.size() : 0,
+                importEdges != null ? importEdges.size() : 0);
+    }
+
+    @Override
+    public Long createGraphInDatabase(Graph graph) {
+        if (graph == null) {
+            throw new GraphException("图信息为空");
+        }
+        GraphConnection connection = connectionService.getById(graph.getConnectionId());
+        if (connection == null) {
+            throw new GraphException("图数据库连接不存在");
+        }
+
+        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
+        GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+        GraphOperations graphOperations = graphClient.opsForGraph();
+
+        graphOperations.createGraph(graphConf);
+        log.info("已在图数据库中创建图，graphCode={}", graph.getCode());
+
+        graph.setStatus(0);
+        graph.setGraphType(connection.getGraphType());
+        graphService.save(graph);
+        log.info("已保存图到 MySQL，graphId={}", graph.getId());
+
+        return graph.getId();
     }
 }

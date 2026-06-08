@@ -75,21 +75,16 @@ public class GraphController {
         // 获取当前登录用户
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String creator = authentication != null ? authentication.getName() : "unknown";
-
         graph.setCreator(creator);
-        graph.setCreateTime(LocalDateTime.now());
-        graph.setUpdateTime(LocalDateTime.now());
-        graph.setStatus(0);
-        graphService.save(graph);
 
         try {
-            graphSchemaService.publishSchema(graph.getId());
+            // 先在图数据库创建图，创建成功后再保存到 MySQL
+            Long graphId = graphSchemaService.createGraphInDatabase(graph);
+            return Result.success(graphId);
         } catch (Exception e) {
-            log.warn("自动发布Schema失败: {}", e.getMessage());
-            return Result.error("自动发布Schema失败");
+            log.warn("在图数据库中创建图失败: {}", e.getMessage());
+            return Result.error("在图数据库中创建图失败: " + e.getMessage());
         }
-
-        return Result.success(graph.getId());
     }
 
     /**

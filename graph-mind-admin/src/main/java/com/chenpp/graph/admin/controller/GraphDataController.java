@@ -9,6 +9,7 @@ import com.chenpp.graph.admin.service.GraphDataService;
 import com.chenpp.graph.admin.service.GraphSchemaService;
 import com.chenpp.graph.core.model.GraphSummary;
 import com.chenpp.graph.core.model.GraphVertex;
+import com.chenpp.graph.core.model.GraphEdge;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -38,7 +39,6 @@ public class GraphDataController {
 
     /**
      * 导入节点数据（CSV）
-     *
      */
     @PostMapping("/import/vertices/{vertexTypeId}")
     public Result<ImportResult> importNodeData(
@@ -60,7 +60,6 @@ public class GraphDataController {
 
     /**
      * 导入边数据（CSV）
-     *
      */
     @PostMapping("/import/edges/{edgeTypeId}")
     public Result<ImportResult> importEdgeData(
@@ -164,18 +163,16 @@ public class GraphDataController {
 
     /**
      * 获取节点数据详情
-     *
      */
     @GetMapping("/data/vertices/{vertexId}")
-    public Result<Map<String, Object>> getNodeData(
+    public Result<GraphVertex> getNodeData(
             @PathVariable Long graphId,
             @PathVariable String vertexId) {
         try {
             log.info("获取节点数据详情，graphId={}, vertexId={}", graphId, vertexId);
-            
-            // TODO: 实现获取节点数据详情逻辑
-            Map<String, Object> data = graphDataService.getNodeData(graphId, vertexId);
-            
+
+            GraphVertex data = graphDataService.getNodeData(graphId, vertexId);
+
             return Result.success(data);
         } catch (Exception e) {
             log.error("获取节点数据详情失败", e);
@@ -185,18 +182,16 @@ public class GraphDataController {
 
     /**
      * 获取边数据详情
-     *
      */
     @GetMapping("/data/edges/{edgeId}")
-    public Result<Map<String, Object>> getEdgeData(
+    public Result<GraphEdge> getEdgeData(
             @PathVariable Long graphId,
             @PathVariable String edgeId) {
         try {
             log.info("获取边数据详情，graphId={}, edgeId={}", graphId, edgeId);
-            
-            // TODO: 实现获取边数据详情逻辑
-            Map<String, Object> data = graphDataService.getEdgeData(graphId, edgeId);
-            
+
+            GraphEdge data = graphDataService.getEdgeData(graphId, edgeId);
+
             return Result.success(data);
         } catch (Exception e) {
             log.error("获取边数据详情失败", e);
@@ -206,7 +201,6 @@ public class GraphDataController {
 
     /**
      * 新增节点数据
-     *
      */
     @PostMapping("/data/vertices/{vertexTypeId}")
     public Result<Boolean> addNodeData(
@@ -215,10 +209,10 @@ public class GraphDataController {
             @RequestBody Map<String, Object> data) {
         try {
             log.info("新增节点数据，graphId={}, vertexTypeId={}, data={}", graphId, vertexTypeId, data);
-            
+
             // TODO: 实现新增节点数据逻辑
             boolean result = graphDataService.addNodeData(graphId, vertexTypeId, data);
-            
+
             if (result) {
                 return Result.success(true);
             } else {
@@ -232,7 +226,6 @@ public class GraphDataController {
 
     /**
      * 新增边数据
-     *
      */
     @PostMapping("/data/edges/{edgeTypeId}")
     public Result<Boolean> addEdgeData(
@@ -241,10 +234,10 @@ public class GraphDataController {
             @RequestBody Map<String, Object> data) {
         try {
             log.info("新增边数据，graphId={}, edgeTypeId={}, data={}", graphId, edgeTypeId, data);
-            
+
             // TODO: 实现新增边数据逻辑
             boolean result = graphDataService.addEdgeData(graphId, edgeTypeId, data);
-            
+
             if (result) {
                 return Result.success(true);
             } else {
@@ -258,7 +251,6 @@ public class GraphDataController {
 
     /**
      * 更新节点数据
-     *
      */
     @PutMapping("/data/vertices/{vertexId}")
     public Result<Boolean> updateNodeData(
@@ -267,10 +259,10 @@ public class GraphDataController {
             @RequestBody Map<String, Object> data) {
         try {
             log.info("更新节点数据，graphId={}, vertexId={}, data={}", graphId, vertexId, data);
-            
+
             // TODO: 实现更新节点数据逻辑
             boolean result = graphDataService.updateNodeData(graphId, vertexId, data);
-            
+
             if (result) {
                 return Result.success(true);
             } else {
@@ -284,7 +276,6 @@ public class GraphDataController {
 
     /**
      * 更新边数据
-     *
      */
     @PutMapping("/data/edges/{edgeId}")
     public Result<Boolean> updateEdgeData(
@@ -293,10 +284,10 @@ public class GraphDataController {
             @RequestBody Map<String, Object> data) {
         try {
             log.info("更新边数据，graphId={}, edgeId={}, data={}", graphId, edgeId, data);
-            
+
             // TODO: 实现更新边数据逻辑
             boolean result = graphDataService.updateEdgeData(graphId, edgeId, data);
-            
+
             if (result) {
                 return Result.success(true);
             } else {
@@ -310,7 +301,6 @@ public class GraphDataController {
 
     /**
      * 删除节点
-     *
      */
     @DeleteMapping("/data/vertices/{vertexId}")
     public Result<Boolean> deleteNode(
@@ -336,7 +326,6 @@ public class GraphDataController {
 
     /**
      * 批量删除节点
-     *
      */
     @DeleteMapping("/data/vertices")
     public Result<Boolean> deleteNodes(
@@ -365,10 +354,9 @@ public class GraphDataController {
             return Result.error(500, "批量删除节点失败: " + e.getMessage(), false);
         }
     }
-    
+
     /**
      * 获取图统计信息
-     *
      */
     @GetMapping("/summary")
     public Result<GraphSummary> getGraphSummary(
@@ -377,9 +365,9 @@ public class GraphDataController {
             @RequestParam(required = false) String graphCode) {
         try {
             log.info("获取图统计信息，graphId={}, connectionId={}, graphCode={}", graphId, connectionId, graphCode);
-            
+
             GraphSummary summary = graphDataService.getGraphSummary(graphId, connectionId, graphCode);
-            
+
             return Result.success(summary);
         } catch (Exception e) {
             log.error("获取图统计信息失败，graphId={}", graphId, e);

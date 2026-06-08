@@ -9,27 +9,28 @@ import com.chenpp.graph.admin.mapper.GraphVertexDefDao;
 import com.chenpp.graph.admin.model.Graph;
 import com.chenpp.graph.admin.model.GraphConnection;
 import com.chenpp.graph.admin.model.GraphEdgeDef;
-import com.chenpp.graph.admin.model.GraphVertexDef;
 import com.chenpp.graph.admin.model.GraphPropertyDef;
+import com.chenpp.graph.admin.model.GraphVertexDef;
 import com.chenpp.graph.admin.service.GraphConnectionService;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
-import com.chenpp.graph.admin.service.GraphVertexDefService;
 import com.chenpp.graph.admin.service.GraphPropertyDefService;
 import com.chenpp.graph.admin.service.GraphService;
+import com.chenpp.graph.admin.service.GraphVertexDefService;
 import com.chenpp.graph.admin.util.GraphClientFactory;
 import com.chenpp.graph.core.GraphClient;
 import com.chenpp.graph.core.GraphOperations;
 import com.chenpp.graph.core.exception.BusinessException;
 import com.chenpp.graph.core.model.GraphConf;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -73,21 +74,15 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
             return;
         }
 
-        // 收集所有不重复的 connectionId
-        Set<Long> connIds = graphs.stream()
-                .map(Graph::getConnectionId)
-                .filter(id -> id != null)
+        Set<Long> connIds = graphs.stream().map(Graph::getConnectionId).filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-
-        if (connIds.isEmpty()) {
+        if (CollectionUtils.isEmpty(connIds)) {
             return;
         }
 
-        // 批量加载连接信息（单次查询）
         Map<Long, GraphConnection> connMap = connectionService.listByIds(connIds).stream()
                 .collect(Collectors.toMap(GraphConnection::getId, c -> c, (a, b) -> a));
 
-        // 根据连接状态标记图状态
         for (Graph graph : graphs) {
             if (graph.getConnectionId() == null) {
                 continue;
@@ -102,7 +97,6 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
         if (records == null || records.isEmpty()) {
             return;
         }
-        // 按 graph_id 分组统计本地记录（不限制 status，统计所有定义）
         List<Long> graphIds = records.stream().map(Graph::getId).collect(Collectors.toList());
         List<GraphVertexDef> allNodes = graphVertexDefDao.selectList(
                 new QueryWrapper<GraphVertexDef>().in("graph_id", graphIds).select("graph_id"));
@@ -142,29 +136,28 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
         for (Graph g : pageResult.getRecords()) {
             g.setSourceType("PLATFORM");
         }
-        fillGraphCounts(pageResult.getRecords());
 
-        // 从图数据库发现已有图
+        // 从图数据库发现已有图并获取所有图的实时类型计数
+        List<Graph> allGraphs = new ArrayList<>(pageResult.getRecords());
         List<Graph> discovered = discoverRemoteGraphs(connectionId);
-        if (!discovered.isEmpty()) {
-            Set<String> localCodes = pageResult.getRecords().stream().map(Graph::getCode).collect(Collectors.toSet());
-            List<Graph> merged = new ArrayList<>(pageResult.getRecords());
-            for (Graph remote : discovered) {
-                if (!localCodes.contains(remote.getCode())) {
-                    merged.add(remote);
-                }
+        Set<String> localCodes = pageResult.getRecords().stream().map(Graph::getCode).collect(Collectors.toSet());
+        for (Graph remote : discovered) {
+            if (!localCodes.contains(remote.getCode())) {
+                allGraphs.add(remote);
             }
-            Page<Graph> resultPage = new Page<>(page.getCurrent(), page.getSize(), merged.size());
-            int ps = (int) page.getSize();
-            int from = (int) ((page.getCurrent() - 1) * ps);
-            int to = Math.min(from + ps, merged.size());
-            resultPage.setRecords(from < merged.size() ? merged.subList(from, to) : List.of());
-            fillGraphStatus(resultPage.getRecords());
-            return resultPage;
         }
 
-        fillGraphStatus(pageResult.getRecords());
-        return pageResult;
+        // 从图数据库获取所有图（含 PLATFORM）的实时节点/边类型计数
+        fillCountsFromRemote(connectionId, allGraphs);
+
+        // 分页
+        Page<Graph> resultPage = new Page<>(page.getCurrent(), page.getSize(), allGraphs.size());
+        int ps = (int) page.getSize();
+        int from = (int) ((page.getCurrent() - 1) * ps);
+        int to = Math.min(from + ps, allGraphs.size());
+        resultPage.setRecords(from < allGraphs.size() ? allGraphs.subList(from, to) : List.of());
+        fillGraphStatus(resultPage.getRecords());
+        return resultPage;
     }
 
     /**
@@ -197,23 +190,6 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
                     g.setGraphType(connection.getGraphType());
                     g.setSourceType("EXISTING");
                     g.setStatus(0);
-
-                    // 尝试从远程图数据库获取节点/边类型数量（复用已打开的客户端）
-                    try {
-                        // 构造该远程图的 GraphConf，指定 graphCode
-                        Graph remoteGraph = new Graph();
-                        remoteGraph.setCode(rg.getCode());
-                        GraphConf schemaConf = GraphClientFactory.createGraphConf(connection, remoteGraph);
-                        com.chenpp.graph.core.schema.GraphSchema schema =
-                                graphOperations.getPublishedSchema(schemaConf);
-                        if (schema != null) {
-                            g.setVertexTypeCount(schema.getEntities() != null ? schema.getEntities().size() : 0);
-                            g.setEdgeTypeCount(schema.getRelations() != null ? schema.getRelations().size() : 0);
-                        }
-                    } catch (Exception e) {
-                        log.debug("获取远程图类型数量失败，code={}: {}", rg.getCode(), e.getMessage());
-                    }
-
                     result.add(g);
                 }
             }
@@ -229,6 +205,7 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
         if (connection == null) {
             throw new BusinessException("图数据库连接不存在");
         }
+        graph.setStatus(0);
         graph.setGraphType(connection.getGraphType());
         return super.save(graph);
     }
@@ -252,7 +229,7 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
             connection = connectionService.getById(connectionId);
         }
 
-        // 3) 删除图数据库中的远程图（非事务，先执行 fail-fast）
+        // 3) 删除图数据库中的远程图
         if (connection != null && graphCode != null && !graphCode.isEmpty()) {
             Graph tempGraph = new Graph();
             tempGraph.setCode(graphCode);
@@ -262,7 +239,7 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
             graphOperations.dropGraph(graphConf);
             log.info("已删除图数据库中的图，code={}, connectionId={}", graphCode, connection.getId());
         } else {
-            log.warn("缺少图数据库连接或图标识，跳过删除远程图，graphId={}", graphId);
+            log.debug("缺少图数据库连接或图标识，跳过删除远程图，graphId={}", graphId);
         }
 
         // 4) 删除本地元数据（事务内）
@@ -280,4 +257,43 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, Graph> implements Gr
 
         return true;
     }
+
+    /**
+     * 从图数据库获取所有图的实时节点/边类型计数
+     */
+    private void fillCountsFromRemote(Long connectionId, List<Graph> graphs) {
+        GraphConnection connection = connectionService.getById(connectionId);
+        if (connection == null || graphs == null || graphs.isEmpty()) {
+            return;
+        }
+
+        // 保证 discovery 用的 GraphConf 实例不使用任何特定 graphCode，
+        // 只携带连接信息即可 — 后面的 getPublishedSchema 用 graphConf 参数指定
+        Graph graph = new Graph();
+        graph.setConnectionId(connectionId);
+        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
+
+        try (GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf)) {
+            GraphOperations graphOperations = graphClient.opsForGraph();
+            for (Graph g : graphs) {
+                if (g.getCode() == null) continue;
+                try {
+                    Graph targetGraph = new Graph();
+                    targetGraph.setCode(g.getCode());
+                    GraphConf schemaConf = GraphClientFactory.createGraphConf(connection, targetGraph);
+                    com.chenpp.graph.core.schema.GraphSchema schema = graphOperations.getPublishedSchema(schemaConf);
+                    if (schema != null) {
+                        g.setVertexTypeCount(schema.getEntities() != null ? schema.getEntities().size() : 0);
+                        g.setEdgeTypeCount(schema.getRelations() != null ? schema.getRelations().size() : 0);
+                    }
+                } catch (Exception e) {
+                    log.debug("获取图类型数量失败，code={}: {}", g.getCode(), e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("获取图类型数量失败，connectionId={}: {}", connectionId, e.getMessage());
+        }
+    }
+
+
 }

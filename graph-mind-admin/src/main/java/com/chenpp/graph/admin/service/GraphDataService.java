@@ -2,6 +2,7 @@ package com.chenpp.graph.admin.service;
 
 import com.chenpp.graph.admin.model.PageResult;
 import com.chenpp.graph.admin.model.ImportResult;
+import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphSummary;
 import com.chenpp.graph.core.model.GraphVertex;
 import org.springframework.web.multipart.MultipartFile;
@@ -71,7 +72,7 @@ public interface GraphDataService {
      * @param vertexId  节点ID
      * @return 节点数据详情
      */
-    Map<String, Object> getNodeData(Long graphId, String vertexId);
+    GraphVertex getNodeData(Long graphId, String vertexId);
 
     /**
      * 获取边数据详情
@@ -80,7 +81,7 @@ public interface GraphDataService {
      * @param edgeId  边ID
      * @return 边数据详情
      */
-    Map<String, Object> getEdgeData(Long graphId, String edgeId);
+    GraphEdge getEdgeData(Long graphId, String edgeId);
 
     /**
      * 新增节点数据

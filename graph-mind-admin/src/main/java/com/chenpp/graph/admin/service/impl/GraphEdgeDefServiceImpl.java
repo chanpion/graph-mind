@@ -75,7 +75,7 @@ public class GraphEdgeDefServiceImpl extends ServiceImpl<GraphEdgeDefDao, GraphE
                 if (property.getCode() == null || property.getCode().isEmpty()) {
                     property.setCode(property.getName());
                 }
-                graphPropertyDefService.save(property);
+                graphPropertyDefService.saveOrUpdate(property);
             }
         }
 
@@ -85,14 +85,9 @@ public class GraphEdgeDefServiceImpl extends ServiceImpl<GraphEdgeDefDao, GraphE
     @Transactional(rollbackFor = Exception.class)
     @Override
     public boolean updateEdgeDefWithProperties(GraphEdgeDef edgeDef) {
-        // 设置更新时间
-        edgeDef.setUpdateTime(LocalDateTime.now());
-
-        // 更新边定义
         boolean updated = this.updateById(edgeDef);
 
         if (updated) {
-            // 删除原有的属性
             QueryWrapper<GraphPropertyDef> deleteWrapper = new QueryWrapper<>();
             deleteWrapper.eq("entity_id", edgeDef.getId());
             deleteWrapper.eq("property_type", "edge");

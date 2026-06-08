@@ -379,36 +379,36 @@ public class GraphDataServiceImpl implements GraphDataService {
     }
 
     @Override
-    public Map<String, Object> getNodeData(Long graphId, String vertexId) {
+    public GraphVertex getNodeData(Long graphId, String vertexId) {
         try {
             GraphDataOperations ops = getGraphDataOperations(graphId);
             String query = buildFindVertexQuery(graphId, vertexId);
             GraphData graphData = ops.query(query);
 
             if (graphData != null && graphData.getVertices() != null && !graphData.getVertices().isEmpty()) {
-                return vertexToMap(graphData.getVertices().get(0));
+                return graphData.getVertices().get(0);
             }
-            return new HashMap<>();
+            return null;
         } catch (Exception e) {
             log.error("获取节点数据详情失败，graphId={}, vertexId={}", graphId, vertexId, e);
-            return new HashMap<>();
+            return null;
         }
     }
 
     @Override
-    public Map<String, Object> getEdgeData(Long graphId, String edgeId) {
+    public GraphEdge getEdgeData(Long graphId, String edgeId) {
         try {
             GraphDataOperations ops = getGraphDataOperations(graphId);
             String query = buildFindEdgeQuery(graphId, edgeId);
             GraphData graphData = ops.query(query);
 
             if (graphData != null && graphData.getEdges() != null && !graphData.getEdges().isEmpty()) {
-                return edgeToMap(graphData.getEdges().get(0));
+                return graphData.getEdges().get(0);
             }
-            return new HashMap<>();
+            return null;
         } catch (Exception e) {
             log.error("获取边数据详情失败，graphId={}, edgeId={}", graphId, edgeId, e);
-            return new HashMap<>();
+            return null;
         }
     }
 
@@ -687,7 +687,10 @@ public class GraphDataServiceImpl implements GraphDataService {
      */
     private String buildLabelQuery(Long graphId, String label, int skip, int size) {
         if (isGremlinGraph(graphId)) {
-            return String.format("g.V().hasLabel(\"%s\").range(%d, %d)", label, skip, skip + size);
+            return String.format("g.V().hasLabel(\"%s\").skip(%d).limit(%d)", label, skip, size);
+        }
+        if (isNebulaGraph(graphId)) {
+            return String.format("MATCH (n:`%s`) RETURN n SKIP %d LIMIT %d", label, skip, size);
         }
         return String.format("MATCH (n:`%s`) RETURN n SKIP %d LIMIT %d", label, skip, size);
     }
@@ -697,9 +700,12 @@ public class GraphDataServiceImpl implements GraphDataService {
      */
     private String buildEdgeLabelQuery(Long graphId, String label, int skip, int size) {
         if (isGremlinGraph(graphId)) {
-            return String.format("g.E().hasLabel(\"%s\").range(%d, %d)", label, skip, skip + size);
+            return String.format("g.E().hasLabel(\"%s\").skip(%d).limit(%d)", label, skip, size);
         }
-        return String.format("MATCH p=()-[r:`%s`]->() RETURN p SKIP %d LIMIT %d", label, skip, size);
+        if (isNebulaGraph(graphId)) {
+            return String.format("MATCH (a)-[r:`%s`]->(b) RETURN a, r, b SKIP %d LIMIT %d", label, skip, size);
+        }
+        return String.format("MATCH (a)-[r:`%s`]->(b) RETURN a, r, b SKIP %d LIMIT %d", label, skip, size);
     }
 
     /**
@@ -719,7 +725,7 @@ public class GraphDataServiceImpl implements GraphDataService {
         if (isGremlinGraph(graphId)) {
             return String.format("g.E().has(\"uid\", \"%s\")", escapeGremlinString(edgeId));
         }
-        return String.format("MATCH ()-[r {uid: '%s'}]-() RETURN r", escapeCypherString(edgeId));
+        return String.format("MATCH (a)-[r {uid: '%s'}]->(b) RETURN a, r, b", escapeCypherString(edgeId));
     }
 
     /**
@@ -732,6 +738,15 @@ public class GraphDataServiceImpl implements GraphDataService {
         }
         GraphConnection conn = connectionService.getById(graph.getConnectionId());
         return conn != null && "janus".equalsIgnoreCase(conn.getGraphType());
+    }
+
+    private boolean isNebulaGraph(Long graphId) {
+        Graph graph = graphService.getById(graphId);
+        if (graph == null) {
+            return false;
+        }
+        GraphConnection conn = connectionService.getById(graph.getConnectionId());
+        return conn != null && "nebula".equalsIgnoreCase(conn.getGraphType());
     }
 
     /**
@@ -785,15 +800,4 @@ public class GraphDataServiceImpl implements GraphDataService {
         }
         return value.replace("\\", "\\\\").replace("'", "\\'");
     }
-
-    private String getEdgeField(Map<String, String> dataRow, JSONObject mappingMap, String... keys) {
-        for (String key : keys) {
-            String mapped = mappingMap.getString(key);
-            if (mapped != null && dataRow.containsKey(mapped)) {
-                return dataRow.get(mapped);
-            }
-        }
-        return null;
-    }
-
 }
