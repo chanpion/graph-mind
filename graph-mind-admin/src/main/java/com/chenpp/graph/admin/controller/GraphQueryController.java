@@ -137,15 +137,14 @@ public class GraphQueryController {
     private String buildFindNodeByPropertyQuery(String dbType, String label, String property, String value) {
         String escapedValue = value.replace("'", "\\'");
         if ("nebula".equalsIgnoreCase(dbType)) {
-            return String.format("LOOKUP ON `%s` WHERE `%s`.`%s` == '%s' YIELD id(vertex) AS uid, properties(vertex) AS props",
-                    label, label, property, escapedValue);
+            return String.format("MATCH (n:`%s`) WHERE n.`%s`.`%s` == '%s' RETURN n", label, label, property, escapedValue);
         } else if ("janus".equalsIgnoreCase(dbType) || "janusgraph".equalsIgnoreCase(dbType)) {
             return String.format("g.V().hasLabel('%s').has('%s', '%s')", label, property, escapedValue);
         } else {
-            // neo4j 或默认
             return String.format("MATCH (n:`%s`) WHERE n.`%s` = '%s' RETURN n", label, property, escapedValue);
         }
     }
+
 
     @PostMapping("/path")
     public Result<GraphData> findPath(

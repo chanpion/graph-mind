@@ -675,16 +675,17 @@ function parseCsvLine(line, delimiter = ',') {
 }
 
 function downloadTemplate() {
-  const typeLabel = selectedType.value === 'node' ? '节点' : '边'
-  const fields = baseFields.value
-  const headerRow = fields.join(',')
+  const graphCode = graphsStore.currentGraph?.code || graphId.value
+  const typePrefix = selectedType.value === 'node' ? 'vertex' : 'edge'
   const typeDefs = selectedType.value === 'node' ? vertexTypes.value : edgeTypes.value
   const currentType = typeDefs.find(t => t.id === selectedTypeId.value)
+  const typeLabel = currentType?.label || 'unknown'
+  const fields = baseFields.value
+  const headerRow = fields.join(',')
   const exampleRow = fields.map(f => {
     if (f === 'label') {
       return currentType?.label || ''
     }
-    // 从 schema 属性中获取示例值
     const propDef = currentType?.properties?.find(p => p.code === f)
     if (propDef) {
       switch (propDef.type) {
@@ -701,11 +702,10 @@ function downloadTemplate() {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.href = url; a.download = `${typeLabel}_template.csv`
+  a.href = url; a.download = `data_${graphCode}_${typePrefix}_${typeLabel}_template.csv`
   a.click()
   URL.revokeObjectURL(url)
 }
-
 async function importData() {
   if (!selectedFile.value) { ElMessage.error('请选择文件'); return }
   importing.value = true
@@ -716,12 +716,25 @@ async function importData() {
       delimiter: ',',
       hasHeader: true
     }))
+    let res
     if (selectedType.value === 'node') {
-      await graphApi.importNodeData(graphId.value, selectedTypeId.value, formData)
+      res = await graphApi.importNodeData(graphId.value, selectedTypeId.value, formData)
     } else {
-      await graphApi.importEdgeData(graphId.value, selectedTypeId.value, formData)
+      res = await graphApi.importEdgeData(graphId.value, selectedTypeId.value, formData)
     }
-    ElMessage.success('导入成功')
+    const result = res?.data
+    if (result) {
+      const msg = `导入完成：成功 ${result.successCount} 条，失败 ${result.failureCount} 条`
+      if (result.failureCount > 0 && result.successCount === 0) {
+        ElMessage.error(msg)
+      } else if (result.failureCount > 0) {
+        ElMessage.warning(msg)
+      } else {
+        ElMessage.success(msg)
+      }
+    } else {
+      ElMessage.success('导入成功')
+    }
     importDialogVisible.value = false
     await loadData()
   } catch (e) {

@@ -340,7 +340,7 @@ async function autoPublish() {
   try {
     await graphApi.publishSchema(currentGraphId.value)
   } catch (e) {
-    // auto-publish 静默处理
+    ElMessage.warning('Schema 发布失败，请检查图数据库连接和 Schema 配置')
   }
 }
 
@@ -448,7 +448,6 @@ async function saveNode() {
     }
     nodeDialogVisible.value = false
     await fetchVertexDefs()
-    await autoPublish()
   } catch (e) {
     ElMessage.error('保存失败')
   } finally {
@@ -512,7 +511,6 @@ async function saveEdge() {
     }
     edgeDialogVisible.value = false
     await fetchEdgeDefs()
-    await autoPublish()
   } catch (e) {
     ElMessage.error('保存失败')
   } finally {
@@ -608,11 +606,14 @@ async function handleExport() {
       nodes: data.nodes || [],
       edges: data.edges || []
     }
+    const now = new Date()
+    const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`
+    const graphCode = data.graphCode || currentGraphId.value
     const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `schema-${currentGraphId.value}-${Date.now()}.json`
+    a.download = `schema_${graphCode}_${dateStr}.json`
     a.click()
     URL.revokeObjectURL(url)
     ElMessage.success('导出成功')

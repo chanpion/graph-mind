@@ -161,9 +161,10 @@ export const mockExecuteQuery = async (connectionId, graphName, query) => {
 export const mockImportCsv = async (connectionId, graphName, config, file) => {
   await mockDelay(800)
   return mockSuccess({
-    success: true, message: 'CSV文件导入成功',
-    summary: { totalRows: 100, importedVertices: 45, importedEdges: 55, failedRows: 0, elapsedTime: 1200 },
-    details: [{ rowNumber: 1, status: 'SUCCESS', type: 'VERTEX', label: 'Person', properties: { name: '张三', age: 28 } }]
+    successCount: 10,
+    failureCount: 0,
+    totalCount: 10,
+    errorMessages: []
   })
 }
 

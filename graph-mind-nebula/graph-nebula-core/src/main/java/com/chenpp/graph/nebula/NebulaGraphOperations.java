@@ -31,7 +31,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -59,7 +61,34 @@ public class NebulaGraphOperations implements GraphOperations {
                     resultSet.getErrorCode(), resultSet.getErrorMessage());
             throw new GraphException("create graph failed, errorCode: " + resultSet.getErrorCode() + ", errorMessage: " + resultSet.getErrorMessage());
         }
-        log.info("Create graph {} success", nebulaConf.getGraphCode());
+        log.info("Create graph {} success, waiting for space to be ready...", nebulaConf.getGraphCode());
+        waitForSpaceReady(nebulaConf.getGraphCode());
+        log.info("Space {} is ready", nebulaConf.getGraphCode());
+    }
+
+    private void waitForSpaceReady(String spaceName) {
+        int maxRetries = 30;
+        for (int i = 0; i < maxRetries; i++) {
+            try {
+                String useSpace = ngqlBuilder.buildUseSpace(spaceName);
+                NebulaPool nebulaPool = NebulaClientFactory.getNebulaPool(nebulaConf);
+                try (Session session = nebulaPool.getSession(nebulaConf.getUsername(), nebulaConf.getPassword(), false)) {
+                    ResultSet rs = session.execute(useSpace);
+                    if (rs.isSucceeded()) {
+                        return;
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("Space not ready yet, retry {}/{}: {}", i + 1, maxRetries, e.getMessage());
+            }
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new GraphException("Interrupted while waiting for space to be ready");
+            }
+        }
+        throw new GraphException("Space " + spaceName + " not ready after " + maxRetries + " retries");
     }
 
     @Override
@@ -127,6 +156,151 @@ public class NebulaGraphOperations implements GraphOperations {
         ResultSet rs = execute(nebulaConf, useSpace);
         if (!rs.isSucceeded()) {
             log.warn("Failed to re-use space after schema application");
+        }
+    }
+
+    @Override
+    public void alterSchema(GraphConf graphConf, GraphSchema alterSchema) {
+        if ((alterSchema.getEntities() == null || alterSchema.getEntities().isEmpty())
+                && (alterSchema.getRelations() == null || alterSchema.getRelations().isEmpty())) {
+            log.info("No entities or relations to alter");
+            return;
+        }
+
+        log.info("Begin alter graph schema for: {}", graphConf.getGraphCode());
+        NebulaPool nebulaPool = NebulaClientFactory.getNebulaPool(nebulaConf);
+        String useSpace = ngqlBuilder.buildUseSpace(nebulaConf.getSpace());
+
+        try (Session session = nebulaPool.getSession(nebulaConf.getUsername(), nebulaConf.getPassword(), false)) {
+            ResultSet rs = session.execute(useSpace);
+            if (!rs.isSucceeded()) {
+                log.error("Failed to use space, error code: {}, error message: {}", rs.getErrorCode(), rs.getErrorMessage());
+                throw new GraphException(String.format("Failed to use space, error code: %s ,error message %s", rs.getErrorCode(), rs.getErrorMessage()));
+            }
+
+            // 查询当前远程 Schema 用于对比增量变更
+            GraphSchema publishedSchema = new GraphSchema();
+            publishedSchema.setEntities(showTags(session));
+            publishedSchema.setRelations(showEdges(session));
+
+            alterTags(alterSchema.getEntities(), session, publishedSchema);
+            alterEdges(alterSchema.getRelations(), session, publishedSchema);
+
+            log.info("Successfully altered schema for graph: {}", graphConf.getGraphCode());
+        } catch (Exception e) {
+            log.error("Nebula alter schema error", e);
+            throw new GraphException("nebula alter schema error", e);
+        }
+    }
+
+    /**
+     * 增量更新标签：为已存在的标签添加新属性
+     */
+    private void alterTags(List<GraphEntity> entities, Session session, GraphSchema publishedSchema) {
+        if (entities == null || entities.isEmpty()) {
+            return;
+        }
+
+        // 构建远程schema的属性索引
+        Map<String, Set<String>> remoteProps = publishedSchema.getEntities() == null ? Map.of() :
+                publishedSchema.getEntities().stream()
+                        .filter(e -> e.getLabel() != null)
+                        .collect(Collectors.toMap(
+                                GraphEntity::getLabel,
+                                e -> e.getProperties() == null ? Set.of() :
+                                        e.getProperties().stream()
+                                                .map(GraphProperty::getCode)
+                                                .filter(Objects::nonNull)
+                                                .collect(Collectors.toSet())
+                        ));
+
+        for (GraphEntity entity : entities) {
+            if (entity.getProperties() == null || entity.getProperties().isEmpty()) {
+                continue;
+            }
+            Set<String> existingProps = remoteProps.getOrDefault(entity.getLabel(), Set.of());
+            // 找出本地有新但远程没有的属性
+            List<GraphProperty> newProps = entity.getProperties().stream()
+                    .filter(p -> p.getCode() != null && !existingProps.contains(p.getCode()))
+                    .toList();
+
+            if (newProps.isEmpty()) {
+                continue;
+            }
+
+            // 构建只含新属性的GraphEntity用于生成ALTER语句
+            GraphEntity alterEntity = new GraphEntity();
+            alterEntity.setLabel(entity.getLabel());
+            alterEntity.setProperties(newProps);
+
+            try {
+                String nql = NebulaUtil.buildAlterTagAdd(alterEntity);
+                log.info("Altering tag {} with new properties: {}", entity.getLabel(), newProps.stream().map(GraphProperty::getCode).collect(Collectors.joining(", ")));
+                ResultSet resultSet = session.execute(nql);
+                if (!resultSet.isSucceeded()) {
+                    throw new GraphException(String.format("Failed to alter tag: %s, errorCode: %s, errorMessage: %s",
+                            entity.getLabel(), resultSet.getErrorCode(), resultSet.getErrorMessage()));
+                } else {
+                    log.info("Successfully altered tag: {}", entity.getLabel());
+                }
+            } catch (Exception e) {
+                log.error("Error altering tag: " + entity.getLabel(), e);
+            throw new GraphException("Error altering tag: " + entity.getLabel(), e);
+            }
+        }
+    }
+
+    /**
+     * 增量更新边类型：为已存在的边类型添加新属性
+     */
+    private void alterEdges(List<GraphRelation> relations, Session session, GraphSchema publishedSchema) {
+        if (relations == null || relations.isEmpty()) {
+            return;
+        }
+
+        Map<String, Set<String>> remoteProps = publishedSchema.getRelations() == null ? Map.of() :
+                publishedSchema.getRelations().stream()
+                        .filter(r -> r.getLabel() != null)
+                        .collect(Collectors.toMap(
+                                GraphRelation::getLabel,
+                                r -> r.getProperties() == null ? Set.of() :
+                                        r.getProperties().stream()
+                                                .map(GraphProperty::getCode)
+                                                .filter(Objects::nonNull)
+                                                .collect(Collectors.toSet())
+                        ));
+
+        for (GraphRelation relation : relations) {
+            if (relation.getProperties() == null || relation.getProperties().isEmpty()) {
+                continue;
+            }
+            Set<String> existingProps = remoteProps.getOrDefault(relation.getLabel(), Set.of());
+            List<GraphProperty> newProps = relation.getProperties().stream()
+                    .filter(p -> p.getCode() != null && !existingProps.contains(p.getCode()))
+                    .toList();
+
+            if (newProps.isEmpty()) {
+                continue;
+            }
+
+            GraphRelation alterRelation = new GraphRelation();
+            alterRelation.setLabel(relation.getLabel());
+            alterRelation.setProperties(newProps);
+
+            try {
+                String nql = NebulaUtil.buildAlterEdgeAdd(alterRelation);
+                log.info("Altering edge {} with new properties: {}", relation.getLabel(), newProps.stream().map(GraphProperty::getCode).collect(Collectors.joining(", ")));
+                ResultSet resultSet = session.execute(nql);
+                if (!resultSet.isSucceeded()) {
+                    throw new GraphException(String.format("Failed to alter edge: %s, errorCode: %s, errorMessage: %s",
+                            relation.getLabel(), resultSet.getErrorCode(), resultSet.getErrorMessage()));
+                } else {
+                    log.info("Successfully altered edge: {}", relation.getLabel());
+                }
+            } catch (Exception e) {
+                log.error("Error altering edge: " + relation.getLabel(), e);
+            throw new GraphException("Error altering edge: " + relation.getLabel(), e);
+            }
         }
     }
 
@@ -331,6 +505,7 @@ public class NebulaGraphOperations implements GraphOperations {
         }
 
         log.info("Creating {} indices", indices.size());
+        indices.forEach(i -> log.info("Creating index: name={}, label={}, schemaType={}, property={}, propertyNames={}", i.getName(), i.getLabel(), i.getSchemaType(), i.getProperty(), i.getPropertyNames()));
         indices.forEach(index -> {
             try {
                 // 构建NebulaIndex对象
@@ -360,13 +535,13 @@ public class NebulaGraphOperations implements GraphOperations {
 
                 // 使用NGQLBuilder构建创建索引的NGQL语句
                 String nql = ngqlBuilder.buildCreateIndex(nebulaIndex);
-                log.debug("Execute create index NGQL: {}", nql);
+                log.info("Execute create index NGQL: {}", nql);
 
                 // 执行创建索引的语句
                 ResultSet resultSet = session.execute(nql);
                 if (!resultSet.isSucceeded()) {
-                    log.warn("Failed to create index: {}, errorCode: {}, errorMessage: {}",
-                            index.getName(), resultSet.getErrorCode(), resultSet.getErrorMessage());
+                    throw new GraphException(String.format("Failed to create index: %s, errorCode: %s, errorMessage: %s",
+                            index.getName(), resultSet.getErrorCode(), resultSet.getErrorMessage()));
                 } else {
                     log.info("Successfully created index: {}", index.getName());
                     // 创建成功后立即 Rebuild，使索引生效
@@ -374,6 +549,7 @@ public class NebulaGraphOperations implements GraphOperations {
                 }
             } catch (Exception e) {
                 log.error("Error creating index: " + index.getName(), e);
+            throw new GraphException("Error creating index: " + index.getName(), e);
             }
         });
     }
@@ -387,13 +563,14 @@ public class NebulaGraphOperations implements GraphOperations {
             log.debug("Execute rebuild index NGQL: {}", rebuildNql);
             ResultSet rs = session.execute(rebuildNql);
             if (!rs.isSucceeded()) {
-                log.warn("Failed to rebuild index: {}, errorCode: {}, errorMessage: {}",
-                        indexName, rs.getErrorCode(), rs.getErrorMessage());
+                throw new GraphException(String.format("Failed to rebuild index: %s, errorCode: %s, errorMessage: %s",
+                        indexName, rs.getErrorCode(), rs.getErrorMessage()));
             } else {
                 log.info("Successfully rebuild index: {}", indexName);
             }
         } catch (Exception e) {
             log.warn("Error rebuilding index: " + indexName, e);
+        throw new GraphException("Error rebuilding index: " + indexName, e);
         }
     }
 

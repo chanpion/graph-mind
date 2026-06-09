@@ -136,8 +136,11 @@
         <el-form-item label="关联连接">
           <el-input :model-value="getConnectionNameById(editForm.connectionId)" disabled />
         </el-form-item>
+        <el-form-item label="图标识">
+          <el-input :model-value="editForm.graphCode" disabled />
+        </el-form-item>
         <el-form-item label="图名称">
-          <el-input v-model="editForm.graphName" placeholder="请输入图名称" disabled />
+          <el-input v-model="editForm.graphName" placeholder="请输入图名称" />
         </el-form-item>
         <el-form-item label="描述">
           <el-input
@@ -158,7 +161,8 @@
     <el-dialog v-model="detailDialogVisible" title="图详情" width="600px">
       <div v-if="currentGraphDetail">
         <el-descriptions title="图信息" border :column="1">
-          <el-descriptions-item label="图名称">{{ currentGraphDetail.name || currentGraphDetail.graphName }}</el-descriptions-item>
+          <el-descriptions-item label="图标识">{{ currentGraphDetail.code || currentGraphDetail.graphCode }}</el-descriptions-item>
+          <el-descriptions-item label="图名称">{{ currentGraphDetail.name || currentGraphDetail.graphName || '-' }}</el-descriptions-item>
           <el-descriptions-item label="连接名称">{{ getConnectionNameById(currentGraphDetail.connectionId) }}</el-descriptions-item>
           <el-descriptions-item label="数据库类型">{{ currentGraphDetail.graphType || '未知' }}</el-descriptions-item>
           <el-descriptions-item label="节点数">{{ currentGraphDetail.vertexCount || 0 }}</el-descriptions-item>
@@ -237,6 +241,7 @@ const createForm = reactive({
 
 const editForm = reactive({
   graphId: '',
+  graphCode: '',
   graphName: '',
   description: '',
   originalGraphName: '',
@@ -360,6 +365,7 @@ async function handleCreate() {
 // ====== 编辑图 ======
 function handleEdit(graph) {
   editForm.graphId = graph.id || ''
+  editForm.graphCode = graph.code || graph.graphCode || ''
   editForm.graphName = graph.name || graph.graphName || ''
   editForm.description = graph.description || ''
   editForm.originalGraphName = graph.name || graph.graphName || ''

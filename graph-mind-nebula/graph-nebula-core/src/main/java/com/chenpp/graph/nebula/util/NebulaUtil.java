@@ -116,6 +116,26 @@ public class NebulaUtil {
         return "SHOW EDGES";
     }
 
+    /**
+     * 构建 ALTER TAG ADD 语句，为已有标签添加新属性
+     */
+    public static String buildAlterTagAdd(GraphEntity entity) {
+        String properties = entity.getProperties().stream()
+                .map(prop -> prop.getCode() + " " + convertToNebulaDataType(prop.getDataType()))
+                .collect(Collectors.joining(", "));
+        return "ALTER TAG " + entity.getLabel() + " ADD (" + properties + ")";
+    }
+
+    /**
+     * 构建 ALTER EDGE ADD 语句，为已有边类型添加新属性
+     */
+    public static String buildAlterEdgeAdd(GraphRelation relation) {
+        String properties = relation.getProperties().stream()
+                .map(prop -> prop.getCode() + " " + convertToNebulaDataType(prop.getDataType()))
+                .collect(Collectors.joining(", "));
+        return "ALTER EDGE " + relation.getLabel() + " ADD (" + properties + ")";
+    }
+
     public static String buildDropEdge(String edgeTypeName) {
         return "DROP EDGE IF EXISTS " + edgeTypeName;
     }

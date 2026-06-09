@@ -311,8 +311,11 @@ public class GraphDataServiceImpl implements GraphDataService {
 
     @Override
     public PageResult<GraphVertex> getNodeDataList(Long graphId, Long vertexTypeId, String label, Integer page, Integer size) {
+        return getNodeDataList(graphId, vertexTypeId, label, page, size, null, null);
+    }
+
+    public PageResult<GraphVertex> getNodeDataList(Long graphId, Long vertexTypeId, String label, Integer page, Integer size, Long connectionId, String graphCode) {
         try {
-            // 如果 label 已传入（发现的图），跳过本地 lookup
             if (label == null) {
                 GraphVertexDef vertexDef = vertexDefService.getById(vertexTypeId);
                 if (vertexDef == null) {
@@ -322,14 +325,13 @@ public class GraphDataServiceImpl implements GraphDataService {
                 label = vertexDef.getLabel();
             }
 
-            GraphDataOperations ops = getGraphDataOperations(graphId);
+            GraphDataOperations ops = getGraphDataOperations(graphId, connectionId, graphCode);
             int skip = (page - 1) * size;
 
-            // 查询总记录数
             long total = ops.countVertices(label);
 
-            // 根据图类型构建分页查询语句
-            String query = buildLabelQuery(graphId, label, skip, size);
+            String dbType = resolveDbType(graphId, connectionId, graphCode);
+            String query = buildLabelQuery(dbType, label, skip, size);
             GraphData graphData = ops.query(query);
 
             List<GraphVertex> records = (graphData == null || graphData.getVertices() == null)
@@ -345,8 +347,11 @@ public class GraphDataServiceImpl implements GraphDataService {
 
     @Override
     public PageResult<Map<String, Object>> getEdgeDataList(Long graphId, Long edgeTypeId, String label, Integer page, Integer size) {
+        return getEdgeDataList(graphId, edgeTypeId, label, page, size, null, null);
+    }
+
+    public PageResult<Map<String, Object>> getEdgeDataList(Long graphId, Long edgeTypeId, String label, Integer page, Integer size, Long connectionId, String graphCode) {
         try {
-            // 如果 label 已传入（发现的图），跳过本地 lookup
             if (label == null) {
                 GraphEdgeDef edgeDef = edgeDefService.getById(edgeTypeId);
                 if (edgeDef == null) {
@@ -356,13 +361,13 @@ public class GraphDataServiceImpl implements GraphDataService {
                 label = edgeDef.getLabel();
             }
 
-            GraphDataOperations ops = getGraphDataOperations(graphId);
+            GraphDataOperations ops = getGraphDataOperations(graphId, connectionId, graphCode);
             int skip = (page - 1) * size;
 
-            // 查询总记录数
             long total = ops.countEdges(label);
 
-            String query = buildEdgeLabelQuery(graphId, label, skip, size);
+            String dbType = resolveDbType(graphId, connectionId, graphCode);
+            String query = buildEdgeLabelQuery(dbType, label, skip, size);
             GraphData graphData = ops.query(query);
 
             List<Map<String, Object>> records = new ArrayList<>();
@@ -667,19 +672,41 @@ public class GraphDataServiceImpl implements GraphDataService {
      * 获取图数据操作接口
      */
     private GraphDataOperations getGraphDataOperations(Long graphId) {
-        Graph graph = graphService.getById(graphId);
-        if (graph == null) {
-            throw new RuntimeException("图不存在，graphId=" + graphId);
-        }
+        return getGraphDataOperations(graphId, null, null);
+    }
 
-        GraphConnection connection = connectionService.getById(graph.getConnectionId());
-        if (connection == null) {
-            throw new RuntimeException("图数据库连接不存在，connectionId=" + graph.getConnectionId());
+    private GraphDataOperations getGraphDataOperations(Long graphId, Long connectionId, String graphCode) {
+        GraphConf graphConf;
+        if (graphId != null && graphId > 0) {
+            Graph graph = graphService.getById(graphId);
+            if (graph == null) {
+                throw new RuntimeException("图不存在，graphId=" + graphId);
+            }
+            GraphConnection connection = connectionService.getById(graph.getConnectionId());
+            if (connection == null) {
+                throw new RuntimeException("图数据库连接不存在，connectionId=" + graph.getConnectionId());
+            }
+            graphConf = GraphClientFactory.createGraphConf(connection, graph);
+        } else {
+            graphConf = GraphClientFactory.resolveGraphConf(graphId, connectionId, graphCode, graphService, connectionService);
         }
-
-        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
         GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
         return graphClient.opsForGraphData();
+    }
+
+    private String resolveDbType(Long graphId, Long connectionId, String graphCode) {
+        if (graphId != null && graphId > 0) {
+            Graph graph = graphService.getById(graphId);
+            if (graph != null) {
+                GraphConnection conn = connectionService.getById(graph.getConnectionId());
+                if (conn != null) return conn.getGraphType();
+            }
+        }
+        if (connectionId != null) {
+            GraphConnection conn = connectionService.getById(connectionId);
+            if (conn != null) return conn.getGraphType();
+        }
+        return null;
     }
 
     /**

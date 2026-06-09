@@ -48,9 +48,7 @@ public class GraphDataController {
             @RequestPart("config") String config) {
         try {
             log.info("开始导入节点数据，graphId={}, vertexTypeId={}, config={}", graphId, vertexTypeId, config);
-
             ImportResult result = graphDataService.importNodeData(graphId, vertexTypeId, file, config);
-
             return Result.success(result);
         } catch (Exception e) {
             log.error("导入节点数据失败", e);
@@ -69,9 +67,7 @@ public class GraphDataController {
             @RequestPart("config") String config) {
         try {
             log.info("开始导入边数据，graphId={}, edgeTypeId={}, config={}", graphId, edgeTypeId, config);
-
             ImportResult result = graphDataService.importEdgeData(graphId, edgeTypeId, file, config);
-
             return Result.success(result);
         } catch (Exception e) {
             log.error("导入边数据失败", e);
@@ -112,7 +108,7 @@ public class GraphDataController {
                 }
             }
 
-            PageResult<GraphVertex> data = graphDataService.getNodeDataList(graphId, vertexTypeId, label, page, size);
+            PageResult<GraphVertex> data = graphDataService.getNodeDataList(graphId, vertexTypeId, label, page, size, connectionId, graphCode);
             return Result.success(data);
         } catch (Exception e) {
             log.error("查询节点数据列表失败", e);
@@ -153,7 +149,7 @@ public class GraphDataController {
                 }
             }
 
-            PageResult<Map<String, Object>> data = graphDataService.getEdgeDataList(graphId, edgeTypeId, label, page, size);
+            PageResult<Map<String, Object>> data = graphDataService.getEdgeDataList(graphId, edgeTypeId, label, page, size, connectionId, graphCode);
             return Result.success(data);
         } catch (Exception e) {
             log.error("查询边数据列表失败", e);

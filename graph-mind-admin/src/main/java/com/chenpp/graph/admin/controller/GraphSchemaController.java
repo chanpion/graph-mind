@@ -131,6 +131,7 @@ public class GraphSchemaController {
         vertexDef.setGraphId(graphId);
         boolean success = vertexDefService.updateVertexDefWithProperties(vertexDef);
         if (success) {
+            graphSchemaService.publishSchema(graphId);
             return Result.success("更新节点定义成功");
         }
         return Result.error("更新节点定义失败");
@@ -230,6 +231,7 @@ public class GraphSchemaController {
         edgeDef.setGraphId(graphId);
         boolean success = edgeDefService.updateEdgeDefWithProperties(edgeDef);
         if (success) {
+            graphSchemaService.publishSchema(graphId);
             return Result.success("更新边定义成功");
         }
         return Result.error("更新边定义失败");
@@ -252,8 +254,13 @@ public class GraphSchemaController {
      */
     @PostMapping("/publish")
     public Result<String> publishSchema(@PathVariable Long graphId) {
-        graphSchemaService.publishSchema(graphId);
-        return Result.success(null);
+        try {
+            graphSchemaService.publishSchema(graphId);
+            return Result.success("发布成功");
+        } catch (Exception e) {
+            log.error("发布图Schema失败，graphId={}", graphId, e);
+            return Result.error(500, "发布Schema失败: " + e.getMessage(), null);
+        }
     }
 
     @GetMapping("/schema")

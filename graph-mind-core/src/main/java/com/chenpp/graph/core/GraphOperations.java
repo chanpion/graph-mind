@@ -55,4 +55,14 @@ public interface GraphOperations {
      * @throws GraphException 图操作异常
      */
     GraphSchema getPublishedSchema(GraphConf graphConf) throws GraphException;
+
+    /**
+     * 增量更新Schema（为已有的实体/关系添加新属性等变更）
+     *
+     * @param graphConf   图配置信息
+     * @param alterSchema 包含增量变更的schema（仅含需要变更的实体/关系及其新属性）
+     */
+    default void alterSchema(GraphConf graphConf, GraphSchema alterSchema) {
+        // 默认无操作，子类按需覆盖
+    }
 }

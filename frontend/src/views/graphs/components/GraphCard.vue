@@ -7,7 +7,8 @@
         </el-icon>
       </div>
       <div class="graph-info">
-        <h4 class="graph-name">{{ graph.name || graph.graphName }}</h4>
+        <h4 class="graph-name">{{ graph.name || graph.graphName || graph.code || graph.graphCode }}</h4>
+        <p class="graph-code">标识: {{ graph.code || graph.graphCode }}</p>
         <p v-if="graph.description" class="graph-description">{{ graph.description }}</p>
         <div class="graph-tags">
           <el-tag size="small" :type="statusTagType">{{ statusText }}</el-tag>
@@ -173,6 +174,11 @@ function formatNumber(num) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.graph-code {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 .graph-tags { display: flex; gap: 4px; flex-wrap: wrap; }
 

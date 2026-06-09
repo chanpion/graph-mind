@@ -45,6 +45,11 @@ public class GraphProperty {
      */
     private Boolean nullable;
 
+    /**
+     * 是否索引
+     */
+    private Boolean indexed;
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

@@ -105,6 +105,9 @@ public class GraphVertexDefServiceImpl extends ServiceImpl<GraphVertexDefDao, Gr
                     property.setGraphId(vertexDef.getGraphId());
                     property.setEntityId(vertexDef.getId());
                     property.setPropertyType("vertex");
+                    if (property.getCode() == null || property.getCode().isEmpty()) {
+                        property.setCode(property.getName());
+                    }
                     graphPropertyDefService.saveOrUpdate(property);
                 }
             }

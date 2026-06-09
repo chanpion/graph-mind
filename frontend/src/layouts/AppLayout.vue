@@ -52,11 +52,11 @@
             <el-option
               v-for="g in graphs"
               :key="g.id"
-              :label="g.graphName || g.name"
+              :label="g.code || g.graphCode || g.graphName || g.name"
               :value="g.id"
             >
               <div class="graph-option">
-                <span class="graph-option-name">{{ g.graphName || g.name }}</span>
+                <span class="graph-option-name">{{ g.code || g.graphCode }}</span>
                 <el-tag :type="dbTagType(g)" size="small" effect="plain" class="graph-option-tag">
                   {{ dbLabel(g) }}
                 </el-tag>
