@@ -8,14 +8,14 @@
         </div>
 
         <div class="section">
-          <el-button type="primary" @click="loadSampleData">加载示例数据</el-button>
+          <el-button type="primary" @click="loadSampleData" style="width: 100%">加载示例数据</el-button>
         </div>
 
         <!-- 使用 QueryEditor 组件 -->
         <QueryEditor
           v-model="queryStatement"
           :loading="queryLoading"
-          :progress="queryProgress"
+          :progress="0"
           :show-header="false"
           placeholder=""
           history-key="graphQueryHistoryD3"

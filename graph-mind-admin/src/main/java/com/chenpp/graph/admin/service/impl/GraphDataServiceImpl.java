@@ -186,7 +186,16 @@ public class GraphDataServiceImpl implements GraphDataService {
      */
     private List<Map<String, String>> parseCsvFile(MultipartFile file, String delimiter) throws Exception {
         List<Map<String, String>> dataList = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
+        // 先读取原始字节，用于编码回退
+        byte[] rawBytes = file.getBytes();
+
+        // 先尝试 UTF-8 解析，若出现乱码则回退到 GBK
+        String content = new String(rawBytes, java.nio.charset.StandardCharsets.UTF_8);
+        if (containsGarbledChinese(content)) {
+            content = new String(rawBytes, java.nio.charset.Charset.forName("GBK"));
+        }
+
+        try (BufferedReader reader = new BufferedReader(new java.io.StringReader(content))) {
             String headerLine = reader.readLine();
             if (headerLine == null) {
                 throw new IllegalArgumentException("CSV文件为空");
@@ -204,6 +213,27 @@ public class GraphDataServiceImpl implements GraphDataService {
             }
         }
         return dataList;
+    }
+
+    /**
+     * 检测字符串中是否包含中文乱码（出现非法 UTF-8 替换字符 U+FFFD）
+     */
+    private boolean containsGarbledChinese(String text) {
+        if (text == null || text.isEmpty()) {
+            return false;
+        }
+        // 检查是否包含 UTF-8 替换字符
+        if (text.contains("\uFFFD")) {
+            return true;
+        }
+        // 检查是否包含非法的乱码序列（如连续多个不可打印字符）
+        int strangeCount = 0;
+        for (char c : text.toCharArray()) {
+            if (c == '\uFFFD' || (c > 0x7F && c < 0xA0)) {
+                strangeCount++;
+            }
+        }
+        return strangeCount > 3;
     }
 
 
@@ -330,8 +360,7 @@ public class GraphDataServiceImpl implements GraphDataService {
 
             long total = ops.countVertices(label);
 
-            String dbType = resolveDbType(graphId, connectionId, graphCode);
-            String query = buildLabelQuery(dbType, label, skip, size);
+            String query = buildLabelQuery(graphId, label, skip, size);
             GraphData graphData = ops.query(query);
 
             List<GraphVertex> records = (graphData == null || graphData.getVertices() == null)
@@ -366,8 +395,7 @@ public class GraphDataServiceImpl implements GraphDataService {
 
             long total = ops.countEdges(label);
 
-            String dbType = resolveDbType(graphId, connectionId, graphCode);
-            String query = buildEdgeLabelQuery(dbType, label, skip, size);
+            String query = buildEdgeLabelQuery(graphId, label, skip, size);
             GraphData graphData = ops.query(query);
 
             List<Map<String, Object>> records = new ArrayList<>();

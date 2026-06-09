@@ -642,7 +642,12 @@ function previewCsv(file) {
   const reader = new FileReader()
   reader.onload = (e) => {
     try {
-      const text = e.target.result
+      const buffer = e.target.result
+      // 先尝试 UTF-8 解码，如果出现乱码（替换字符）则改用 GBK
+      let text = new TextDecoder('utf-8', { fatal: false }).decode(buffer)
+      if (text.includes('\uFFFD')) {
+        text = new TextDecoder('gbk', { fatal: false }).decode(buffer)
+      }
       const lines = text.split('\n').filter(l => l.trim())
       if (lines.length < 2) { ElMessage.warning('CSV文件内容不足'); return }
       const headers = parseCsvLine(lines[0])
@@ -659,7 +664,7 @@ function previewCsv(file) {
       ElMessage.error('CSV解析失败')
     }
   }
-  reader.readAsText(file)
+  reader.readAsArrayBuffer(file)
 }
 
 function parseCsvLine(line, delimiter = ',') {

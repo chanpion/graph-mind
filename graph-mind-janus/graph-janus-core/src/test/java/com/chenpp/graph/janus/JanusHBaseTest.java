@@ -260,11 +260,11 @@ public class JanusHBaseTest {
             edgeProperties.put("since", "2021");
             edge.setProperties(edgeProperties);
             GraphEdge updated = graphDataOperations.updateEdge(edge);
-            assertEquals(1, updated);
+            assertNotNull(updated);
 
             // 删除边
-            int deleted = graphDataOperations.deleteEdge(edge);
-            assertEquals(1, deleted);
+            boolean deleted = graphDataOperations.deleteEdge(edge);
+            assertTrue(deleted);
         } catch (Exception e) {
             e.printStackTrace();
             fail("边操作测试失败: " + e.getMessage());

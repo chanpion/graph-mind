@@ -313,12 +313,12 @@ public class JanusClientTest {
         // 更新边
         edgeProperties.put("since", "2021");
         edge.setProperties(edgeProperties);
-        int updated = graphDataOps.updateEdge(edge);
-        assertEquals(1, updated);
+        GraphEdge updated = graphDataOps.updateEdge(edge);
+        assertNotNull(updated);
 
         // 删除边
-        int deleted = graphDataOps.deleteEdge(edge);
-        assertEquals(1, deleted);
+        boolean deleted = graphDataOps.deleteEdge(edge);
+        assertTrue(deleted);
     }
 
     @Test

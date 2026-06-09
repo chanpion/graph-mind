@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
+
 
 /**
  * JanusGraph图操作实现类
@@ -323,18 +323,22 @@ public class JanusGraphOperations implements GraphOperations {
      * @param relations  关系列表
      */
     private void createPropertyKeys(JanusGraphManagement management, List<GraphEntity> entities, List<GraphRelation> relations) {
+
         // 收集所有属性
-        Set<GraphProperty> allProperties = entities.stream()
-                .filter(entity -> entity.getProperties() != null)
-                .flatMap(entity -> entity.getProperties().stream())
-                .collect(Collectors.toSet());
+        Set<GraphProperty> allProperties = new java.util.HashSet<>();
+
+        if (entities != null) {
+            entities.stream()
+                    .filter(entity -> entity.getProperties() != null)
+                    .flatMap(entity -> entity.getProperties().stream())
+                    .forEach(allProperties::add);
+        }
 
         if (relations != null) {
-            List<GraphProperty> relationProperties = relations.stream()
+            relations.stream()
                     .filter(relation -> relation.getProperties() != null)
                     .flatMap(relation -> relation.getProperties().stream())
-                    .toList();
-            allProperties.addAll(relationProperties);
+                    .forEach(allProperties::add);
         }
 
         if (allProperties.isEmpty()) {
@@ -360,7 +364,7 @@ public class JanusGraphOperations implements GraphOperations {
                 createdCount++;
             }
         }
-        log.debug("Created {} property keys", createdCount);
+        log.info("Created {} property keys", createdCount);
     }
 
     /**

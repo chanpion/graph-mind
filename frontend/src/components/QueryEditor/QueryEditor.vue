@@ -32,7 +32,7 @@
             :loading="loading"
           >
             <el-icon><VideoPlay /></el-icon>
-            {{ loading ? `执行中...${progressText}` : '查询' }}
+            查询
           </el-button>
           <slot name="actions-append"></slot>
         </div>
@@ -514,9 +514,13 @@ defineExpose({
 
 .editor-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 8px;
   margin-top: 8px;
+}
+
+.editor-actions .el-button {
+  flex: 1;
 }
 
 .history-list {

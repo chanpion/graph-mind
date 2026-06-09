@@ -25,7 +25,7 @@
                 <el-form-item label="目标实体" prop="targetEntity">
                   <el-cascader
                     v-model="analysisForm.targetEntity"
-                    placeholder="请选择目标实体类型和属性"
+                    placeholder="请选择目标节点类型和属性"
                     style="width: 100%"
                     :options="entityOptions"
                     @change="handleEntityChange"
@@ -106,33 +106,21 @@
                   :rules="analysisRules"
                   label-position="top"
               >
-                <!-- 起点 -->
-                <el-form-item label="起点" prop="sourceEntity">
+                <!-- 节点类型和属性 -->
+                <el-form-item label="节点类型和属性" prop="pathEntity">
                   <el-cascader
-                    v-model="analysisForm.sourceEntity"
-                    placeholder="请选择起点实体类型和属性"
+                    v-model="analysisForm.pathEntity"
+                    placeholder="请选择节点类型和属性"
                     style="width: 100%"
                     :options="entityOptions"
-                    @change="handleSourceEntityChange"
                   />
                 </el-form-item>
                 
-                <el-form-item label="" prop="sourceValue">
+                <el-form-item label="起点值" prop="sourceValue">
                   <el-input v-model="analysisForm.sourceValue" placeholder="请输入起点值"/>
                 </el-form-item>
 
-                <!-- 终点 -->
-                <el-form-item label="终点" prop="targetEntity">
-                  <el-cascader
-                    v-model="analysisForm.targetEntity"
-                    placeholder="请选择终点实体类型和属性"
-                    style="width: 100%"
-                    :options="entityOptions"
-                    @change="handleTargetEntityChange"
-                  />
-                </el-form-item>
-                
-                <el-form-item label="" prop="targetValue">
+                <el-form-item label="终点值" prop="targetValue">
                   <el-input v-model="analysisForm.targetValue" placeholder="请输入终点值"/>
                 </el-form-item>
 
@@ -443,7 +431,8 @@ const analysisForm = reactive({
   dampingFactor: 0.85,
   resolution: 1.0,
   weakly: true,
-  targetEntity: [], // 修改为数组以适应级联选择
+  targetEntity: [], // 修改为数组以适应级联选择（K层展开用）
+  pathEntity: [], // 路径查询共用节点类型和属性
   entityProperty: '',
   queryValue: '',
   maxPaths: 1000,
@@ -451,7 +440,6 @@ const analysisForm = reactive({
   expandEntities: ['all'],
   expandRelations: ['all'],
   // 路径查询相关字段
-  sourceEntity: [],
   sourceValue: '',
   targetValue: '',
   maxLength: 10
@@ -468,7 +456,7 @@ const entityOptions = computed(() => {
     label: entity.label,
     children: entity.properties ? entity.properties.map(prop => ({
       value: prop.code,
-      label: prop.name
+      label: prop.code
     })) : []
   }))
 })
@@ -501,11 +489,9 @@ const isExecuteButtonDisabled = computed(() => {
 
 // 计算路径查询按钮是否禁用
 const isPathQueryButtonDisabled = computed(() => {
-  return !(analysisForm.sourceEntity && 
-           analysisForm.sourceEntity.length === 2 && 
+  return !(analysisForm.pathEntity && 
+           analysisForm.pathEntity.length === 2 && 
            analysisForm.sourceValue &&
-           analysisForm.targetEntity && 
-           analysisForm.targetEntity.length === 2 && 
            analysisForm.targetValue);
 })
 
@@ -541,8 +527,8 @@ const analysisRules = {
   queryValue: [
     {required: true, message: '请输入查询值', trigger: 'blur'}
   ],
-  sourceEntity: [
-    {required: true, message: '请选择起点实体和属性', trigger: 'change', type: 'array', min: 2}
+  pathEntity: [
+    {required: true, message: '请选择节点类型和属性', trigger: 'change', type: 'array', min: 2}
   ],
   sourceValue: [
     {required: true, message: '请输入起点值', trigger: 'blur'}
@@ -567,14 +553,11 @@ const kLayerExpandRules = {
 
 // 路径查询专用验证规则
 const pathQueryRules = {
-  sourceEntity: [
-    {required: true, message: '请选择起点实体和属性', trigger: 'change', type: 'array', min: 2}
+  pathEntity: [
+    {required: true, message: '请选择节点类型和属性', trigger: 'change', type: 'array', min: 2}
   ],
   sourceValue: [
     {required: true, message: '请输入起点值', trigger: 'blur'}
-  ],
-  targetEntity: [
-    {required: true, message: '请选择终点实体和属性', trigger: 'change', type: 'array', min: 2}
   ],
   targetValue: [
     {required: true, message: '请输入终点值', trigger: 'blur'}
@@ -621,16 +604,6 @@ const handleEntityChange = (value) => {
   console.log('选择实体类型和属性:', value)
 }
 
-// 处理路径查询起点实体变化
-const handleSourceEntityChange = (value) => {
-  console.log('选择起点实体类型和属性:', value)
-}
-
-// 处理路径查询终点实体变化
-const handleTargetEntityChange = (value) => {
-  console.log('选择终点实体类型和属性:', value)
-}
-
 // 统一处理实体变化
 const handleAnyEntityChange = (value, type) => {
   console.log(`选择${type}实体类型和属性:`, value)
@@ -648,11 +621,9 @@ const executePathQuery = async () => {
 
   try {
     // 手动验证路径查询需要的字段
-    const isValid = analysisForm.sourceEntity && 
-                   analysisForm.sourceEntity.length === 2 && 
+    const isValid = analysisForm.pathEntity && 
+                   analysisForm.pathEntity.length === 2 && 
                    analysisForm.sourceValue &&
-                   analysisForm.targetEntity && 
-                   analysisForm.targetEntity.length === 2 && 
                    analysisForm.targetValue;
     
     if (!isValid) {
@@ -677,11 +648,11 @@ const executePathQuery = async () => {
         analysisForm.maxLength, // 最大路径长度
         pathParams,
         {
-          startLabel: analysisForm.sourceEntity[0],
-          startProp: analysisForm.sourceEntity[1],
+          startLabel: analysisForm.pathEntity[0],
+          startProp: analysisForm.pathEntity[1],
           startValue: analysisForm.sourceValue,
-          endLabel: analysisForm.targetEntity[0],
-          endProp: analysisForm.targetEntity[1],
+          endLabel: analysisForm.pathEntity[0],
+          endProp: analysisForm.pathEntity[1],
           endValue: analysisForm.targetValue
         }
       )
@@ -774,11 +745,9 @@ const executeAnalysis = async () => {
                 analysisForm.queryValue;
     } else if (activeAlgorithmTab.value === 'pathQuery') {
       // 对于路径查询，我们手动验证需要的字段
-      isValid = analysisForm.sourceEntity && 
-                analysisForm.sourceEntity.length === 2 && 
+      isValid = analysisForm.pathEntity && 
+                analysisForm.pathEntity.length === 2 && 
                 analysisForm.sourceValue &&
-                analysisForm.targetEntity && 
-                analysisForm.targetEntity.length === 2 && 
                 analysisForm.targetValue;
     } else {
       // 对于算法分析，使用表单验证
@@ -841,11 +810,11 @@ const executeAnalysis = async () => {
             analysisForm.maxLength,
             fpParams,
             {
-              startLabel: analysisForm.sourceEntity[0],
-              startProp: analysisForm.sourceEntity[1],
+              startLabel: analysisForm.pathEntity[0],
+              startProp: analysisForm.pathEntity[1],
               startValue: analysisForm.sourceValue,
-              endLabel: analysisForm.targetEntity[0],
-              endProp: analysisForm.targetEntity[1],
+              endLabel: analysisForm.pathEntity[0],
+              endProp: analysisForm.pathEntity[1],
               endValue: analysisForm.targetValue
             }
           );
@@ -1001,7 +970,8 @@ const generateKLayerExpandData = () => {
 // 获取节点半径
 const getNodeRadius = (node) => {
   if (node.id === analysisForm.sourceId || node.id === analysisForm.targetId) return 22;
-  if (node.group === 'center' || node.group === 'path') return 22;
+  if (node.group === 'center') return 22;
+  if (node.group === 'path') return 16;
   return 16;
 };
 
@@ -1047,14 +1017,14 @@ const drawGraph = () => {
     
     defs.append("marker")
       .attr("id", `arrow-${i}`)
-      .attr("viewBox", "0 -5 10 10")
-      .attr("refX", 10)
+      .attr("viewBox", "0 -3 6 6")
+      .attr("refX", 6)
       .attr("refY", 0)
-      .attr("markerWidth", 8)
-      .attr("markerHeight", 8)
+      .attr("markerWidth", 5)
+      .attr("markerHeight", 5)
       .attr("orient", "auto")
       .append("path")
-      .attr("d", "M 0 -5 L 10 0 L 0 5")
+      .attr("d", "M 0 -3 L 6 0 L 0 3")
       .attr("fill", color);
   });
 
@@ -1103,7 +1073,8 @@ const drawGraph = () => {
       .append('circle')
       .attr('r', d => {
         if (d.id === analysisForm.sourceId || d.id === analysisForm.targetId) return 22
-        if (d.group === 'center' || d.group === 'path') return 22
+        if (d.group === 'center') return 22
+        if (d.group === 'path') return 16
         return 16
       })
       .attr('fill', d => {
