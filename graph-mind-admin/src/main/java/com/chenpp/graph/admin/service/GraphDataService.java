@@ -53,6 +53,8 @@ public interface GraphDataService {
      */
     PageResult<GraphVertex> getNodeDataList(Long graphId, Long vertexTypeId, String label, Integer page, Integer size);
 
+    PageResult<GraphVertex> getNodeDataList(Long graphId, Long vertexTypeId, String label, Integer page, Integer size, Long connectionId, String graphCode);
+
     /**
      * 查询边数据列表
      *
@@ -64,6 +66,8 @@ public interface GraphDataService {
      * @return 分页边数据
      */
     PageResult<Map<String, Object>> getEdgeDataList(Long graphId, Long edgeTypeId, String label, Integer page, Integer size);
+
+    PageResult<Map<String, Object>> getEdgeDataList(Long graphId, Long edgeTypeId, String label, Integer page, Integer size, Long connectionId, String graphCode);
 
     /**
      * 获取节点数据详情
