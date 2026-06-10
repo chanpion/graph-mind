@@ -23,6 +23,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+
 import java.util.stream.Collectors;
 
 /**
@@ -46,7 +47,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Result<Object>> handleBusinessException(Exception e) {
         ErrorCode errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
         String message = e.getMessage();
-        
+
         if (e instanceof BusinessException) {
             BusinessException businessException = (BusinessException) e;
             errorCode = businessException.getErrorCode();
@@ -60,7 +61,7 @@ public class GlobalExceptionHandler {
             errorCode = graphDatabaseException.getErrorCode();
             log.error("GraphDatabaseException: ", e);
         }
-        
+
         int httpStatus = mapToHttpStatus(errorCode);
         return ResponseEntity.status(httpStatus)
                 .body(Result.error(errorCode.getCode(), message));
@@ -98,9 +99,6 @@ public class GlobalExceptionHandler {
         }
     }
 
-    /**
-     * 处理参数验证异常(MethodArgumentNotValidException)
-     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Result<Object>> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
         log.warn("MethodArgumentNotValidException: ", e);
@@ -112,9 +110,6 @@ public class GlobalExceptionHandler {
                 .body(Result.error(ErrorCode.BAD_REQUEST.getCode(), errorMessage));
     }
 
-    /**
-     * 处理参数验证异常(BindException)
-     */
     @ExceptionHandler(BindException.class)
     public ResponseEntity<Result<Object>> handleBindException(BindException e) {
         log.warn("BindException: ", e);
@@ -126,9 +121,6 @@ public class GlobalExceptionHandler {
                 .body(Result.error(ErrorCode.BAD_REQUEST.getCode(), errorMessage));
     }
 
-    /**
-     * 处理参数验证异常(ConstraintViolationException)
-     */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<Result<Object>> handleConstraintViolationException(ConstraintViolationException e) {
         log.warn("ConstraintViolationException: ", e);
@@ -139,9 +131,6 @@ public class GlobalExceptionHandler {
                 .body(Result.error(ErrorCode.BAD_REQUEST.getCode(), errorMessage));
     }
 
-    /**
-     * 处理参数类型不匹配异常
-     */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Result<Object>> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException e) {
         log.warn("MethodArgumentTypeMismatchException: ", e);
@@ -150,9 +139,6 @@ public class GlobalExceptionHandler {
                 .body(Result.error(ErrorCode.BAD_REQUEST.getCode(), errorMessage));
     }
 
-    /**
-     * 处理缺少必要参数异常
-     */
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<Result<Object>> handleMissingServletRequestParameterException(MissingServletRequestParameterException e) {
         log.warn("MissingServletRequestParameterException: ", e);
@@ -161,9 +147,6 @@ public class GlobalExceptionHandler {
                 .body(Result.error(ErrorCode.BAD_REQUEST.getCode(), errorMessage));
     }
 
-    /**
-     * 处理HTTP消息不可读异常
-     */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Result<Object>> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
         log.warn("HttpMessageNotReadableException: ", e);
@@ -172,9 +155,6 @@ public class GlobalExceptionHandler {
                 .body(Result.error(ErrorCode.BAD_REQUEST.getCode(), errorMessage));
     }
 
-    /**
-     * 处理HTTP请求方法不支持异常
-     */
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<Result<Object>> handleHttpRequestMethodNotSupportedException(HttpRequestMethodNotSupportedException e) {
         log.warn("HttpRequestMethodNotSupportedException: ", e);
@@ -183,9 +163,6 @@ public class GlobalExceptionHandler {
                 .body(Result.error(ErrorCode.METHOD_NOT_ALLOWED.getCode(), errorMessage));
     }
 
-    /**
-     * 处理文件上传大小超出限制异常
-     */
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<Result<Object>> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e) {
         log.warn("MaxUploadSizeExceededException: ", e);
@@ -194,9 +171,6 @@ public class GlobalExceptionHandler {
                 .body(Result.error(ErrorCode.BAD_REQUEST.getCode(), errorMessage));
     }
 
-    /**
-     * 处理权限不足异常
-     */
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Result<Object>> handleAccessDeniedException(AccessDeniedException e) {
         log.warn("AccessDeniedException: ", e);
@@ -204,9 +178,6 @@ public class GlobalExceptionHandler {
                 .body(Result.error(ErrorCode.FORBIDDEN.getCode(), "权限不足"));
     }
 
-    /**
-     * 处理其他未捕获的异常
-     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Result<Object>> handleException(Exception e) {
         log.error("Exception: ", e);

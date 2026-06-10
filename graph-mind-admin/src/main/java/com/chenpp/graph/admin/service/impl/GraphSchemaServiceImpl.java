@@ -1,6 +1,6 @@
 package com.chenpp.graph.admin.service.impl;
 
-import com.chenpp.graph.admin.model.Graph;
+import com.chenpp.graph.admin.model.GraphInfo;
 import com.chenpp.graph.admin.model.GraphConnection;
 import com.chenpp.graph.admin.model.GraphEdgeDef;
 import com.chenpp.graph.admin.model.GraphVertexDef;
@@ -75,9 +75,7 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         if (connection == null) {
             throw new GraphException("图数据库连接不存在");
         }
-        Graph graph = new Graph();
-        graph.setCode(graphCode);
-        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
+        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graphCode);
         GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
         GraphOperations graphOperations = graphClient.opsForGraph();
         return graphOperations.getPublishedSchema(graphConf);
@@ -85,17 +83,17 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
 
     @Override
     public GraphSchema discoverSchema(Long graphId) {
-        Graph graph = graphService.getById(graphId);
-        if (graph == null) {
+        GraphInfo graphInfo = graphService.getById(graphId);
+        if (graphInfo == null) {
             throw new GraphException("图不存在");
         }
         // 获取图数据库连接信息
-        GraphConnection connection = connectionService.getById(graph.getConnectionId());
+        GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
         if (connection == null) {
             throw new GraphException("图数据库连接不存在");
         }
 
-        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
+        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
         GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
         GraphOperations graphOperations = graphClient.opsForGraph();
         return graphOperations.getPublishedSchema(graphConf);
@@ -235,15 +233,15 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
 
     @Override
     public GraphSchema getGraphSchema(Long graphId) {
-        Graph graph = graphService.getById(graphId);
-        if (graph == null) {
+        GraphInfo graphInfo = graphService.getById(graphId);
+        if (graphInfo == null) {
             log.warn("图不存在，返回空Schema，graphId={}", graphId);
             return new GraphSchema();
         }
         List<GraphVertexDef> nodes = graphVertexDefService.getVertexDefsByGraphId(graphId, null);
         List<GraphEdgeDef> edges = graphEdgeDefService.getEdgeDefsByGraphId(graphId, null);
         GraphSchema graphSchema = new GraphSchema();
-        graphSchema.setGraphCode(graph.getCode());
+        graphSchema.setGraphCode(graphInfo.getCode());
 
         List<GraphEntity> entities = nodes.stream().map(node -> {
             GraphEntity entity = new GraphEntity();
@@ -274,7 +272,7 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
                 index.setType(IndexType.COMPOSITE.code());
                 index.setSchemaType("vertex");
                 index.setPropertyNames(Collections.singletonList(p.getCode()));
-                index.setName(String.format("idx_%s_%s_%s", graph.getCode(), node.getLabel(), p.getCode()));
+                index.setName(String.format("idx_%s_%s_%s", graphInfo.getCode(), node.getLabel(), p.getCode()));
                 indexes.add(index);
             }
         }));
@@ -287,7 +285,7 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
                 index.setType(IndexType.COMPOSITE.code());
                 index.setSchemaType("edge");
                 index.setPropertyNames(Collections.singletonList(p.getCode()));
-                index.setName(String.format("idx_%s_%s_%s", graph.getCode(), edge.getLabel(), p.getCode()));
+                index.setName(String.format("idx_%s_%s_%s", graphInfo.getCode(), edge.getLabel(), p.getCode()));
                 indexes.add(index);
             }
         }));
@@ -301,24 +299,24 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         log.info("发布图Schema: {}", graphId);
 
         // 加载元数据
-        Graph graph = graphService.getById(graphId);
-        if (graph == null) {
+        GraphInfo graphInfo = graphService.getById(graphId);
+        if (graphInfo == null) {
             log.warn("图不存在，跳过发布Schema，graphId={}", graphId);
             return;
         }
-        GraphConnection connection = connectionService.getById(graph.getConnectionId());
+        GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
         if (connection == null) {
-            log.error("图数据库连接不存在，connectionId={}", graph.getConnectionId());
+            log.error("图数据库连接不存在，connectionId={}", graphInfo.getConnectionId());
             return;
         }
         List<GraphVertexDef> nodes = graphVertexDefService.getVertexDefsByGraphId(graphId, null);
         List<GraphEdgeDef> edges = graphEdgeDefService.getEdgeDefsByGraphId(graphId, null);
 
-        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
+        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
         GraphSchema graphSchema = getGraphSchema(graphId);
 
         log.info("开始发布Schema，graphId={}, graphCode={}, 图数据库类型={}, 节点类型数={}, 边类型数={}",
-                graphId, graph.getCode(), connection.getGraphType(),
+                graphId, graphInfo.getCode(), connection.getGraphType(),
                 graphSchema.getEntities() != null ? graphSchema.getEntities().size() : 0,
                 graphSchema.getRelations() != null ? graphSchema.getRelations().size() : 0);
         if (log.isDebugEnabled()) {
@@ -438,8 +436,8 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             propertyList.forEach(p -> p.setStatus(1));
             graphPropertyDefService.updateBatchById(propertyList);
 
-            graph.setStatus(1);
-            graphService.updateById(graph);
+            graphInfo.setStatus(1);
+            graphService.updateById(graphInfo);
         });
         log.info("Schema 发布完成，graphId={}", graphId);
     }
@@ -457,8 +455,8 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
 
     @Override
     public SchemaExportDTO exportSchema(Long graphId) {
-        Graph graph = graphService.getById(graphId);
-        if (graph == null) {
+        GraphInfo graphInfo = graphService.getById(graphId);
+        if (graphInfo == null) {
             throw new GraphException("图不存在");
         }
         List<GraphVertexDef> nodes = graphVertexDefService.getVertexDefsByGraphId(graphId, null);
@@ -467,7 +465,7 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         SchemaExportDTO dto = new SchemaExportDTO();
         dto.setExportedAt(LocalDateTime.now().toString());
         dto.setGraphId(graphId);
-        dto.setGraphCode(graph.getCode());
+        dto.setGraphCode(graphInfo.getCode());
         dto.setNodes(nodes);
         dto.setEdges(edges);
         return dto;
@@ -552,27 +550,27 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
     }
 
     @Override
-    public Long createGraphInDatabase(Graph graph) {
-        if (graph == null) {
+    public Long createGraphInDatabase(GraphInfo graphInfo) {
+        if (graphInfo == null) {
             throw new GraphException("图信息为空");
         }
-        GraphConnection connection = connectionService.getById(graph.getConnectionId());
+        GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
         if (connection == null) {
             throw new GraphException("图数据库连接不存在");
         }
 
-        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
+        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
         GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
         GraphOperations graphOperations = graphClient.opsForGraph();
 
         graphOperations.createGraph(graphConf);
-        log.info("已在图数据库中创建图，graphCode={}", graph.getCode());
+        log.info("已在图数据库中创建图，graphCode={}", graphInfo.getCode());
 
-        graph.setStatus(0);
-        graph.setGraphType(connection.getGraphType());
-        graphService.save(graph);
-        log.info("已保存图到 MySQL，graphId={}", graph.getId());
+        graphInfo.setStatus(0);
+        graphInfo.setGraphType(connection.getGraphType());
+        graphService.save(graphInfo);
+        log.info("已保存图到 MySQL，graphId={}", graphInfo.getId());
 
-        return graph.getId();
+        return graphInfo.getId();
     }
 }

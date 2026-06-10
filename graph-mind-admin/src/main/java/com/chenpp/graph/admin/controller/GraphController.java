@@ -1,7 +1,7 @@
 package com.chenpp.graph.admin.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.chenpp.graph.admin.model.Graph;
+import com.chenpp.graph.admin.model.GraphInfo;
 import com.chenpp.graph.admin.model.Result;
 import com.chenpp.graph.admin.service.GraphSchemaService;
 import com.chenpp.graph.admin.service.GraphService;
@@ -19,8 +19,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.time.LocalDateTime;
 
 /**
  * 图管理控制器
@@ -43,13 +41,13 @@ public class GraphController {
      * 获取图列表
      */
     @GetMapping
-    public Result<Page<Graph>> getGraphs(
+    public Result<Page<GraphInfo>> getGraphs(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer pageSize,
             @RequestParam(required = false) String keyword) {
 
-        Page<Graph> pageObj = new Page<>(page, pageSize);
-        Page<Graph> result = graphService.queryGraphs(pageObj, keyword);
+        Page<GraphInfo> pageObj = new Page<>(page, pageSize);
+        Page<GraphInfo> result = graphService.queryGraphs(pageObj, keyword);
         return Result.success(result);
     }
 
@@ -57,13 +55,13 @@ public class GraphController {
      * 根据连接ID获取图列表
      */
     @GetMapping("/connection/{connectionId}")
-    public Result<Page<Graph>> getGraphsByConnectionId(
+    public Result<Page<GraphInfo>> getGraphsByConnectionId(
             @PathVariable Long connectionId,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer pageSize) {
 
-        Page<Graph> pageObj = new Page<>(page, pageSize);
-        Page<Graph> result = graphService.queryGraphsByConnectionId(connectionId, pageObj);
+        Page<GraphInfo> pageObj = new Page<>(page, pageSize);
+        Page<GraphInfo> result = graphService.queryGraphsByConnectionId(connectionId, pageObj);
         return Result.success(result);
     }
 
@@ -71,15 +69,15 @@ public class GraphController {
      * 新增图
      */
     @PostMapping
-    public Result<Long> createGraph(@RequestBody Graph graph) {
+    public Result<Long> createGraph(@RequestBody GraphInfo graphInfo) {
         // 获取当前登录用户
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String creator = authentication != null ? authentication.getName() : "unknown";
-        graph.setCreator(creator);
+        graphInfo.setCreator(creator);
 
         try {
             // 先在图数据库创建图，创建成功后再保存到 MySQL
-            Long graphId = graphSchemaService.createGraphInDatabase(graph);
+            Long graphId = graphSchemaService.createGraphInDatabase(graphInfo);
             return Result.success(graphId);
         } catch (Exception e) {
             log.warn("在图数据库中创建图失败: {}", e.getMessage());
@@ -91,9 +89,9 @@ public class GraphController {
      * 更新图
      */
     @PutMapping("/{id}")
-    public Result<String> updateGraph(@PathVariable Long id, @RequestBody Graph graph) {
-        graph.setId(id);
-        graphService.updateById(graph);
+    public Result<String> updateGraph(@PathVariable Long id, @RequestBody GraphInfo graphInfo) {
+        graphInfo.setId(id);
+        graphService.updateById(graphInfo);
         return Result.success("更新成功");
     }
 
@@ -117,11 +115,11 @@ public class GraphController {
      * 获取图详情
      */
     @GetMapping("/{id}")
-    public Result<Graph> getGraph(@PathVariable Long id) {
-        Graph graph = graphService.getById(id);
-        if (graph == null) {
+    public Result<GraphInfo> getGraph(@PathVariable Long id) {
+        GraphInfo graphInfo = graphService.getById(id);
+        if (graphInfo == null) {
             return Result.error(ErrorCode.GRAPH_NOT_FOUND);
         }
-        return Result.success(graph);
+        return Result.success(graphInfo);
     }
 }

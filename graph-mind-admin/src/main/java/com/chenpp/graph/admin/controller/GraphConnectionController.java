@@ -32,9 +32,6 @@ public class GraphConnectionController {
     @Autowired
     private GraphConnectionService connectionService;
 
-    /**
-     * 获取连接列表
-     */
     @GetMapping
     public Result<Page<GraphConnection>> getConnections(
             @RequestParam(defaultValue = "1") Integer page,
@@ -47,18 +44,12 @@ public class GraphConnectionController {
         return Result.success(result);
     }
 
-    /**
-     * 新增连接
-     */
     @PostMapping
     public Result<Boolean> createConnection(@RequestBody GraphConnection connection) {
         boolean success = connectionService.save(connection);
         return Result.success(success);
     }
 
-    /**
-     * 更新连接
-     */
     @PutMapping("/{id}")
     public Result<Boolean> updateConnection(@PathVariable Long id, @RequestBody GraphConnection connection) {
         connection.setId(id);
@@ -67,18 +58,12 @@ public class GraphConnectionController {
         return Result.success(success);
     }
 
-    /**
-     * 删除连接
-     */
     @DeleteMapping("/{id}")
     public Result<Boolean> deleteConnection(@PathVariable Long id) {
         boolean success = connectionService.removeById(id);
         return Result.success(success);
     }
 
-    /**
-     * 测试连接
-     */
     @PostMapping("/{id}/test")
     public Result<Boolean> testConnection(@PathVariable Long id) {
         boolean success = connectionService.testConnection(id);

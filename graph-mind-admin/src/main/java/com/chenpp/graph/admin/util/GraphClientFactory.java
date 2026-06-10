@@ -1,8 +1,9 @@
 package com.chenpp.graph.admin.util;
 
 import com.alibaba.fastjson2.JSON;
-import com.chenpp.graph.admin.model.Graph;
+import com.chenpp.graph.admin.enums.GraphTypeEnum;
 import com.chenpp.graph.admin.model.GraphConnection;
+import com.chenpp.graph.admin.model.GraphInfo;
 import com.chenpp.graph.core.GraphClient;
 import com.chenpp.graph.core.model.GraphConf;
 import com.chenpp.graph.janus.CassandraConf;
@@ -32,8 +33,8 @@ public class GraphClientFactory {
      */
     public static GraphClient createGraphClient(GraphConf graphConf) {
         String type = graphConf.getType();
-        switch (type.toLowerCase()) {
-            case "neo4j":
+        switch (GraphTypeEnum.valueOf(type.toLowerCase())) {
+            case neo4j:
                 Neo4jConf neo4jConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), Neo4jConf.class);
                 neo4jConf.setGraphCode(graphConf.getGraphCode());
                 neo4jConf.setUsername(graphConf.getUsername());
@@ -45,7 +46,7 @@ public class GraphClientFactory {
                 }
                 return new Neo4jClient(neo4jConf);
 
-            case "nebula":
+            case nebula:
                 NebulaConf nebulaConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), NebulaConf.class);
                 nebulaConf.setGraphCode(graphConf.getGraphCode());
                 nebulaConf.setHosts(graphConf.getHost());
@@ -54,7 +55,7 @@ public class GraphClientFactory {
                 nebulaConf.setPassword(graphConf.getPassword());
                 nebulaConf.setSpace(graphConf.getGraphCode());
                 return new NebulaClient(nebulaConf);
-            case "janus":
+            case janus:
                 JanusConf janusConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), JanusConf.class);
                 janusConf.setGraphCode(graphConf.getGraphCode());
                 janusConf.setUsername(graphConf.getUsername());
@@ -78,19 +79,16 @@ public class GraphClientFactory {
         }
     }
 
-    /**
-     * 解析 GraphConf：优先通过 graphId 查询本地图记录，否则使用 connectionId + graphCode 直接连接
-     */
     public static GraphConf resolveGraphConf(
             Long graphId, Long connectionId, String graphCode,
             GraphService graphService, GraphConnectionService connectionService) {
         // 尝试通过本地图记录解析
         if (graphId != null && graphId > 0) {
-            Graph graph = graphService.getById(graphId);
-            if (graph != null && graph.getConnectionId() != null) {
-                GraphConnection connection = connectionService.getById(graph.getConnectionId());
+            GraphInfo graphInfo = graphService.getById(graphId);
+            if (graphInfo != null && graphInfo.getConnectionId() != null) {
+                GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
                 if (connection != null) {
-                    return createGraphConf(connection, graph);
+                    return createGraphConf(connection, graphInfo.getCode());
                 }
             }
         }
@@ -98,18 +96,16 @@ public class GraphClientFactory {
         if (connectionId != null && graphCode != null) {
             GraphConnection connection = connectionService.getById(connectionId);
             if (connection != null) {
-                Graph tempGraph = new Graph();
-                tempGraph.setCode(graphCode);
-                return createGraphConf(connection, tempGraph);
+                return createGraphConf(connection, graphCode);
             }
         }
         throw new IllegalArgumentException("无法解析图连接配置，请检查 graphId/connectionId/graphCode");
     }
 
-    public static GraphConf createGraphConf(GraphConnection connection, Graph graph) {
+    public static GraphConf createGraphConf(GraphConnection connection, String graphCode) {
         GraphConf graphConf = new GraphConf();
-        graphConf.setGraphCode(graph.getCode());
-        graphConf.setType(connection.getGraphType());
+        graphConf.setGraphCode(graphCode);
+        graphConf.setType(connection.getGraphType().name());
         graphConf.setHost(connection.getHosts());
         graphConf.setPort(connection.getPort());
         graphConf.setUsername(connection.getUsername());
@@ -120,7 +116,6 @@ public class GraphClientFactory {
             graphConf.setParams(JSON.parseObject(JSON.toJSONString(connection)));
         }
 
-        // 兼容旧数据：如果实体字段为空，从 params JSON 中获取
         if (graphConf.getUsername() == null && graphConf.getParams() != null) {
             Object username = graphConf.getParams().get("username");
             if (username != null) {

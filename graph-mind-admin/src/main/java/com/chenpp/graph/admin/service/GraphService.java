@@ -2,7 +2,7 @@ package com.chenpp.graph.admin.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.chenpp.graph.admin.model.Graph;
+import com.chenpp.graph.admin.model.GraphInfo;
 
 /**
  * 图管理服务接口
@@ -10,7 +10,7 @@ import com.chenpp.graph.admin.model.Graph;
  * @author April.Chen
  * @date 2025/8/1 17:00
  */
-public interface GraphService extends IService<Graph> {
+public interface GraphService extends IService<GraphInfo> {
 
     /**
      * 分页查询图列表
@@ -19,7 +19,7 @@ public interface GraphService extends IService<Graph> {
      * @param keyword 搜索关键词
      * @return 图列表
      */
-    Page<Graph> queryGraphs(Page<Graph> page, String keyword);
+    Page<GraphInfo> queryGraphs(Page<GraphInfo> page, String keyword);
 
     /**
      * 根据连接ID查询图列表
@@ -28,7 +28,7 @@ public interface GraphService extends IService<Graph> {
      * @param page         分页对象
      * @return 图列表
      */
-    Page<Graph> queryGraphsByConnectionId(Long connectionId, Page<Graph> page);
+    Page<GraphInfo> queryGraphsByConnectionId(Long connectionId, Page<GraphInfo> page);
 
     /**
      * 删除图 — 支持删除图数据库中已有的图（无本地记录）

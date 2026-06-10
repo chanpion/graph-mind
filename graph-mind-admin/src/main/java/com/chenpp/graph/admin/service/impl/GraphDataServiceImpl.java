@@ -3,7 +3,8 @@ package com.chenpp.graph.admin.service.impl;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.chenpp.graph.admin.model.Graph;
+import com.chenpp.graph.admin.enums.GraphTypeEnum;
+import com.chenpp.graph.admin.model.GraphInfo;
 import com.chenpp.graph.admin.model.GraphConnection;
 import com.chenpp.graph.admin.model.GraphEdgeDef;
 import com.chenpp.graph.admin.model.GraphVertexDef;
@@ -32,7 +33,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -77,8 +77,8 @@ public class GraphDataServiceImpl implements GraphDataService {
 
         try {
             // 获取图信息
-            Graph graph = graphService.getById(graphId);
-            if (graph == null) {
+            GraphInfo graphInfo = graphService.getById(graphId);
+            if (graphInfo == null) {
                 log.error("图不存在，graphId={}", graphId);
                 errorMessages.add("图不存在，graphId=" + graphId);
                 result.setErrorMessages(errorMessages.toArray(new String[0]));
@@ -86,10 +86,10 @@ public class GraphDataServiceImpl implements GraphDataService {
             }
 
             // 获取图数据库连接信息
-            GraphConnection connection = connectionService.getById(graph.getConnectionId());
+            GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
             if (connection == null) {
-                log.error("图数据库连接不存在，connectionId={}", graph.getConnectionId());
-                errorMessages.add("图数据库连接不存在，connectionId=" + graph.getConnectionId());
+                log.error("图数据库连接不存在，connectionId={}", graphInfo.getConnectionId());
+                errorMessages.add("图数据库连接不存在，connectionId=" + graphInfo.getConnectionId());
                 result.setErrorMessages(errorMessages.toArray(new String[0]));
                 return result;
             }
@@ -126,7 +126,7 @@ public class GraphDataServiceImpl implements GraphDataService {
             result.setTotalCount(dataList.size());
 
             // 构建图配置信息
-            GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
+            GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
 
             // 创建图客户端并批量导入节点数据
             try (GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf)) {
@@ -247,8 +247,8 @@ public class GraphDataServiceImpl implements GraphDataService {
 
         try {
             // 获取图信息
-            Graph graph = graphService.getById(graphId);
-            if (graph == null) {
+            GraphInfo graphInfo = graphService.getById(graphId);
+            if (graphInfo == null) {
                 log.error("图不存在，graphId={}", graphId);
                 errorMessages.add("图不存在，graphId=" + graphId);
                 result.setErrorMessages(errorMessages.toArray(new String[0]));
@@ -256,10 +256,10 @@ public class GraphDataServiceImpl implements GraphDataService {
             }
 
             // 获取图数据库连接信息
-            GraphConnection connection = connectionService.getById(graph.getConnectionId());
+            GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
             if (connection == null) {
-                log.error("图数据库连接不存在，connectionId={}", graph.getConnectionId());
-                errorMessages.add("图数据库连接不存在，connectionId=" + graph.getConnectionId());
+                log.error("图数据库连接不存在，connectionId={}", graphInfo.getConnectionId());
+                errorMessages.add("图数据库连接不存在，connectionId=" + graphInfo.getConnectionId());
                 result.setErrorMessages(errorMessages.toArray(new String[0]));
                 return result;
             }
@@ -287,7 +287,7 @@ public class GraphDataServiceImpl implements GraphDataService {
             result.setTotalCount(dataList.size());
 
             // 构建图配置信息
-            GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
+            GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
 
             // 创建图客户端并批量导入边数据
             try (GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf)) {
@@ -635,21 +635,21 @@ public class GraphDataServiceImpl implements GraphDataService {
 
         try {
             // 获取图信息
-            Graph graph = graphService.getById(graphId);
-            if (graph == null) {
+            GraphInfo graphInfo = graphService.getById(graphId);
+            if (graphInfo == null) {
                 log.error("图不存在，graphId={}", graphId);
                 return false;
             }
 
             // 获取图数据库连接信息
-            GraphConnection connection = connectionService.getById(graph.getConnectionId());
+            GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
             if (connection == null) {
-                log.error("图数据库连接不存在，connectionId={}", graph.getConnectionId());
+                log.error("图数据库连接不存在，connectionId={}", graphInfo.getConnectionId());
                 return false;
             }
 
             // 构建图配置信息
-            GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graph);
+            GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
 
             // 创建图客户端并删除节点
             try (GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf)) {
@@ -706,15 +706,15 @@ public class GraphDataServiceImpl implements GraphDataService {
     private GraphDataOperations getGraphDataOperations(Long graphId, Long connectionId, String graphCode) {
         GraphConf graphConf;
         if (graphId != null && graphId > 0) {
-            Graph graph = graphService.getById(graphId);
-            if (graph == null) {
+            GraphInfo graphInfo = graphService.getById(graphId);
+            if (graphInfo == null) {
                 throw new RuntimeException("图不存在，graphId=" + graphId);
             }
-            GraphConnection connection = connectionService.getById(graph.getConnectionId());
+            GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
             if (connection == null) {
-                throw new RuntimeException("图数据库连接不存在，connectionId=" + graph.getConnectionId());
+                throw new RuntimeException("图数据库连接不存在，connectionId=" + graphInfo.getConnectionId());
             }
-            graphConf = GraphClientFactory.createGraphConf(connection, graph);
+            graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
         } else {
             graphConf = GraphClientFactory.resolveGraphConf(graphId, connectionId, graphCode, graphService, connectionService);
         }
@@ -724,15 +724,15 @@ public class GraphDataServiceImpl implements GraphDataService {
 
     private String resolveDbType(Long graphId, Long connectionId, String graphCode) {
         if (graphId != null && graphId > 0) {
-            Graph graph = graphService.getById(graphId);
-            if (graph != null) {
-                GraphConnection conn = connectionService.getById(graph.getConnectionId());
-                if (conn != null) return conn.getGraphType();
+            GraphInfo graphInfo = graphService.getById(graphId);
+            if (graphInfo != null) {
+                GraphConnection conn = connectionService.getById(graphInfo.getConnectionId());
+                if (conn != null) return conn.getGraphType().name();
             }
         }
         if (connectionId != null) {
             GraphConnection conn = connectionService.getById(connectionId);
-            if (conn != null) return conn.getGraphType();
+            if (conn != null) return conn.getGraphType().name();
         }
         return null;
     }
@@ -787,21 +787,21 @@ public class GraphDataServiceImpl implements GraphDataService {
      * 判断图数据库是否使用Gremlin查询语言
      */
     private boolean isGremlinGraph(Long graphId) {
-        Graph graph = graphService.getById(graphId);
-        if (graph == null) {
+        GraphInfo graphInfo = graphService.getById(graphId);
+        if (graphInfo == null) {
             return false;
         }
-        GraphConnection conn = connectionService.getById(graph.getConnectionId());
-        return conn != null && "janus".equalsIgnoreCase(conn.getGraphType());
+        GraphConnection conn = connectionService.getById(graphInfo.getConnectionId());
+        return conn != null && conn.getGraphType() == GraphTypeEnum.janus;
     }
 
     private boolean isNebulaGraph(Long graphId) {
-        Graph graph = graphService.getById(graphId);
-        if (graph == null) {
+        GraphInfo graphInfo = graphService.getById(graphId);
+        if (graphInfo == null) {
             return false;
         }
-        GraphConnection conn = connectionService.getById(graph.getConnectionId());
-        return conn != null && "nebula".equalsIgnoreCase(conn.getGraphType());
+        GraphConnection conn = connectionService.getById(graphInfo.getConnectionId());
+        return conn != null && conn.getGraphType() == GraphTypeEnum.nebula;
     }
 
     /**

@@ -1,7 +1,7 @@
 package com.chenpp.graph.admin.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.chenpp.graph.admin.model.Graph;
+import com.chenpp.graph.admin.model.GraphInfo;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
@@ -11,5 +11,5 @@ import org.apache.ibatis.annotations.Mapper;
  * @date 2025/8/1 17:00
  */
 @Mapper
-public interface GraphDao extends BaseMapper<Graph> {
+public interface GraphDao extends BaseMapper<GraphInfo> {
 }

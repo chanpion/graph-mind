@@ -1,7 +1,5 @@
 package com.chenpp.graph.admin.controller;
 
-import com.chenpp.graph.admin.model.Graph;
-import com.chenpp.graph.admin.model.GraphConnection;
 import com.chenpp.graph.admin.model.Result;
 import com.chenpp.graph.admin.service.GraphConnectionService;
 import com.chenpp.graph.admin.service.GraphService;
@@ -19,9 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import org.springframework.web.bind.annotation.RequestParam;
-import com.chenpp.graph.core.model.GraphVertex;
 
-import java.util.List;
 import java.util.Map;
 
 /**

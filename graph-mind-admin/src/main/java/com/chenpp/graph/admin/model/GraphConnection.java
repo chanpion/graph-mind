@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.chenpp.graph.admin.enums.GraphTypeEnum;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -23,7 +24,7 @@ public class GraphConnection {
 
     private String name;
     @TableField(value = "graph_type")
-    private String graphType;
+    private GraphTypeEnum graphType;
     private String hosts;
     private Integer port;
     private String username;

@@ -30,24 +30,20 @@ public class LogInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(jakarta.servlet.http.HttpServletRequest request, jakarta.servlet.http.HttpServletResponse response, Object handler) throws Exception {
-        // 记录请求开始时间
         request.setAttribute("startTime", System.currentTimeMillis());
         return true;
     }
 
     @Override
     public void afterCompletion(jakarta.servlet.http.HttpServletRequest request, jakarta.servlet.http.HttpServletResponse response, Object handler, Exception ex) throws Exception {
-        // 计算请求耗时
         Long startTime = (Long) request.getAttribute("startTime");
         long costTime = 0;
         if (startTime != null) {
             costTime = System.currentTimeMillis() - startTime;
         }
 
-        // 获取用户名
         String username = extractUsernameFromRequest(request);
 
-        // 获取请求URI
         String uri = request.getRequestURI();
         String method = request.getMethod();
 
@@ -60,7 +56,6 @@ public class LogInterceptor implements HandlerInterceptor {
         operationLog.setIp(getClientIp(request));
         operationLog.setCreateTime(LocalDateTime.now());
 
-        // 打印日志到控制台
         log.info("API Request - URI: {}, Method: {}, Username: {}, Cost: {}ms", uri, method, username, costTime);
     }
 
@@ -71,7 +66,6 @@ public class LogInterceptor implements HandlerInterceptor {
      * @return 用户名
      */
     private String extractUsernameFromRequest(HttpServletRequest request) {
-        // 首先尝试从JWT token中获取用户名
         String token = jwtUtil.getJwtTokenFromRequest(request);
         if (token != null && token.startsWith(Constants.BEARER_PREFIX)) {
             token = token.substring(Constants.BEARER_PREFIX_LENGTH);
@@ -82,13 +76,11 @@ public class LogInterceptor implements HandlerInterceptor {
         } catch (Exception e) {
             // JWT解析失败，继续尝试其他方式
         }
-        // 尝试从Spring Security上下文中获取用户名
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof String) {
             return (String) authentication.getPrincipal();
         }
 
-        // 如果以上方式都失败，返回匿名用户
         return Constants.ANONYMOUS_USER;
     }
 

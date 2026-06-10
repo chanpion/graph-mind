@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.chenpp.graph.admin.enums.GraphTypeEnum;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -16,7 +17,7 @@ import java.time.LocalDateTime;
  */
 @TableName("graph")
 @Data
-public class Graph {
+public class GraphInfo {
 
     @TableId(type = IdType.AUTO)
     private Long id;
@@ -42,7 +43,7 @@ public class Graph {
      * 图类型,
      * @see com.chenpp.graph.admin.enums.GraphTypeEnum
      */
-    private String graphType;
+    private GraphTypeEnum graphType;
     /**
      * 创建人
      */

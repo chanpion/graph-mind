@@ -40,20 +40,12 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<Result<LoginResponse>> login(@RequestBody LoginRequest loginRequest) {
         log.info("用户登录：{}", loginRequest.getUsername());
-        // 创建认证令牌
         UsernamePasswordAuthenticationToken authenticationToken =
                 new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword());
 
-        // 执行认证
         Authentication authentication = authenticationManager.authenticate(authenticationToken);
-
-        // 设置安全上下文
         SecurityContextHolder.getContext().setAuthentication(authentication);
-
-        // 生成JWT令牌
         String token = jwtUtil.generateToken(loginRequest.getUsername());
-
-        // 创建登录响应
         LoginResponse loginResponse = new LoginResponse(token, 24 * 60 * 60 * 1000L);
         loginResponse.setUsername(loginRequest.getUsername());
 
