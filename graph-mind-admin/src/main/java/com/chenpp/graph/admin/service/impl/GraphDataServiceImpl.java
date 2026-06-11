@@ -76,7 +76,6 @@ public class GraphDataServiceImpl implements GraphDataService {
         List<String> errorMessages = new ArrayList<>();
 
         try {
-            // 获取图信息
             GraphInfo graphInfo = graphService.getById(graphId);
             if (graphInfo == null) {
                 log.error("图不存在，graphId={}", graphId);
@@ -85,7 +84,6 @@ public class GraphDataServiceImpl implements GraphDataService {
                 return result;
             }
 
-            // 获取图数据库连接信息
             GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
             if (connection == null) {
                 log.error("图数据库连接不存在，connectionId={}", graphInfo.getConnectionId());
@@ -94,7 +92,6 @@ public class GraphDataServiceImpl implements GraphDataService {
                 return result;
             }
 
-            // 获取节点定义信息
             GraphVertexDef vertexDef = vertexDefService.getById(vertexTypeId);
             if (vertexDef == null) {
                 log.error("节点类型不存在，vertexTypeId={}", vertexTypeId);
@@ -103,17 +100,14 @@ public class GraphDataServiceImpl implements GraphDataService {
                 return result;
             }
 
-            // 解析配置（含 mapping、delimiter、hasHeader 等）
             JSONObject configJson = JSON.parseObject(config);
             String delimiter = configJson.getString("delimiter");
             if (StringUtils.isBlank(delimiter)) {
                 delimiter = ",";
             }
 
-            // 逐行解析CSV文件
             List<Map<String, String>> dataList = parseCsvFile(file, delimiter);
 
-            // 获取节点定义的属性code列表，用于过滤不在schema中的属性
             QueryWrapper<GraphPropertyDef> propQuery = new QueryWrapper<GraphPropertyDef>()
                     .eq("entity_id", vertexTypeId)
                     .eq("property_type", "vertex");
@@ -122,17 +116,13 @@ public class GraphDataServiceImpl implements GraphDataService {
                     .map(GraphPropertyDef::getCode)
                     .collect(Collectors.toSet());
 
-            // 更新导入结果统计
             result.setTotalCount(dataList.size());
 
-            // 构建图配置信息
             GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
 
-            // 创建图客户端并批量导入节点数据
             GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
             GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
 
-            // 批量导入节点数据
             int successCount = 0;
             int failureCount = 0;
 
@@ -142,7 +132,6 @@ public class GraphDataServiceImpl implements GraphDataService {
                     vertex.setUid(dataRow.get("uid"));
                     vertex.setLabel(dataRow.get("label"));
 
-                    // 设置节点属性
                     Map<String, Object> properties = new HashMap<>();
 
                     dataRow.forEach((key, value) -> {
@@ -151,7 +140,6 @@ public class GraphDataServiceImpl implements GraphDataService {
                         }
                     });
                     vertex.setProperties(properties);
-                    // 添加节点
                     graphDataOperations.addVertex(vertex);
                     successCount++;
                 } catch (Exception e) {
@@ -185,7 +173,6 @@ public class GraphDataServiceImpl implements GraphDataService {
      */
     private List<Map<String, String>> parseCsvFile(MultipartFile file, String delimiter) throws Exception {
         List<Map<String, String>> dataList = new ArrayList<>();
-        // 先读取原始字节，用于编码回退
         byte[] rawBytes = file.getBytes();
 
         // 先尝试 UTF-8 解析，若出现乱码则回退到 GBK
@@ -221,11 +208,9 @@ public class GraphDataServiceImpl implements GraphDataService {
         if (text == null || text.isEmpty()) {
             return false;
         }
-        // 检查是否包含 UTF-8 替换字符
         if (text.contains("\uFFFD")) {
             return true;
         }
-        // 检查是否包含非法的乱码序列（如连续多个不可打印字符）
         int strangeCount = 0;
         for (char c : text.toCharArray()) {
             if (c == '\uFFFD' || (c > 0x7F && c < 0xA0)) {
@@ -245,7 +230,6 @@ public class GraphDataServiceImpl implements GraphDataService {
         List<String> errorMessages = new ArrayList<>();
 
         try {
-            // 获取图信息
             GraphInfo graphInfo = graphService.getById(graphId);
             if (graphInfo == null) {
                 log.error("图不存在，graphId={}", graphId);
@@ -254,7 +238,6 @@ public class GraphDataServiceImpl implements GraphDataService {
                 return result;
             }
 
-            // 获取图数据库连接信息
             GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
             if (connection == null) {
                 log.error("图数据库连接不存在，connectionId={}", graphInfo.getConnectionId());
@@ -264,7 +247,6 @@ public class GraphDataServiceImpl implements GraphDataService {
             }
 
 
-            // 获取边定义信息
             GraphEdgeDef edgeDef = edgeDefService.getById(edgeTypeId);
             if (edgeDef == null) {
                 log.error("边类型不存在，edgeTypeId={}", edgeTypeId);
@@ -274,7 +256,6 @@ public class GraphDataServiceImpl implements GraphDataService {
             }
             List<Map<String, String>> dataList = parseCsvFile(file, ",");
 
-            // 获取边定义的属性code列表，用于过滤不在schema中的属性
             QueryWrapper<GraphPropertyDef> edgePropQuery = new QueryWrapper<GraphPropertyDef>()
                     .eq("entity_id", edgeTypeId)
                     .eq("property_type", "edge");
@@ -282,17 +263,13 @@ public class GraphDataServiceImpl implements GraphDataService {
                     .map(GraphPropertyDef::getCode)
                     .collect(Collectors.toSet());
 
-            // 更新导入结果统计
             result.setTotalCount(dataList.size());
 
-            // 构建图配置信息
             GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
 
-            // 创建图客户端并批量导入边数据
             GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
             GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
 
-            // 批量导入边数据
             int successCount = 0;
             int failureCount = 0;
 
@@ -306,7 +283,6 @@ public class GraphDataServiceImpl implements GraphDataService {
                     edge.setStartUid(dataRow.getOrDefault("startUid", dataRow.get("source")));
                     edge.setEndUid(dataRow.getOrDefault("endUid", dataRow.get("target")));
 
-                    // 设置边属性
                     Map<String, Object> properties = new HashMap<>();
                     dataRow.forEach((col, value) -> {
                         if (edgeSchemaPropertyCodes.contains(col)) {
@@ -314,7 +290,6 @@ public class GraphDataServiceImpl implements GraphDataService {
                         }
                     });
                     edge.setProperties(properties);
-                    // 添加边
                     graphDataOperations.addEdge(edge);
                     successCount++;
                 } catch (Exception e) {

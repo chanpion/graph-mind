@@ -8,6 +8,9 @@ import com.chenpp.graph.admin.mapper.UserDao;
 import com.chenpp.graph.admin.model.PageResult;
 import com.chenpp.graph.admin.model.User;
 import com.chenpp.graph.admin.service.UserService;
+import com.chenpp.graph.core.exception.BusinessException;
+import com.chenpp.graph.core.exception.ErrorCode;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,7 +49,10 @@ public class UserServiceImpl extends ServiceImpl<UserDao, User> implements UserS
 
     @Override
     public void addUser(User user) {
-        if (user.getPassword() != null) {
+        if (StringUtils.isNotBlank(user.getPassword())) {
+            if (user.getPassword().length() < 6) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "密码长度至少为6位");
+            }
             user.setPassword(passwordEncoder.encode(user.getPassword()));
         }
         this.save(user);
@@ -54,7 +60,10 @@ public class UserServiceImpl extends ServiceImpl<UserDao, User> implements UserS
 
     @Override
     public void updateUser(User user) {
-        if (user.getPassword() != null && !user.getPassword().isEmpty()) {
+        if (StringUtils.isNotBlank(user.getPassword())) {
+            if (user.getPassword().length() < 6) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "密码长度至少为6位");
+            }
             user.setPassword(passwordEncoder.encode(user.getPassword()));
         }
         this.updateById(user);
