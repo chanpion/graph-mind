@@ -407,7 +407,12 @@ async function showDetail(graph) {
   // 从 summary API 获取真实的点边数量
   try {
     if (graph.id) {
-      const res = await graphApi.getGraphSummary(graph.id)
+      const graphCode = detail.code || detail.graphCode
+      const params = {
+        connectionId: detail.connectionId,
+        graphCode: graphCode || undefined
+      }
+      const res = await graphApi.getGraphSummary(graph.id, params)
       if (res?.data) {
         detail.vertexCount = res.data.vertexCount ?? 0
         detail.edgeCount = res.data.edgeCount ?? 0

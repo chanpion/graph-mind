@@ -44,16 +44,4 @@ public class Neo4jClient implements GraphClient {
             return false;
         }
     }
-
-    @Override
-    public void close() {
-        try {
-            if (driver != null) {
-                driver.close();
-                log.info("Neo4j driver closed successfully");
-            }
-        } catch (Exception e) {
-            log.warn("Error closing Neo4j driver", e);
-        }
-    }
 }

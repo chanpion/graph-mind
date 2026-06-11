@@ -59,10 +59,6 @@ public class GraphEdgeDefServiceImpl extends ServiceImpl<GraphEdgeDefDao, GraphE
     @Transactional(rollbackFor = Exception.class)
     @Override
     public boolean saveEdgeDefWithProperties(GraphEdgeDef edgeDef) {
-        // 设置创建和更新时间
-        edgeDef.setCreateTime(LocalDateTime.now());
-        edgeDef.setUpdateTime(LocalDateTime.now());
-
         // 保存边定义
         boolean saved = this.save(edgeDef);
 

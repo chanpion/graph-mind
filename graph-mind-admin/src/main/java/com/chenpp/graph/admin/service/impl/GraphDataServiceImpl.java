@@ -68,7 +68,7 @@ public class GraphDataServiceImpl implements GraphDataService {
     private GraphPropertyDefService propertyDefService;
 
     @Override
-    public ImportResult importNodeData(Long graphId, Long vertexTypeId, MultipartFile file, String config) {
+    public ImportResult importVertexData(Long graphId, Long vertexTypeId, MultipartFile file, String config) {
         ImportResult result = new ImportResult();
         result.setTotalCount(0);
         result.setSuccessCount(0);
@@ -129,43 +129,42 @@ public class GraphDataServiceImpl implements GraphDataService {
             GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
 
             // 创建图客户端并批量导入节点数据
-            try (GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf)) {
-                GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
+            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+            GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
 
-                // 批量导入节点数据
-                int successCount = 0;
-                int failureCount = 0;
+            // 批量导入节点数据
+            int successCount = 0;
+            int failureCount = 0;
 
-                for (Map<String, String> dataRow : dataList) {
-                    try {
-                        GraphVertex vertex = new GraphVertex();
-                        vertex.setUid(dataRow.get("uid"));
-                        vertex.setLabel(dataRow.get("label"));
+            for (Map<String, String> dataRow : dataList) {
+                try {
+                    GraphVertex vertex = new GraphVertex();
+                    vertex.setUid(dataRow.get("uid"));
+                    vertex.setLabel(dataRow.get("label"));
 
-                        // 设置节点属性
-                        Map<String, Object> properties = new HashMap<>();
+                    // 设置节点属性
+                    Map<String, Object> properties = new HashMap<>();
 
-                        dataRow.forEach((key, value) -> {
-                            if (vertexSchemaPropertyCodes.contains(key)) {
-                                properties.put(key, value);
-                            }
-                        });
-                        vertex.setProperties(properties);
-                        // 添加节点
-                        graphDataOperations.addVertex(vertex);
-                        successCount++;
-                    } catch (Exception e) {
-                        log.error("导入节点数据失败: {}", e.getMessage(), e);
-                        failureCount++;
-                    }
+                    dataRow.forEach((key, value) -> {
+                        if (vertexSchemaPropertyCodes.contains(key)) {
+                            properties.put(key, value);
+                        }
+                    });
+                    vertex.setProperties(properties);
+                    // 添加节点
+                    graphDataOperations.addVertex(vertex);
+                    successCount++;
+                } catch (Exception e) {
+                    log.error("导入节点数据失败: {}", e.getMessage(), e);
+                    failureCount++;
                 }
-
-                result.setSuccessCount(successCount);
-                result.setFailureCount(failureCount);
-                result.setErrorMessages(errorMessages.toArray(new String[0]));
-
-                log.info("导入节点数据完成，总数={}，成功={}，失败={}", dataList.size(), successCount, failureCount);
             }
+
+            result.setSuccessCount(successCount);
+            result.setFailureCount(failureCount);
+            result.setErrorMessages(errorMessages.toArray(new String[0]));
+
+            log.info("导入节点数据完成，总数={}，成功={}，失败={}", dataList.size(), successCount, failureCount);
         } catch (Exception e) {
             log.error("导入节点数据失败", e);
             errorMessages.add("导入节点数据失败: " + e.getMessage());
@@ -290,46 +289,45 @@ public class GraphDataServiceImpl implements GraphDataService {
             GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
 
             // 创建图客户端并批量导入边数据
-            try (GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf)) {
-                GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
+            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+            GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
 
-                // 批量导入边数据
-                int successCount = 0;
-                int failureCount = 0;
+            // 批量导入边数据
+            int successCount = 0;
+            int failureCount = 0;
 
-                for (Map<String, String> dataRow : dataList) {
-                    try {
-                        GraphEdge edge = new GraphEdge();
-                        edge.setUid(dataRow.get("uid"));
-                        edge.setLabel(edgeDef.getLabel());
-                        edge.setStartLabel(edgeDef.getStartLabel());
-                        edge.setEndLabel(edgeDef.getEndLabel());
-                        edge.setStartUid(dataRow.getOrDefault("startUid", dataRow.get("source")));
-                        edge.setEndUid(dataRow.getOrDefault("endUid", dataRow.get("target")));
+            for (Map<String, String> dataRow : dataList) {
+                try {
+                    GraphEdge edge = new GraphEdge();
+                    edge.setUid(dataRow.get("uid"));
+                    edge.setLabel(edgeDef.getLabel());
+                    edge.setStartLabel(edgeDef.getStartLabel());
+                    edge.setEndLabel(edgeDef.getEndLabel());
+                    edge.setStartUid(dataRow.getOrDefault("startUid", dataRow.get("source")));
+                    edge.setEndUid(dataRow.getOrDefault("endUid", dataRow.get("target")));
 
-                        // 设置边属性
-                        Map<String, Object> properties = new HashMap<>();
-                        dataRow.forEach((col, value) -> {
-                            if (edgeSchemaPropertyCodes.contains(col)) {
-                                properties.put(col, value);
-                            }
-                        });
-                        edge.setProperties(properties);
-                        // 添加边
-                        graphDataOperations.addEdge(edge);
-                        successCount++;
-                    } catch (Exception e) {
-                        log.error("导入边数据失败: {}", e.getMessage(), e);
-                        failureCount++;
-                    }
+                    // 设置边属性
+                    Map<String, Object> properties = new HashMap<>();
+                    dataRow.forEach((col, value) -> {
+                        if (edgeSchemaPropertyCodes.contains(col)) {
+                            properties.put(col, value);
+                        }
+                    });
+                    edge.setProperties(properties);
+                    // 添加边
+                    graphDataOperations.addEdge(edge);
+                    successCount++;
+                } catch (Exception e) {
+                    log.error("导入边数据失败: {}", e.getMessage(), e);
+                    failureCount++;
                 }
-
-                result.setSuccessCount(successCount);
-                result.setFailureCount(failureCount);
-                result.setErrorMessages(errorMessages.toArray(new String[0]));
-
-                log.info("导入边数据完成，总数={}，成功={}，失败={}", dataList.size(), successCount, failureCount);
             }
+
+            result.setSuccessCount(successCount);
+            result.setFailureCount(failureCount);
+            result.setErrorMessages(errorMessages.toArray(new String[0]));
+
+            log.info("导入边数据完成，总数={}，成功={}，失败={}", dataList.size(), successCount, failureCount);
         } catch (Exception e) {
             log.error("导入边数据失败", e);
             errorMessages.add("导入边数据失败: " + e.getMessage());
@@ -339,12 +337,8 @@ public class GraphDataServiceImpl implements GraphDataService {
         return result;
     }
 
-    @Override
-    public PageResult<GraphVertex> getNodeDataList(Long graphId, Long vertexTypeId, String label, Integer page, Integer size) {
-        return getNodeDataList(graphId, vertexTypeId, label, page, size, null, null);
-    }
 
-    public PageResult<GraphVertex> getNodeDataList(Long graphId, Long vertexTypeId, String label, Integer page, Integer size, Long connectionId, String graphCode) {
+    public PageResult<GraphVertex> queryVertexDataList(Long graphId, Long vertexTypeId, String label, Integer page, Integer size, Long connectionId, String graphCode) {
         try {
             if (label == null) {
                 GraphVertexDef vertexDef = vertexDefService.getById(vertexTypeId);
@@ -374,12 +368,7 @@ public class GraphDataServiceImpl implements GraphDataService {
         }
     }
 
-    @Override
-    public PageResult<Map<String, Object>> getEdgeDataList(Long graphId, Long edgeTypeId, String label, Integer page, Integer size) {
-        return getEdgeDataList(graphId, edgeTypeId, label, page, size, null, null);
-    }
-
-    public PageResult<Map<String, Object>> getEdgeDataList(Long graphId, Long edgeTypeId, String label, Integer page, Integer size, Long connectionId, String graphCode) {
+    public PageResult<Map<String, Object>> queryEdgeDataList(Long graphId, Long edgeTypeId, String label, Integer page, Integer size, Long connectionId, String graphCode) {
         try {
             if (label == null) {
                 GraphEdgeDef edgeDef = edgeDefService.getById(edgeTypeId);
@@ -652,22 +641,24 @@ public class GraphDataServiceImpl implements GraphDataService {
             GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
 
             // 创建图客户端并删除节点
-            try (GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf)) {
-                GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
+            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+            GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
 
-                GraphVertexDef vertexDef = vertexDefService.getOne(new QueryWrapper<GraphVertexDef>().eq("graph_id", graphId).eq("label", label));
-                // 删除节点
-                for (String vertexId : vertexIds) {
-                    try {
-                        GraphVertex vertex = new GraphVertex();
-                        vertex.setUid(vertexId);
-                        vertex.setLabel(vertexDef.getLabel());
-                        graphDataOperations.deleteVertex(vertex);
-                        log.info("成功删除节点，vertexId={}", vertexId);
-                    } catch (Exception e) {
-                        log.error("删除节点失败，vertexId={}", vertexId, e);
-                        // 继续删除其他节点，不因单个节点失败而中断整个过程
-                    }
+            GraphVertexDef vertexDef = vertexDefService.getOne(new QueryWrapper<GraphVertexDef>().eq("graph_id", graphId).eq("label", label));
+            if (vertexDef == null) {
+                log.warn("节点类型定义不存在，graphId={}, label={}", graphId, label);
+                return false;
+            }
+            // 删除节点
+            for (String vertexId : vertexIds) {
+                try {
+                    GraphVertex vertex = new GraphVertex();
+                    vertex.setUid(vertexId);
+                    vertex.setLabel(vertexDef.getLabel());
+                    graphDataOperations.deleteVertex(vertex);
+                    log.info("成功删除节点，vertexId={}", vertexId);
+                } catch (Exception e) {
+                    log.error("删除节点失败，vertexId={}", vertexId, e);
                 }
             }
             return true;
@@ -682,12 +673,11 @@ public class GraphDataServiceImpl implements GraphDataService {
         try {
             GraphConf graphConf = GraphClientFactory.resolveGraphConf(graphId, connectionId, graphCode, graphService, connectionService);
 
-            try (GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf)) {
-                GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
-                GraphSummary summary = graphDataOperations.getSummary();
-                summary.setGraphCode(graphConf.getGraphCode());
-                return summary;
-            }
+            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+            GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
+            GraphSummary summary = graphDataOperations.getSummary();
+            summary.setGraphCode(graphConf.getGraphCode());
+            return summary;
         } catch (Exception e) {
             log.error("获取图统计信息失败，graphId={}", graphId, e);
             throw new RuntimeException("获取图统计信息失败: " + e.getMessage(), e);
@@ -722,20 +712,6 @@ public class GraphDataServiceImpl implements GraphDataService {
         return graphClient.opsForGraphData();
     }
 
-    private String resolveDbType(Long graphId, Long connectionId, String graphCode) {
-        if (graphId != null && graphId > 0) {
-            GraphInfo graphInfo = graphService.getById(graphId);
-            if (graphInfo != null) {
-                GraphConnection conn = connectionService.getById(graphInfo.getConnectionId());
-                if (conn != null) return conn.getGraphType().name();
-            }
-        }
-        if (connectionId != null) {
-            GraphConnection conn = connectionService.getById(connectionId);
-            if (conn != null) return conn.getGraphType().name();
-        }
-        return null;
-    }
 
     /**
      * 构建按标签分页查询节点的查询语句（根据数据库类型生成不同语法）
@@ -792,7 +768,7 @@ public class GraphDataServiceImpl implements GraphDataService {
             return false;
         }
         GraphConnection conn = connectionService.getById(graphInfo.getConnectionId());
-        return conn != null && conn.getGraphType() == GraphTypeEnum.janus;
+        return conn != null && conn.getGraphTypeEnum() == GraphTypeEnum.janus;
     }
 
     private boolean isNebulaGraph(Long graphId) {
@@ -801,7 +777,7 @@ public class GraphDataServiceImpl implements GraphDataService {
             return false;
         }
         GraphConnection conn = connectionService.getById(graphInfo.getConnectionId());
-        return conn != null && conn.getGraphType() == GraphTypeEnum.nebula;
+        return conn != null && conn.getGraphTypeEnum() == GraphTypeEnum.nebula;
     }
 
     /**
@@ -812,20 +788,6 @@ public class GraphDataServiceImpl implements GraphDataService {
             return "";
         }
         return str.replace("\\", "\\\\").replace("\"", "\\\"");
-    }
-
-    /**
-     * 将 GraphVertex 转为 Map
-     */
-    private Map<String, Object> vertexToMap(GraphVertex vertex) {
-        Map<String, Object> map = new HashMap<>();
-        map.put("id", vertex.getId());
-        map.put("uid", vertex.getUid());
-        map.put("label", vertex.getLabel());
-        if (vertex.getProperties() != null) {
-            map.putAll(vertex.getProperties());
-        }
-        return map;
     }
 
     /**

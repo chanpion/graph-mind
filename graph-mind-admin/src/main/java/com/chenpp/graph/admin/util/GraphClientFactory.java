@@ -10,12 +10,14 @@ import com.chenpp.graph.janus.CassandraConf;
 import com.chenpp.graph.janus.HBaseConf;
 import com.chenpp.graph.janus.JanusClient;
 import com.chenpp.graph.janus.JanusConf;
+import com.chenpp.graph.janus.JanusConstants;
 import com.chenpp.graph.nebula.NebulaClient;
 import com.chenpp.graph.nebula.NebulaConf;
 import com.chenpp.graph.neo4j.Neo4jClient;
 import com.chenpp.graph.neo4j.Neo4jConf;
 import com.chenpp.graph.admin.service.GraphService;
 import com.chenpp.graph.admin.service.GraphConnectionService;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * 图客户端工厂类，用于根据数据库类型动态创建对应的图客户端实例
@@ -61,7 +63,7 @@ public class GraphClientFactory {
                 janusConf.setUsername(graphConf.getUsername());
                 janusConf.setPassword(graphConf.getPassword());
                 String storageBackend = janusConf.getStorageBackend();
-                if ("cassandra".equals(storageBackend) || "cql".equals(storageBackend)) {
+                if (StringUtils.equalsAny(storageBackend, JanusConstants.BACKEND_CASSANDRA, JanusConstants.CQL)) {
                     CassandraConf cassandraConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), CassandraConf.class);
                     cassandraConf.setHostname(graphConf.getHost());
                     cassandraConf.setPort(graphConf.getPort());
@@ -79,10 +81,8 @@ public class GraphClientFactory {
         }
     }
 
-    public static GraphConf resolveGraphConf(
-            Long graphId, Long connectionId, String graphCode,
-            GraphService graphService, GraphConnectionService connectionService) {
-        // 尝试通过本地图记录解析
+    public static GraphConf resolveGraphConf(Long graphId, Long connectionId, String graphCode,
+                                             GraphService graphService, GraphConnectionService connectionService) {
         if (graphId != null && graphId > 0) {
             GraphInfo graphInfo = graphService.getById(graphId);
             if (graphInfo != null && graphInfo.getConnectionId() != null) {
@@ -92,7 +92,6 @@ public class GraphClientFactory {
                 }
             }
         }
-        // 通过 connectionId + graphCode 直接连接
         if (connectionId != null && graphCode != null) {
             GraphConnection connection = connectionService.getById(connectionId);
             if (connection != null) {
@@ -105,7 +104,7 @@ public class GraphClientFactory {
     public static GraphConf createGraphConf(GraphConnection connection, String graphCode) {
         GraphConf graphConf = new GraphConf();
         graphConf.setGraphCode(graphCode);
-        graphConf.setType(connection.getGraphType().name());
+        graphConf.setType(connection.getGraphType());
         graphConf.setHost(connection.getHosts());
         graphConf.setPort(connection.getPort());
         graphConf.setUsername(connection.getUsername());
@@ -128,8 +127,6 @@ public class GraphClientFactory {
                 graphConf.setPassword(password.toString());
             }
         }
-
         return graphConf;
     }
-
 }

@@ -37,7 +37,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/graphs/{graphId}")
+@RequestMapping("/api/graphs/schema")
 public class GraphSchemaController {
 
     @Autowired
@@ -49,12 +49,9 @@ public class GraphSchemaController {
     @Autowired
     private GraphSchemaService graphSchemaService;
 
-    /**
-     * 获取节点定义列表，合并本地元数据与图数据库实际类型
-     */
     @GetMapping("/vertices")
     public Result<List<GraphVertexDef>> getVertexDefs(
-            @PathVariable Long graphId, Integer status,
+            @RequestParam Long graphId, Integer status,
             @RequestParam(required = false) Long connectionId,
             @RequestParam(required = false) String graphCode) {
         List<GraphVertexDef> vertexDefs = vertexDefService.getVertexDefsByGraphId(graphId, status);
@@ -62,7 +59,6 @@ public class GraphSchemaController {
             vertexDefs = new ArrayList<>();
         }
 
-        // 始终从图数据库发现实际类型，合并到本地列表中
         try {
             List<GraphVertexDef> discovered = graphSchemaService.discoverVertexDefs(graphId, connectionId, graphCode);
             if (discovered != null && !discovered.isEmpty()) {
@@ -102,8 +98,8 @@ public class GraphSchemaController {
                 }
             }
         } catch (Exception e) {
-                log.warn("从图数据库发现节点类型失败: {}", e.getMessage());
-            }
+            log.warn("从图数据库发现节点类型失败: {}", e.getMessage());
+        }
 
         return Result.success(vertexDefs);
     }
@@ -112,7 +108,7 @@ public class GraphSchemaController {
      * 新增节点定义
      */
     @PostMapping("/vertices")
-    public Result<String> addVertexDef(@PathVariable Long graphId, @RequestBody GraphVertexDef vertexDef) {
+    public Result<String> addVertexDef(@RequestParam Long graphId, @RequestBody GraphVertexDef vertexDef) {
         vertexDef.setGraphId(graphId);
         boolean success = vertexDefService.saveVertexDefWithProperties(vertexDef);
         if (success) {
@@ -125,8 +121,8 @@ public class GraphSchemaController {
     /**
      * 更新节点定义
      */
-    @PutMapping("/vertices/{vertexId}")
-    public Result<String> updateVertexDef(@PathVariable Long graphId, @PathVariable Long vertexId, @RequestBody GraphVertexDef vertexDef) {
+    @PutMapping("/vertex")
+    public Result<String> updateVertexDef(@RequestParam Long graphId, @RequestParam Long vertexId, @RequestBody GraphVertexDef vertexDef) {
         vertexDef.setId(vertexId);
         vertexDef.setGraphId(graphId);
         boolean success = vertexDefService.updateVertexDefWithProperties(vertexDef);
@@ -140,8 +136,8 @@ public class GraphSchemaController {
     /**
      * 删除节点定义
      */
-    @DeleteMapping("/vertices/{vertexId}")
-    public Result<String> deleteVertexDef(@PathVariable Long graphId, @PathVariable Long vertexId) {
+    @DeleteMapping("/vertex")
+    public Result<String> deleteVertexDef(@RequestParam Long graphId, @RequestParam Long vertexId) {
         boolean success = vertexDefService.deleteVertexDefWithProperties(vertexId);
         if (success) {
             return Result.success("删除节点定义成功");
@@ -149,12 +145,9 @@ public class GraphSchemaController {
         return Result.error("删除节点定义失败");
     }
 
-    /**
-     * 获取边定义列表，合并本地元数据与图数据库实际类型
-     */
     @GetMapping("/edges")
     public Result<List<GraphEdgeDef>> getEdgeDefs(
-            @PathVariable Long graphId, Integer status,
+            @RequestParam Long graphId, Integer status,
             @RequestParam(required = false) Long connectionId,
             @RequestParam(required = false) String graphCode) {
         List<GraphEdgeDef> edgeDefs = edgeDefService.getEdgeDefsByGraphId(graphId, status);
@@ -162,7 +155,6 @@ public class GraphSchemaController {
             edgeDefs = new ArrayList<>();
         }
 
-        // 始终从图数据库发现实际类型，合并到本地列表中
         try {
             List<GraphEdgeDef> discovered = graphSchemaService.discoverEdgeDefs(graphId, connectionId, graphCode);
             if (discovered != null && !discovered.isEmpty()) {
@@ -202,8 +194,8 @@ public class GraphSchemaController {
                 }
             }
         } catch (Exception e) {
-                log.warn("从图数据库发现边类型失败: {}", e.getMessage());
-            }
+            log.warn("从图数据库发现边类型失败: {}", e.getMessage());
+        }
 
         return Result.success(edgeDefs);
     }
@@ -212,7 +204,7 @@ public class GraphSchemaController {
      * 新增边定义
      */
     @PostMapping("/edges")
-    public Result<String> addEdgeDef(@PathVariable Long graphId, @RequestBody GraphEdgeDef edgeDef) {
+    public Result<String> addEdgeDef(@RequestParam Long graphId, @RequestBody GraphEdgeDef edgeDef) {
         edgeDef.setGraphId(graphId);
         boolean success = edgeDefService.saveEdgeDefWithProperties(edgeDef);
         if (success) {
@@ -225,8 +217,8 @@ public class GraphSchemaController {
     /**
      * 更新边定义
      */
-    @PutMapping("/edges/{edgeId}")
-    public Result<String> updateEdgeDef(@PathVariable Long graphId, @PathVariable Long edgeId, @RequestBody GraphEdgeDef edgeDef) {
+    @PutMapping("/edge")
+    public Result<String> updateEdgeDef(@RequestParam Long graphId, @RequestParam Long edgeId, @RequestBody GraphEdgeDef edgeDef) {
         edgeDef.setId(edgeId);
         edgeDef.setGraphId(graphId);
         boolean success = edgeDefService.updateEdgeDefWithProperties(edgeDef);
@@ -240,8 +232,8 @@ public class GraphSchemaController {
     /**
      * 删除边定义
      */
-    @DeleteMapping("/edges/{edgeId}")
-    public Result<String> deleteEdgeDef(@PathVariable Long graphId, @PathVariable Long edgeId) {
+    @DeleteMapping("/edge")
+    public Result<String> deleteEdgeDef(@RequestParam Long graphId, @RequestParam Long edgeId) {
         boolean success = edgeDefService.deleteEdgeDefWithProperties(edgeId);
         if (success) {
             return Result.success("删除边定义成功");
@@ -253,7 +245,7 @@ public class GraphSchemaController {
      * 发布图Schema到图数据库
      */
     @PostMapping("/publish")
-    public Result<String> publishSchema(@PathVariable Long graphId) {
+    public Result<String> publishSchema(@RequestParam Long graphId) {
         try {
             graphSchemaService.publishSchema(graphId);
             return Result.success("发布成功");
@@ -264,7 +256,7 @@ public class GraphSchemaController {
     }
 
     @GetMapping("/schema")
-    public Result<GraphSchema> getSchema(@PathVariable Long graphId) {
+    public Result<GraphSchema> getSchema(@RequestParam Long graphId) {
         return Result.success(graphSchemaService.getGraphSchema(graphId));
     }
 
@@ -272,7 +264,7 @@ public class GraphSchemaController {
      * 导出图Schema
      */
     @GetMapping("/schema/export")
-    public Result<SchemaExportDTO> exportSchema(@PathVariable Long graphId) {
+    public Result<SchemaExportDTO> exportSchema(@RequestParam Long graphId) {
         return Result.success(graphSchemaService.exportSchema(graphId));
     }
 
@@ -280,7 +272,7 @@ public class GraphSchemaController {
      * 导入图Schema
      */
     @PostMapping("/schema/import")
-    public Result<String> importSchema(@PathVariable Long graphId, @RequestBody SchemaImportDTO importDTO) {
+    public Result<String> importSchema(@RequestParam Long graphId, @RequestBody SchemaImportDTO importDTO) {
         graphSchemaService.importSchema(graphId, importDTO);
         return Result.success("导入成功");
     }

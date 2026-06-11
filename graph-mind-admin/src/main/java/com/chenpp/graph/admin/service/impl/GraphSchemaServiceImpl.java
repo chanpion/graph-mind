@@ -16,6 +16,7 @@ import com.chenpp.graph.admin.service.GraphService;
 import com.chenpp.graph.admin.util.GraphClientFactory;
 import com.chenpp.graph.core.GraphClient;
 import com.chenpp.graph.core.GraphOperations;
+import com.chenpp.graph.core.constant.GraphConstants;
 import com.chenpp.graph.core.exception.GraphException;
 import com.chenpp.graph.core.model.GraphConf;
 import com.chenpp.graph.core.schema.DataType;
@@ -38,6 +39,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -117,7 +119,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             vertexDef.setGraphId(graphId);
             vertexDef.setLabel(entity.getLabel());
             vertexDef.setName(entity.getLabel());
-            vertexDef.setDescription("从图数据库发现");
             vertexDef.setStatus(1);
             if (entity.getProperties() != null) {
                 List<GraphPropertyDef> props = entity.getProperties().stream()
@@ -147,7 +148,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             edgeDef.setGraphId(graphId);
             edgeDef.setLabel(relation.getLabel());
             edgeDef.setName(relation.getLabel());
-            edgeDef.setDescription("从图数据库发现");
             edgeDef.setStatus(1);
             edgeDef.setMultiple(relation.getMultiple());
             edgeDef.setStartLabel(relation.getStartLabel());
@@ -298,7 +298,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
     public void publishSchema(Long graphId) {
         log.info("发布图Schema: {}", graphId);
 
-        // 加载元数据
         GraphInfo graphInfo = graphService.getById(graphId);
         if (graphInfo == null) {
             log.warn("图不存在，跳过发布Schema，graphId={}", graphId);
@@ -319,9 +318,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
                 graphId, graphInfo.getCode(), connection.getGraphType(),
                 graphSchema.getEntities() != null ? graphSchema.getEntities().size() : 0,
                 graphSchema.getRelations() != null ? graphSchema.getRelations().size() : 0);
-        if (log.isDebugEnabled()) {
-            log.debug("Schema详情：entities={}, relations={}", graphSchema.getEntities(), graphSchema.getRelations());
-        }
 
         // Step 1: 查询远程已发布的 Schema，对比后仅发布变更
         GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
@@ -335,52 +331,60 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             remoteSchema = new GraphSchema();
         }
 
-        java.util.Set<String> remoteTagNames = remoteSchema.getEntities() != null
-                ? remoteSchema.getEntities().stream().map(com.chenpp.graph.core.schema.GraphEntity::getLabel).collect(java.util.stream.Collectors.toSet())
-                : java.util.Set.of();
-        java.util.Set<String> remoteEdgeNames = remoteSchema.getRelations() != null
-                ? remoteSchema.getRelations().stream().map(com.chenpp.graph.core.schema.GraphRelation::getLabel).collect(java.util.stream.Collectors.toSet())
-                : java.util.Set.of();
-        java.util.Set<String> remoteIndexNames = remoteSchema.getIndexes() != null
-                ? remoteSchema.getIndexes().stream().map(com.chenpp.graph.core.schema.GraphIndex::getName).collect(java.util.stream.Collectors.toSet())
-                : java.util.Set.of();
+        Set<String> remoteLabelNames = remoteSchema.getEntities() != null
+                ? remoteSchema.getEntities().stream().map(GraphEntity::getLabel).collect(Collectors.toSet())
+                : Set.of();
+        Set<String> remoteEdgeNames = remoteSchema.getRelations() != null
+                ? remoteSchema.getRelations().stream().map(GraphRelation::getLabel).collect(Collectors.toSet())
+                : Set.of();
+        Set<String> remoteIndexNames = remoteSchema.getIndexes() != null
+                ? remoteSchema.getIndexes().stream().map(GraphIndex::getName).collect(Collectors.toSet())
+                : Set.of();
 
-        java.util.List<com.chenpp.graph.core.schema.GraphEntity> newEntities = new java.util.ArrayList<>();
-        java.util.List<com.chenpp.graph.core.schema.GraphEntity> alterEntities = new java.util.ArrayList<>();
+        List<GraphEntity> newEntities = new ArrayList<>();
+        List<GraphEntity> alterEntities = new ArrayList<>();
         if (graphSchema.getEntities() != null) {
-            for (com.chenpp.graph.core.schema.GraphEntity entity : graphSchema.getEntities()) {
-                if (remoteTagNames.contains(entity.getLabel())) { alterEntities.add(entity); }
-                else { newEntities.add(entity); }
+            for (GraphEntity entity : graphSchema.getEntities()) {
+                if (remoteLabelNames.contains(entity.getLabel())) {
+                    alterEntities.add(entity);
+                } else {
+                    newEntities.add(entity);
+                }
             }
         }
 
-        java.util.List<com.chenpp.graph.core.schema.GraphRelation> newRelations = new java.util.ArrayList<>();
-        java.util.List<com.chenpp.graph.core.schema.GraphRelation> alterRelations = new java.util.ArrayList<>();
+        List<GraphRelation> newRelations = new ArrayList<>();
+        List<GraphRelation> alterRelations = new ArrayList<>();
         if (graphSchema.getRelations() != null) {
-            for (com.chenpp.graph.core.schema.GraphRelation relation : graphSchema.getRelations()) {
-                if (remoteEdgeNames.contains(relation.getLabel())) { alterRelations.add(relation); }
-                else { newRelations.add(relation); }
+            for (GraphRelation relation : graphSchema.getRelations()) {
+                if (remoteEdgeNames.contains(relation.getLabel())) {
+                    alterRelations.add(relation);
+                } else {
+                    newRelations.add(relation);
+                }
             }
         }
 
-        java.util.List<com.chenpp.graph.core.schema.GraphIndex> newIndexes = new java.util.ArrayList<>();
+        List<GraphIndex> newIndexes = new ArrayList<>();
         if (graphSchema.getIndexes() != null) {
-            for (com.chenpp.graph.core.schema.GraphIndex idx : graphSchema.getIndexes()) {
-                if (!remoteIndexNames.contains(idx.getName())) { newIndexes.add(idx); }
+            for (GraphIndex idx : graphSchema.getIndexes()) {
+                if (!remoteIndexNames.contains(idx.getName())) {
+                    newIndexes.add(idx);
+                }
             }
         }
 
         // 将索引分为新实体索引（在 applySchema 中创建）和变更实体索引（在 alterSchema 之后创建）
-        java.util.Set<String> newEntityLabels = newEntities.stream()
-                .map(com.chenpp.graph.core.schema.GraphEntity::getLabel)
-                .collect(java.util.stream.Collectors.toSet());
-        java.util.Set<String> newRelationLabels = newRelations.stream()
-                .map(com.chenpp.graph.core.schema.GraphRelation::getLabel)
-                .collect(java.util.stream.Collectors.toSet());
-        java.util.List<com.chenpp.graph.core.schema.GraphIndex> newEntityIndexes = new java.util.ArrayList<>();
-        java.util.List<com.chenpp.graph.core.schema.GraphIndex> alterEntityIndexes = new java.util.ArrayList<>();
-        for (com.chenpp.graph.core.schema.GraphIndex idx : newIndexes) {
-            boolean isNewEntity = com.chenpp.graph.core.constant.GraphConstants.VERTEX.equalsIgnoreCase(idx.getSchemaType())
+        Set<String> newEntityLabels = newEntities.stream()
+                .map(GraphEntity::getLabel)
+                .collect(Collectors.toSet());
+        Set<String> newRelationLabels = newRelations.stream()
+                .map(GraphRelation::getLabel)
+                .collect(Collectors.toSet());
+        List<GraphIndex> newEntityIndexes = new ArrayList<>();
+        List<GraphIndex> alterEntityIndexes = new ArrayList<>();
+        for (GraphIndex idx : newIndexes) {
+            boolean isNewEntity = GraphConstants.VERTEX.equalsIgnoreCase(idx.getSchemaType())
                     ? newEntityLabels.contains(idx.getLabel())
                     : newRelationLabels.contains(idx.getLabel());
             if (isNewEntity) {
@@ -393,30 +397,40 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         log.info("Schema diff: newTags={}, alterTags={}, newEdges={}, alterEdges={}, newIndexes={}, alterIndexes={}",
                 newEntities.size(), alterEntities.size(), newRelations.size(), alterRelations.size(), newEntityIndexes.size(), alterEntityIndexes.size());
 
-        com.chenpp.graph.core.schema.GraphSchema newSchema = new com.chenpp.graph.core.schema.GraphSchema();
+        GraphSchema newSchema = new GraphSchema();
         newSchema.setEntities(newEntities);
         newSchema.setRelations(newRelations);
         newSchema.setIndexes(newEntityIndexes);
 
-        com.chenpp.graph.core.schema.GraphSchema alterGSchema = new com.chenpp.graph.core.schema.GraphSchema();
-        alterGSchema.setEntities(alterEntities);
-        alterGSchema.setRelations(alterRelations);
+        GraphSchema alterSchema = new GraphSchema();
+        alterSchema.setEntities(alterEntities);
+        alterSchema.setRelations(alterRelations);
 
         boolean hasNew = !newEntities.isEmpty() || !newRelations.isEmpty() || !newEntityIndexes.isEmpty();
         boolean hasAlter = !alterEntities.isEmpty() || !alterRelations.isEmpty() || !alterEntityIndexes.isEmpty();
 
-        if (hasNew) { graphOperations.applySchema(graphConf, newSchema); }
-        if (hasAlter) { graphOperations.alterSchema(graphConf, alterGSchema); }
+        if (hasNew) {
+            graphOperations.applySchema(graphConf, newSchema);
+        }
+        if (hasAlter) {
+            graphOperations.alterSchema(graphConf, alterSchema);
+        }
         // 变更实体的索引在 alterSchema 之后创建，确保属性已存在
         if (!alterEntityIndexes.isEmpty()) {
-            try { Thread.sleep(500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
         if (!alterEntityIndexes.isEmpty()) {
-            com.chenpp.graph.core.schema.GraphSchema alterIndexSchema = new com.chenpp.graph.core.schema.GraphSchema();
+            GraphSchema alterIndexSchema = new GraphSchema();
             alterIndexSchema.setIndexes(alterEntityIndexes);
             graphOperations.applySchema(graphConf, alterIndexSchema);
         }
-        if (!hasNew && !hasAlter) { log.info("Schema 无变更，跳过发布，graphId={}", graphId); }
+        if (!hasNew && !hasAlter) {
+            log.info("Schema 无变更，跳过发布，graphId={}", graphId);
+        }
         log.info("Schema 已应用到图数据库，graphId={}", graphId);
 
         // Step 2: 更新 MySQL 元数据状态为已发布（事务内）
@@ -487,7 +501,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         String mode = importDTO.getMode();
         boolean replace = "replace".equalsIgnoreCase(mode);
 
-        // 替换模式：先删除现有的节点和边定义
         if (replace) {
             List<GraphVertexDef> existingNodes = graphVertexDefService.getVertexDefsByGraphId(graphId, null);
             for (GraphVertexDef node : existingNodes) {
@@ -499,7 +512,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             }
         }
 
-        // 构建现有节点的label->id映射，用于边定义中的from/to引用
         Map<String, Long> existingNodeLabelIdMap;
         if (replace) {
             existingNodeLabelIdMap = Map.of();
@@ -510,10 +522,8 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
                     .collect(Collectors.toMap(GraphVertexDef::getLabel, GraphVertexDef::getId, (a, b) -> a));
         }
 
-        // 导入节点定义
         if (importNodes != null) {
             for (GraphVertexDef node : importNodes) {
-                // 合并模式：检查是否已存在（按label去重）
                 if (!replace && existingNodeLabelIdMap.containsKey(node.getLabel())) {
                     continue;
                 }
@@ -528,11 +538,9 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         // 导入边定义
         if (importEdges != null) {
             for (GraphEdgeDef edge : importEdges) {
-                // 合并模式：检查是否已存在（按label去重）
                 if (!replace) {
                     List<GraphEdgeDef> existingEdges = graphEdgeDefService.getEdgeDefsByGraphId(graphId, null);
-                    boolean exists = existingEdges.stream()
-                            .anyMatch(e -> Objects.equals(e.getLabel(), edge.getLabel()));
+                    boolean exists = existingEdges.stream().anyMatch(e -> Objects.equals(e.getLabel(), edge.getLabel()));
                     if (exists) {
                         continue;
                     }
@@ -567,7 +575,7 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         log.info("已在图数据库中创建图，graphCode={}", graphInfo.getCode());
 
         graphInfo.setStatus(0);
-        graphInfo.setGraphType(connection.getGraphType());
+        graphInfo.setGraphType(connection.getGraphTypeEnum());
         graphService.save(graphInfo);
         log.info("已保存图到 MySQL，graphId={}", graphInfo.getId());
 

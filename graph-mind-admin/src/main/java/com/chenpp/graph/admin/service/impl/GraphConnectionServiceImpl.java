@@ -4,8 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.chenpp.graph.admin.mapper.GraphConnectionDao;
-import com.chenpp.graph.admin.model.ConnectionStatus;
-import com.chenpp.graph.admin.model.GraphInfo;
+import com.chenpp.graph.admin.enums.ConnectionStatusEnum;
 import com.chenpp.graph.admin.model.GraphConnection;
 import com.chenpp.graph.admin.service.GraphConnectionService;
 import com.chenpp.graph.admin.util.GraphClientFactory;
@@ -28,7 +27,7 @@ public class GraphConnectionServiceImpl extends ServiceImpl<GraphConnectionDao, 
     public Page<GraphConnection> queryConnections(Page<GraphConnection> page, String keyword, String type) {
         QueryWrapper<GraphConnection> queryWrapper = new QueryWrapper<>();
         if (keyword != null && !keyword.isEmpty()) {
-            queryWrapper.like("name", keyword).or().like("host", keyword);
+            queryWrapper.like("name", keyword).or().like("hosts", keyword);
         }
         if (type != null && !type.isEmpty()) {
             queryWrapper.eq("graph_type", type);
@@ -45,15 +44,14 @@ public class GraphConnectionServiceImpl extends ServiceImpl<GraphConnectionDao, 
             return false;
         }
         try {
-            GraphConf graphConf = GraphClientFactory.createGraphConf(connection, connection.getGraphType().name());
-            try (GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf)) {
-                boolean result = graphClient.checkConnection();
-                connection.setStatus(result ? ConnectionStatus.CONNECTED.getCode() : ConnectionStatus.FAILED.getCode());
-                return result;
-            }
+            GraphConf graphConf = GraphClientFactory.createGraphConf(connection, connection.getGraphType());
+            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+            boolean result = graphClient.checkConnection();
+            connection.setStatus(result ? ConnectionStatusEnum.CONNECTED.getCode() : ConnectionStatusEnum.FAILED.getCode());
+            return result;
         } catch (Exception e) {
             log.error("连接测试异常", e);
-            connection.setStatus(ConnectionStatus.FAILED.getCode());
+            connection.setStatus(ConnectionStatusEnum.FAILED.getCode());
             return false;
         } finally {
             this.updateById(connection);
@@ -63,7 +61,7 @@ public class GraphConnectionServiceImpl extends ServiceImpl<GraphConnectionDao, 
 
     @Override
     public boolean save(GraphConnection entity) {
-        entity.setStatus(ConnectionStatus.UNCHECKED.getCode());
+        entity.setStatus(ConnectionStatusEnum.UNCHECKED.getCode());
         return super.save(entity);
     }
 }

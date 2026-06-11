@@ -14,7 +14,7 @@ export const graphApi = {
 
   /** 根据连接ID获取图列表 */
   listByConnection(connectionId, params) {
-    return request.get(`/api/graphs/connection/${connectionId}`, { params })
+    return request.get('/api/graphs/connection', { params: { ...params, connectionId } })
   },
 
   /** 获取图详情 */
@@ -41,92 +41,92 @@ export const graphApi = {
 
   /** 获取点定义列表 */
   getVertexDefs(graphId, params) {
-    return request.get(`/api/graphs/${graphId}/vertices`, { params })
+    return request.get('/api/graphs/schema/vertices', { params: { graphId, ...params } })
   },
 
   /** 新增点定义 */
   addVertexDef(graphId, data) {
-    return request.post(`/api/graphs/${graphId}/vertices`, data)
+    return request.post('/api/graphs/schema/vertices', data, { params: { graphId } })
   },
 
   /** 更新点定义 */
   updateVertexDef(graphId, vertexId, data) {
-    return request.put(`/api/graphs/${graphId}/vertices/${vertexId}`, data)
+    return request.put('/api/graphs/schema/vertex', data, { params: { graphId, vertexId } })
   },
 
   /** 删除点定义 */
   deleteVertexDef(graphId, vertexId) {
-    return request.delete(`/api/graphs/${graphId}/vertices/${vertexId}`)
+    return request.delete('/api/graphs/schema/vertex', { params: { graphId, vertexId } })
   },
 
   /** 获取边定义列表 */
   getEdgeDefs(graphId, params) {
-    return request.get(`/api/graphs/${graphId}/edges`, { params })
+    return request.get('/api/graphs/schema/edges', { params: { graphId, ...params } })
   },
 
   /** 新增边定义 */
   addEdgeDef(graphId, data) {
-    return request.post(`/api/graphs/${graphId}/edges`, data)
+    return request.post('/api/graphs/schema/edges', data, { params: { graphId } })
   },
 
   /** 更新边定义 */
   updateEdgeDef(graphId, edgeId, data) {
-    return request.put(`/api/graphs/${graphId}/edges/${edgeId}`, data)
+    return request.put('/api/graphs/schema/edge', data, { params: { graphId, edgeId } })
   },
 
   /** 删除边定义 */
   deleteEdgeDef(graphId, edgeId) {
-    return request.delete(`/api/graphs/${graphId}/edges/${edgeId}`)
+    return request.delete('/api/graphs/schema/edge', { params: { graphId, edgeId } })
   },
 
   /** 发布 Schema */
   publishSchema(graphId) {
-    return request.post(`/api/graphs/${graphId}/publish`)
+    return request.post('/api/graphs/schema/publish', null, { params: { graphId } })
   },
 
   // ====== 图数据操作 ======
 
   /** 获取点数据列表 */
   getNodeDataList(graphId, vertexTypeId, params) {
-    return request.get(`/api/graphs/${graphId}/vertices/${vertexTypeId}`, { params })
+    return request.get('/api/graph/data/vertices', { params: { graphId, vertexTypeId, ...params } })
   },
 
   /** 获取边数据列表 */
   getEdgeDataList(graphId, edgeTypeId, params) {
-    return request.get(`/api/graphs/${graphId}/edges/${edgeTypeId}`, { params })
+    return request.get('/api/graph/data/edges', { params: { graphId, edgeTypeId, ...params } })
   },
 
   /** 新增点数据 */
   addNodeData(graphId, vertexTypeId, data) {
-    return request.post(`/api/graphs/${graphId}/data/vertices/${vertexTypeId}`, data)
+    return request.post('/api/graph/data/vertex', data, { params: { graphId, vertexTypeId } })
   },
 
   /** 新增边数据 */
   addEdgeData(graphId, edgeTypeId, data) {
-    return request.post(`/api/graphs/${graphId}/data/edges/${edgeTypeId}`, data)
+    return request.post('/api/graph/data/edge', data, { params: { graphId, edgeTypeId } })
   },
 
   /** 更新点数据 */
   updateVertexData(graphId, vertexId, data) {
-    return request.put(`/api/graphs/${graphId}/data/vertices/${vertexId}`, data)
+    return request.put('/api/graph/data/vertex', data, { params: { graphId, vertexId } })
   },
 
   /** 更新边数据 */
   updateEdgeData(graphId, edgeId, data) {
-    return request.put(`/api/graphs/${graphId}/data/edges/${edgeId}`, data)
+    return request.put('/api/graph/data/edge', data, { params: { graphId, edgeId } })
   },
 
   /** 删除节点 */
   deleteVertexData(graphId, vertexId, label) {
-    return request.delete(`/api/graphs/${graphId}/data/vertices/${vertexId}`, {
-      params: { label }
+    return request.delete('/api/graph/data/vertex', {
+      params: { graphId, vertexId, label }
     })
   },
 
   /** 删除边 */
   deleteEdge(graphId, edgeId, label) {
-    return request.delete(`/api/graphs/${graphId}/data/edges/${edgeId}`, {
-      params: { label }
+    return request.delete('/api/graph/data/edge', {
+      params: { graphId, edgeId, label }
     })
   },
 
@@ -161,26 +161,28 @@ export const graphApi = {
 
   /** 导出 Schema（节点定义和边定义） */
   exportSchema(graphId) {
-    return request.get(`/api/graphs/${graphId}/schema/export`)
+    return request.get('/api/graphs/schema/export', { params: { graphId } })
   },
 
   /** 导入 Schema */
   importSchema(graphId, data) {
-    return request.post(`/api/graphs/${graphId}/schema/import`, data)
+    return request.post('/api/graphs/schema/import', data, { params: { graphId } })
   },
 
   // ====== 数据导入 ======
 
   /** 导入节点数据（CSV） */
   importNodeData(graphId, vertexTypeId, formData) {
-    return request.post(`/api/graphs/${graphId}/import/vertices/${vertexTypeId}`, formData, {
+    return request.post('/api/graph/data/importVertices', formData, {
+      params: { graphId, vertexTypeId },
       headers: { 'Content-Type': 'multipart/form-data' }
     })
   },
 
   /** 导入边数据（CSV） */
   importEdgeData(graphId, edgeTypeId, formData) {
-    return request.post(`/api/graphs/${graphId}/import/edges/${edgeTypeId}`, formData, {
+    return request.post('/api/graph/data/importEdges', formData, {
+      params: { graphId, edgeTypeId },
       headers: { 'Content-Type': 'multipart/form-data' }
     })
   }

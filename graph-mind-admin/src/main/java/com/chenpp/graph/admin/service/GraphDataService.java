@@ -28,7 +28,7 @@ public interface GraphDataService {
      * @param config     导入配置JSON（含 delimiter、hasHeader 等）
      * @return 导入结果
      */
-    ImportResult importNodeData(Long graphId, Long vertexTypeId, MultipartFile file, String config);
+    ImportResult importVertexData(Long graphId, Long vertexTypeId, MultipartFile file, String config);
 
     /**
      * 导入边数据到图数据库
@@ -51,9 +51,7 @@ public interface GraphDataService {
      * @param size       每页大小
      * @return 分页节点数据
      */
-    PageResult<GraphVertex> getNodeDataList(Long graphId, Long vertexTypeId, String label, Integer page, Integer size);
-
-    PageResult<GraphVertex> getNodeDataList(Long graphId, Long vertexTypeId, String label, Integer page, Integer size, Long connectionId, String graphCode);
+    PageResult<GraphVertex> queryVertexDataList(Long graphId, Long vertexTypeId, String label, Integer page, Integer size, Long connectionId, String graphCode);
 
     /**
      * 查询边数据列表
@@ -65,9 +63,7 @@ public interface GraphDataService {
      * @param size       每页大小
      * @return 分页边数据
      */
-    PageResult<Map<String, Object>> getEdgeDataList(Long graphId, Long edgeTypeId, String label, Integer page, Integer size);
-
-    PageResult<Map<String, Object>> getEdgeDataList(Long graphId, Long edgeTypeId, String label, Integer page, Integer size, Long connectionId, String graphCode);
+    PageResult<Map<String, Object>> queryEdgeDataList(Long graphId, Long edgeTypeId, String label, Integer page, Integer size, Long connectionId, String graphCode);
 
     /**
      * 获取节点数据详情

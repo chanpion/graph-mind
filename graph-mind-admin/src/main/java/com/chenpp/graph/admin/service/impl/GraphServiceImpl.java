@@ -3,7 +3,6 @@ package com.chenpp.graph.admin.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.chenpp.graph.admin.enums.GraphTypeEnum;
 import com.chenpp.graph.admin.mapper.GraphDao;
 import com.chenpp.graph.admin.mapper.GraphEdgeDefDao;
 import com.chenpp.graph.admin.mapper.GraphVertexDefDao;
@@ -159,34 +158,32 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, GraphInfo> implement
      */
     private List<GraphInfo> discoverRemoteGraphs(Long connectionId) {
         List<GraphInfo> result = new ArrayList<>();
+        GraphConnection connection = connectionService.getById(connectionId);
+        if (connection == null) {
+            return result;
+        }
+
+        GraphInfo graphInfo = new GraphInfo();
+        graphInfo.setConnectionId(connectionId);
+        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, "placeholder");
+
         try {
-            GraphConnection connection = connectionService.getById(connectionId);
-            if (connection == null) {
-                return result;
-            }
+            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+            GraphOperations graphOperations = graphClient.opsForGraph();
+            List<Graph> remoteGraphs = graphOperations.listGraphs(graphConf);
 
-            GraphInfo graphInfo = new GraphInfo();
-            graphInfo.setConnectionId(connectionId);
-            // graphCode 在此场景下仅作占位，实际图代码从远程列表获取
-            GraphConf graphConf = GraphClientFactory.createGraphConf(connection, "placeholder");
-
-            try (GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf)) {
-                GraphOperations graphOperations = graphClient.opsForGraph();
-                List<Graph> remoteGraphs = graphOperations.listGraphs(graphConf);
-
-                AtomicLong idCounter = new AtomicLong(-1);
-                for (Graph rg : remoteGraphs) {
-                    GraphInfo g = new GraphInfo();
-                    Long negId = idCounter.decrementAndGet();
-                    g.setId(negId);
-                    g.setCode(rg.getCode());
-                    g.setName(rg.getName());
-                    g.setConnectionId(connectionId);
-                    g.setGraphType(connection.getGraphType());
-                    g.setSourceType("EXISTING");
-                    g.setStatus(0);
-                    result.add(g);
-                }
+            AtomicLong idCounter = new AtomicLong(-1);
+            for (Graph rg : remoteGraphs) {
+                GraphInfo g = new GraphInfo();
+                Long negId = idCounter.decrementAndGet();
+                g.setId(negId);
+                g.setCode(rg.getCode());
+                g.setName(rg.getName());
+                g.setConnectionId(connectionId);
+                g.setGraphType(connection.getGraphTypeEnum());
+                g.setSourceType("EXISTING");
+                g.setStatus(0);
+                result.add(g);
             }
         } catch (Exception e) {
             log.warn("发现远程图失败，connectionId={}: {}", connectionId, e.getMessage());
@@ -201,7 +198,7 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, GraphInfo> implement
             throw new BusinessException("图数据库连接不存在");
         }
         graphInfo.setStatus(0);
-        graphInfo.setGraphType(connection.getGraphType());
+        graphInfo.setGraphType(connection.getGraphTypeEnum());
         return super.save(graphInfo);
     }
 
@@ -229,7 +226,7 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, GraphInfo> implement
             graphOperations.dropGraph(graphConf);
             log.info("已删除图数据库中的图，code={}, connectionId={}", graphCode, connection.getId());
         } else {
-            log.debug("缺少图数据库连接或图标识，跳过删除远程图，graphId={}", graphId);
+            log.info("缺少图数据库连接或图标识，跳过删除远程图，graphId={}", graphId);
         }
 
         // 4) 删除本地元数据（事务内）
@@ -256,14 +253,12 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, GraphInfo> implement
         if (connection == null || graphInfos == null || graphInfos.isEmpty()) {
             return;
         }
-
-        // 保证 discovery 用的 GraphConf 实例不使用任何特定 graphCode，
-        // 只携带连接信息即可 — 后面的 getPublishedSchema 用 graphConf 参数指定
         GraphInfo graphInfo = new GraphInfo();
         graphInfo.setConnectionId(connectionId);
         GraphConf graphConf = GraphClientFactory.createGraphConf(connection, "");
 
-        try (GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf)) {
+        try {
+            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
             GraphOperations graphOperations = graphClient.opsForGraph();
             for (GraphInfo g : graphInfos) {
                 if (g.getCode() == null) {

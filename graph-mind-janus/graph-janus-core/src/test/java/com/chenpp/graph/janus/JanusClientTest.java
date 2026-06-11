@@ -77,12 +77,6 @@ public class JanusClientTest {
         graph = janusClient.getGraph();
     }
 
-    @After
-    public void cleanup() {
-        if (janusClient != null) {
-            janusClient.close();
-        }
-    }
 
     @Test
     public void testCreateClient() {
@@ -101,9 +95,6 @@ public class JanusClientTest {
         // 检查连接（当前实现返回false）
         boolean connected = janusClient.checkConnection();
         assertTrue(connected);
-
-        // 关闭客户端
-        janusClient.close();
     }
 
 
