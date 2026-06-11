@@ -17,7 +17,6 @@ Graph Mind Platform (GMP) 是一款面向企业级的图数据库管理平台，
 - `graph-mind-admin`：Spring Boot 管理后端（admin 服务）
 - `graph-mind-neo4j` / `graph-mind-nebula` / `graph-mind-janus`：各图数据库适配实现
 - `frontend/`：当前活跃的统一前端（Vue 3 + Vite）
-- `graph-mind-studio`：遗留前端（Vue 3，保留供参考）
 
 更详细的模块说明见仓库各子模块目录及 [CLAUDE.md](CLAUDE.md)。
 
@@ -70,7 +69,6 @@ npm run build    # 生产构建
 npm run preview  # 预览生产构建
 ```
 
-遗留前端 `graph-mind-studio`（Vue 3，保留供参考）：
 
 ```bash
 cd graph-mind-studio
@@ -89,7 +87,6 @@ npm run dev      # 默认端口 3000
 | graph-mind-admin | 管理后台、REST API |
 | graph-mind-neo4j / nebula / janus | 各图数据库实现 |
 | frontend/ | 当前活跃前端（Vue 3 + Vite） |
-| graph-mind-studio | 遗留前端（Vue 3，保留供参考） |
 
 ## 📖 开发者指南（摘要）
 
