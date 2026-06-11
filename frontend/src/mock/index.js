@@ -150,8 +150,8 @@ register('get', '/api/graphs', async () => {
   return mockListGraphs()
 })
 
-register('get', '/api/graphs/connection/:connectionId', async (config, params) => {
-  return mockListGraphs(params.connectionId)
+register('get', '/api/graphs/connection', async (config) => {
+  return mockListGraphs(config.params?.connectionId)
 })
 
 register('get', '/api/graphs/:id', async (config, params) => {
@@ -180,88 +180,88 @@ register('delete', '/api/graphs/:id', async (config, params) => {
 })
 
 // ====== Schema ======
-register('get', '/api/graphs/:graphId/vertices', async (config, params) => {
+register('get', '/api/graphs/schema/vertices', async (config, params) => {
   const res = await mockGetVertexTypes(null, params.graphId)
   return res
 })
 
-register('post', '/api/graphs/:graphId/vertices', async (config, params) => {
+register('post', '/api/graphs/schema/vertices', async (config, params) => {
   return mockCreateVertexType(null, params.graphId, config.data)
 })
 
-register('put', '/api/graphs/:graphId/vertices/:vertexId', async (config, params) => {
+register('put', '/api/graphs/schema/vertex', async (config, params) => {
   await mockDelay(300)
   return mockSuccess({ id: params.vertexId, ...config.data })
 })
 
-register('delete', '/api/graphs/:graphId/vertices/:vertexId', async (config, params) => {
+register('delete', '/api/graphs/schema/vertex', async (config, params) => {
   return mockDeleteVertexType(null, params.graphId, params.vertexId)
 })
 
-register('get', '/api/graphs/:graphId/edges', async (config, params) => {
+register('get', '/api/graphs/schema/edges', async (config, params) => {
   const res = await mockGetEdgeTypes(null, params.graphId)
   return res
 })
 
-register('post', '/api/graphs/:graphId/edges', async (config, params) => {
+register('post', '/api/graphs/schema/edges', async (config, params) => {
   return mockCreateEdgeType(null, params.graphId, config.data)
 })
 
-register('put', '/api/graphs/:graphId/edges/:edgeId', async (config, params) => {
+register('put', '/api/graphs/schema/edge', async (config, params) => {
   await mockDelay(300)
   return mockSuccess({ id: params.edgeId, ...config.data })
 })
 
-register('delete', '/api/graphs/:graphId/edges/:edgeId', async (config, params) => {
+register('delete', '/api/graphs/schema/edge', async (config, params) => {
   return mockDeleteEdgeType(null, params.graphId, params.edgeId)
 })
 
-register('post', '/api/graphs/:graphId/publish', async () => {
+register('post', '/api/graphs/schema/publish', async () => {
   await mockDelay(500)
   return mockSuccess({ published: true, publishedAt: new Date().toISOString() })
 })
 
 // ====== 图数据 ======
-register('get', '/api/graphs/:graphId/vertices/:vertexTypeId', async (config, params) => {
+register('get', '/api/graph/data/vertices', async (config, params) => {
   // 从 schema mock 中解析节点类型 label
   const schema = mockSchemas[params.graphId]
   const vertexLabel = schema?.vertexLabels?.find(v => v.id == params.vertexTypeId)?.label || params.vertexTypeId
   return mockQueryVertices(null, params.graphId, { ...config.params, label: vertexLabel })
 })
 
-register('get', '/api/graphs/:graphId/edges/:edgeTypeId', async (config, params) => {
+register('get', '/api/graph/data/edges', async (config, params) => {
   // 从 schema mock 中解析边类型 label
   const schema = mockSchemas[params.graphId]
   const edgeLabel = schema?.edgeLabels?.find(e => e.id == params.edgeTypeId)?.label || params.edgeTypeId
   return mockQueryEdges(null, params.graphId, { ...config.params, label: edgeLabel })
 })
 
-register('post', '/api/graphs/:graphId/data/vertices/:vertexTypeId', async (config, params) => {
+register('post', '/api/graph/data/vertex', async (config, params) => {
   // 从 schema mock 中解析节点类型 label
   const schema = mockSchemas[params.graphId]
   const vertexLabel = schema?.vertexLabels?.find(v => v.id == params.vertexTypeId)?.label || config.data.label || params.vertexTypeId
   return mockCreateVertex(null, params.graphId, { ...config.data, label: vertexLabel })
 })
 
-register('post', '/api/graphs/:graphId/data/edges/:edgeTypeId', async (config, params) => {
+register('post', '/api/graph/data/edge', async (config, params) => {
   const schema = mockSchemas[params.graphId]
   const edgeLabel = schema?.edgeLabels?.find(e => e.id == params.edgeTypeId)?.label || config.data.label || params.edgeTypeId
   return mockCreateEdge(null, params.graphId, { ...config.data, label: edgeLabel })
 })
 
-register('put', '/api/graphs/:graphId/data/vertices/:vertexId', async (config, params) => {
+register('put', '/api/graph/data/vertex', async (config, params) => {
   return mockUpdateVertex(null, params.graphId, params.vertexId, config.data)
 })
 
-register('put', '/api/graphs/:graphId/data/edges/:edgeId', async (config, params) => {
+register('put', '/api/graph/data/edge', async (config, params) => {
   return mockUpdateEdge(null, params.graphId, params.edgeId, config.data)
 })
 
-register('delete', '/api/graphs/:graphId/data/vertices/:vertexId', async (config, params) => {
+register('delete', '/api/graph/data/vertex', async (config, params) => {
   return mockDeleteVertex(null, params.graphId, params.vertexId)
 })
 
-register('delete', '/api/graphs/:graphId/data/edges/:edgeId', async (config, params) => {
+register('delete', '/api/graph/data/edge', async (config, params) => {
   return mockDeleteEdge(null, params.graphId, params.edgeId)
 })
 
@@ -302,11 +302,11 @@ register('get', '/api/graphs/:graphId/summary', async () => {
 })
 
 // ====== 数据导入 ======
-register('post', '/api/graphs/:graphId/import/vertices/:vertexTypeId', async (config, params) => {
+register('post', '/api/graph/data/importVertices', async (config, params) => {
   return mockImportCsv(null, params.graphId, config.data, null)
 })
 
-register('post', '/api/graphs/:graphId/import/edges/:edgeTypeId', async (config, params) => {
+register('post', '/api/graph/data/importEdges', async (config, params) => {
   return mockImportCsv(null, params.graphId, config.data, null)
 })
 

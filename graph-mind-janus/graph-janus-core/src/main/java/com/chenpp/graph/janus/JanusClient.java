@@ -58,21 +58,4 @@ public class JanusClient implements GraphClient {
     public JanusGraph getGraph() {
         return graph;
     }
-
-    /**
-     * 关闭图数据库连接
-     */
-    @Override
-    public void close() {
-        log.info("Closing JanusGraph client for graph: {}", janusConf.getGraphCode());
-        if (graph != null && !graph.isClosed()) {
-            try {
-                graph.close();
-                log.info("Successfully closed JanusGraph client for graph: {}", janusConf.getGraphCode());
-            } catch (Exception e) {
-                log.error("Error closing JanusGraph client for graph: {}", janusConf.getGraphCode(), e);
-            }
-        }
-    }
-
 }

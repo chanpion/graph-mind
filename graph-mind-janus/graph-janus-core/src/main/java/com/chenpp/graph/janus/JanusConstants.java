@@ -13,4 +13,5 @@ public class JanusConstants {
     public static final String BACKEND_HBASE = "hbase";
 
     public static final String DEFAULT_GRAPH_CODE = "default";
+    public static final String CQL = "cql";
 }

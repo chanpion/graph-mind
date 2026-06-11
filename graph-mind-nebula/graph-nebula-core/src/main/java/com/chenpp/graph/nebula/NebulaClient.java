@@ -55,11 +55,4 @@ public class NebulaClient implements GraphClient {
             return false;
         }
     }
-
-    @Override
-    public void close() {
-        // NebulaClient 是轻量级外观，底层 SessionPool / NebulaPool 由 NebulaClientFactory
-        // 以静态缓存管理生命周期，在应用关闭时统一释放，不在每次请求中销毁。
-        log.debug("Nebula client facade released (pool lifecycle managed by NebulaClientFactory)");
-    }
 }

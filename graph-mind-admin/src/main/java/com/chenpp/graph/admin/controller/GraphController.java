@@ -37,9 +37,6 @@ public class GraphController {
     @Autowired
     private GraphSchemaService graphSchemaService;
 
-    /**
-     * 获取图列表
-     */
     @GetMapping
     public Result<Page<GraphInfo>> getGraphs(
             @RequestParam(defaultValue = "1") Integer page,
@@ -51,12 +48,9 @@ public class GraphController {
         return Result.success(result);
     }
 
-    /**
-     * 根据连接ID获取图列表
-     */
-    @GetMapping("/connection/{connectionId}")
+    @GetMapping("/connection")
     public Result<Page<GraphInfo>> getGraphsByConnectionId(
-            @PathVariable Long connectionId,
+            @RequestParam Long connectionId,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer pageSize) {
 
@@ -65,29 +59,20 @@ public class GraphController {
         return Result.success(result);
     }
 
-    /**
-     * 新增图
-     */
     @PostMapping
     public Result<Long> createGraph(@RequestBody GraphInfo graphInfo) {
-        // 获取当前登录用户
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String creator = authentication != null ? authentication.getName() : "unknown";
         graphInfo.setCreator(creator);
-
         try {
-            // 先在图数据库创建图，创建成功后再保存到 MySQL
             Long graphId = graphSchemaService.createGraphInDatabase(graphInfo);
             return Result.success(graphId);
         } catch (Exception e) {
-            log.warn("在图数据库中创建图失败: {}", e.getMessage());
-            return Result.error("在图数据库中创建图失败: " + e.getMessage());
+            log.error("创建图失败: {}", e.getMessage());
+            return Result.error("创建图失败: " + e.getMessage());
         }
     }
 
-    /**
-     * 更新图
-     */
     @PutMapping("/{id}")
     public Result<String> updateGraph(@PathVariable Long id, @RequestBody GraphInfo graphInfo) {
         graphInfo.setId(id);
@@ -111,9 +96,6 @@ public class GraphController {
         return Result.success("删除成功");
     }
 
-    /**
-     * 获取图详情
-     */
     @GetMapping("/{id}")
     public Result<GraphInfo> getGraph(@PathVariable Long id) {
         GraphInfo graphInfo = graphService.getById(id);

@@ -66,13 +66,6 @@ public class JanusHBaseTest {
         graph = janusClient.getGraph();
     }
 
-    @After
-    public void cleanup() {
-        if (janusClient != null) {
-            janusClient.close();
-        }
-    }
-
     @Test
     public void testCreateClient() {
         // 测试创建JanusGraph客户端
@@ -87,12 +80,9 @@ public class JanusHBaseTest {
         GraphDataOperations graphDataOps = janusClient.opsForGraphData();
         assertNotNull(graphDataOps);
 
-        // 检查连接（当前实现返回false）
+        // 检查连接
         boolean connected = janusClient.checkConnection();
         assertTrue(connected);
-
-        // 关闭客户端
-        janusClient.close();
     }
 
     @Test

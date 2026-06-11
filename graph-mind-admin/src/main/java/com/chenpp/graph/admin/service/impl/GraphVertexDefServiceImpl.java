@@ -60,10 +60,6 @@ public class GraphVertexDefServiceImpl extends ServiceImpl<GraphVertexDefDao, Gr
     @Transactional(rollbackFor = Exception.class)
     @Override
     public boolean saveVertexDefWithProperties(GraphVertexDef vertexDef) {
-        // 设置创建和更新时间
-        vertexDef.setCreateTime(LocalDateTime.now());
-        vertexDef.setUpdateTime(LocalDateTime.now());
-
         // 保存节点定义
         boolean saved = this.save(vertexDef);
 
@@ -86,9 +82,6 @@ public class GraphVertexDefServiceImpl extends ServiceImpl<GraphVertexDefDao, Gr
     @Transactional(rollbackFor = Exception.class)
     @Override
     public boolean updateVertexDefWithProperties(GraphVertexDef vertexDef) {
-        // 设置更新时间
-        vertexDef.setUpdateTime(LocalDateTime.now());
-
         // 更新节点定义
         boolean updated = this.updateById(vertexDef);
 
@@ -119,13 +112,11 @@ public class GraphVertexDefServiceImpl extends ServiceImpl<GraphVertexDefDao, Gr
     @Transactional(rollbackFor = Exception.class)
     @Override
     public boolean deleteVertexDefWithProperties(Long id) {
-        // 删除节点属性
         QueryWrapper<GraphPropertyDef> deleteWrapper = new QueryWrapper<>();
         deleteWrapper.eq("entity_id", id);
         deleteWrapper.eq("property_type", "vertex");
         graphPropertyDefService.remove(deleteWrapper);
 
-        // 删除节点定义
         return this.removeById(id);
     }
 }

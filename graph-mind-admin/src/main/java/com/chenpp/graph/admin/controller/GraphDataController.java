@@ -15,7 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -26,9 +25,10 @@ import java.util.Map;
  * @author April.Chen
  * @date 2025/8/11 11:00
  */
+@SuppressWarnings("unchecked")
 @Slf4j
 @RestController
-@RequestMapping("/api/graphs/{graphId}")
+@RequestMapping("/api/graph/data")
 public class GraphDataController {
 
     @Autowired
@@ -37,18 +37,15 @@ public class GraphDataController {
     @Autowired
     private GraphSchemaService graphSchemaService;
 
-    /**
-     * 导入节点数据（CSV）
-     */
-    @PostMapping("/import/vertices/{vertexTypeId}")
-    public Result<ImportResult> importNodeData(
-            @PathVariable Long graphId,
-            @PathVariable Long vertexTypeId,
+    @PostMapping("/importVertices")
+    public Result<ImportResult> importVertexData(
+            @RequestParam Long graphId,
+            @RequestParam Long vertexTypeId,
             @RequestPart("file") MultipartFile file,
             @RequestPart("config") String config) {
         try {
             log.info("开始导入节点数据，graphId={}, vertexTypeId={}, config={}", graphId, vertexTypeId, config);
-            ImportResult result = graphDataService.importNodeData(graphId, vertexTypeId, file, config);
+            ImportResult result = graphDataService.importVertexData(graphId, vertexTypeId, file, config);
             return Result.success(result);
         } catch (Exception e) {
             log.error("导入节点数据失败", e);
@@ -56,13 +53,10 @@ public class GraphDataController {
         }
     }
 
-    /**
-     * 导入边数据（CSV）
-     */
-    @PostMapping("/import/edges/{edgeTypeId}")
+    @PostMapping("/importEdges")
     public Result<ImportResult> importEdgeData(
-            @PathVariable Long graphId,
-            @PathVariable Long edgeTypeId,
+            @RequestParam Long graphId,
+            @RequestParam Long edgeTypeId,
             @RequestPart("file") MultipartFile file,
             @RequestPart("config") String config) {
         try {
@@ -79,10 +73,10 @@ public class GraphDataController {
      * 查询节点数据列表
      * 对于发现的图（vertexTypeId < 0），需通过 connectionId + graphCode 发现 label
      */
-    @GetMapping("/vertices/{vertexTypeId}")
-    public Result<PageResult<GraphVertex>> getNodeDataList(
-            @PathVariable Long graphId,
-            @PathVariable Long vertexTypeId,
+    @GetMapping("/vertices")
+    public Result<PageResult<GraphVertex>> getVertexDataList(
+            @RequestParam Long graphId,
+            @RequestParam Long vertexTypeId,
             @RequestParam(required = false) Long connectionId,
             @RequestParam(required = false) String graphCode,
             @RequestParam(defaultValue = "1") Integer page,
@@ -108,7 +102,7 @@ public class GraphDataController {
                 }
             }
 
-            PageResult<GraphVertex> data = graphDataService.getNodeDataList(graphId, vertexTypeId, label, page, size, connectionId, graphCode);
+            PageResult<GraphVertex> data = graphDataService.queryVertexDataList(graphId, vertexTypeId, label, page, size, connectionId, graphCode);
             return Result.success(data);
         } catch (Exception e) {
             log.error("查询节点数据列表失败", e);
@@ -120,10 +114,10 @@ public class GraphDataController {
      * 查询边数据列表
      * 对于发现的图（edgeTypeId < 0），需通过 connectionId + graphCode 发现 label
      */
-    @GetMapping("/edges/{edgeTypeId}")
+    @GetMapping("/edges")
     public Result<PageResult<Map<String, Object>>> getEdgeDataList(
-            @PathVariable Long graphId,
-            @PathVariable Long edgeTypeId,
+            @RequestParam Long graphId,
+            @RequestParam Long edgeTypeId,
             @RequestParam(required = false) Long connectionId,
             @RequestParam(required = false) String graphCode,
             @RequestParam(defaultValue = "1") Integer page,
@@ -149,7 +143,7 @@ public class GraphDataController {
                 }
             }
 
-            PageResult<Map<String, Object>> data = graphDataService.getEdgeDataList(graphId, edgeTypeId, label, page, size, connectionId, graphCode);
+            PageResult<Map<String, Object>> data = graphDataService.queryEdgeDataList(graphId, edgeTypeId, label, page, size, connectionId, graphCode);
             return Result.success(data);
         } catch (Exception e) {
             log.error("查询边数据列表失败", e);
@@ -157,13 +151,10 @@ public class GraphDataController {
         }
     }
 
-    /**
-     * 获取节点数据详情
-     */
-    @GetMapping("/data/vertices/{vertexId}")
-    public Result<GraphVertex> getNodeData(
-            @PathVariable Long graphId,
-            @PathVariable String vertexId) {
+    @GetMapping("/vertex")
+    public Result<GraphVertex> getVertexData(
+            @RequestParam Long graphId,
+            @RequestParam String vertexId) {
         try {
             log.info("获取节点数据详情，graphId={}, vertexId={}", graphId, vertexId);
 
@@ -176,18 +167,13 @@ public class GraphDataController {
         }
     }
 
-    /**
-     * 获取边数据详情
-     */
-    @GetMapping("/data/edges/{edgeId}")
+    @GetMapping("/edge")
     public Result<GraphEdge> getEdgeData(
-            @PathVariable Long graphId,
-            @PathVariable String edgeId) {
+            @RequestParam Long graphId,
+            @RequestParam String edgeId) {
         try {
             log.info("获取边数据详情，graphId={}, edgeId={}", graphId, edgeId);
-
             GraphEdge data = graphDataService.getEdgeData(graphId, edgeId);
-
             return Result.success(data);
         } catch (Exception e) {
             log.error("获取边数据详情失败", e);
@@ -195,20 +181,14 @@ public class GraphDataController {
         }
     }
 
-    /**
-     * 新增节点数据
-     */
-    @PostMapping("/data/vertices/{vertexTypeId}")
-    public Result<Boolean> addNodeData(
-            @PathVariable Long graphId,
-            @PathVariable Long vertexTypeId,
+    @PostMapping("/vertex")
+    public Result<Boolean> addVertexData(
+            @RequestParam Long graphId,
+            @RequestParam Long vertexTypeId,
             @RequestBody Map<String, Object> data) {
         try {
             log.info("新增节点数据，graphId={}, vertexTypeId={}, data={}", graphId, vertexTypeId, data);
-
-            // TODO: 实现新增节点数据逻辑
             boolean result = graphDataService.addNodeData(graphId, vertexTypeId, data);
-
             if (result) {
                 return Result.success(true);
             } else {
@@ -220,20 +200,14 @@ public class GraphDataController {
         }
     }
 
-    /**
-     * 新增边数据
-     */
-    @PostMapping("/data/edges/{edgeTypeId}")
+    @PostMapping("/edge")
     public Result<Boolean> addEdgeData(
-            @PathVariable Long graphId,
-            @PathVariable Long edgeTypeId,
+            @RequestParam Long graphId,
+            @RequestParam Long edgeTypeId,
             @RequestBody Map<String, Object> data) {
         try {
             log.info("新增边数据，graphId={}, edgeTypeId={}, data={}", graphId, edgeTypeId, data);
-
-            // TODO: 实现新增边数据逻辑
             boolean result = graphDataService.addEdgeData(graphId, edgeTypeId, data);
-
             if (result) {
                 return Result.success(true);
             } else {
@@ -245,20 +219,14 @@ public class GraphDataController {
         }
     }
 
-    /**
-     * 更新节点数据
-     */
-    @PutMapping("/data/vertices/{vertexId}")
-    public Result<Boolean> updateNodeData(
-            @PathVariable Long graphId,
-            @PathVariable String vertexId,
+    @PutMapping("/vertex")
+    public Result<Boolean> updateVertexData(
+            @RequestParam Long graphId,
+            @RequestParam String vertexId,
             @RequestBody Map<String, Object> data) {
         try {
             log.info("更新节点数据，graphId={}, vertexId={}, data={}", graphId, vertexId, data);
-
-            // TODO: 实现更新节点数据逻辑
             boolean result = graphDataService.updateNodeData(graphId, vertexId, data);
-
             if (result) {
                 return Result.success(true);
             } else {
@@ -270,20 +238,14 @@ public class GraphDataController {
         }
     }
 
-    /**
-     * 更新边数据
-     */
-    @PutMapping("/data/edges/{edgeId}")
+    @PutMapping("/edge")
     public Result<Boolean> updateEdgeData(
-            @PathVariable Long graphId,
-            @PathVariable String edgeId,
+            @RequestParam Long graphId,
+            @RequestParam String edgeId,
             @RequestBody Map<String, Object> data) {
         try {
             log.info("更新边数据，graphId={}, edgeId={}, data={}", graphId, edgeId, data);
-
-            // TODO: 实现更新边数据逻辑
             boolean result = graphDataService.updateEdgeData(graphId, edgeId, data);
-
             if (result) {
                 return Result.success(true);
             } else {
@@ -295,20 +257,14 @@ public class GraphDataController {
         }
     }
 
-    /**
-     * 删除节点
-     */
-    @DeleteMapping("/data/vertices/{vertexId}")
-    public Result<Boolean> deleteNode(
-            @PathVariable Long graphId,
-            @PathVariable String vertexId,
+    @DeleteMapping("/vertex")
+    public Result<Boolean> deleteVertex(
+            @RequestParam Long graphId,
+            @RequestParam String vertexId,
             @RequestParam(required = false) String label) {
         try {
             log.info("开始删除节点，graphId={}, vertexId={}, label={}", graphId, vertexId, label);
-
-            // 调用服务方法处理节点删除
             boolean result = graphDataService.deleteNode(graphId, vertexId, label);
-
             if (result) {
                 return Result.success(true);
             } else {
@@ -323,23 +279,17 @@ public class GraphDataController {
     /**
      * 批量删除节点
      */
-    @DeleteMapping("/data/vertices")
-    public Result<Boolean> deleteNodes(
-            @PathVariable Long graphId,
+    @DeleteMapping("/vertices")
+    public Result<Boolean> deleteVertices(
+            @RequestParam Long graphId,
             @RequestBody Map<String, Object> request) {
         try {
-            @SuppressWarnings("unchecked")
             List<String> vertexIds = (List<String>) request.get("vertexIds");
-
             if (vertexIds == null || vertexIds.isEmpty()) {
                 return Result.error(400, "节点ID列表不能为空", false);
             }
-
             log.info("开始批量删除节点，graphId={}, vertexIds={}", graphId, vertexIds);
-
-            // 调用服务方法处理节点批量删除
             boolean result = graphDataService.deleteNodes(graphId, vertexIds, request.get("label").toString());
-
             if (result) {
                 return Result.success(true);
             } else {
@@ -356,14 +306,12 @@ public class GraphDataController {
      */
     @GetMapping("/summary")
     public Result<GraphSummary> getGraphSummary(
-            @PathVariable Long graphId,
+            @RequestParam Long graphId,
             @RequestParam(required = false) Long connectionId,
             @RequestParam(required = false) String graphCode) {
         try {
             log.info("获取图统计信息，graphId={}, connectionId={}, graphCode={}", graphId, connectionId, graphCode);
-
             GraphSummary summary = graphDataService.getGraphSummary(graphId, connectionId, graphCode);
-
             return Result.success(summary);
         } catch (Exception e) {
             log.error("获取图统计信息失败，graphId={}", graphId, e);

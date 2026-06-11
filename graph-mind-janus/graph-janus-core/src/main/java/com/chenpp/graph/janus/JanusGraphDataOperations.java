@@ -41,7 +41,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static java.lang.String.valueOf;
 import static java.util.stream.Collectors.toList;
@@ -66,11 +65,8 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         JanusGraphTransaction tx = null;
         try {
             tx = graph.newTransaction();
-            // 创建顶点
             JanusGraphVertex janusVertex = tx.addVertex(vertex.getLabel());
-            // 设置UID
             janusVertex.property(GraphConstants.UID, vertex.getUid());
-            // 设置其他属性
             if (vertex.getProperties() != null) {
                 vertex.getProperties().forEach((key, value) -> {
                     if (value != null) {
@@ -79,12 +75,10 @@ public class JanusGraphDataOperations implements GraphDataOperations {
                 });
             }
 
-            // 提交事务
             tx.commit();
             if (janusVertex.id() != null) {
                 vertex.setId(janusVertex.id().toString());
             }
-            // 返回创建的顶点
             return vertex;
         } catch (Exception e) {
             log.error("Failed to add vertex: {}", vertex, e);
@@ -104,12 +98,10 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         JanusGraphTransaction tx = null;
         try {
             tx = graph.newTransaction();
-            // 查找顶点
             Iterator<JanusGraphVertex> vertices = tx.query().has(GraphConstants.UID, vertex.getUid()).vertices().iterator();
             if (vertices.hasNext()) {
                 JanusGraphVertex janusVertex = vertices.next();
 
-                // 更新属性
                 if (vertex.getProperties() != null) {
                     vertex.getProperties().forEach((key, value) -> {
                         if (value != null) {
@@ -118,7 +110,6 @@ public class JanusGraphDataOperations implements GraphDataOperations {
                     });
                 }
 
-                // 提交事务
                 tx.commit();
                 return vertex;
             } else {
@@ -181,13 +172,10 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         JanusGraphTransaction tx = null;
         try {
             tx = graph.newTransaction();
-            // 查找顶点
             Iterator<JanusGraphVertex> vertices = tx.query().has(GraphConstants.UID, vertex.getUid()).vertices().iterator();
             if (vertices.hasNext()) {
                 JanusGraphVertex janusVertex = vertices.next();
-                // 删除顶点
                 janusVertex.remove();
-                // 提交事务
                 tx.commit();
                 return true;
             } else {
@@ -228,12 +216,10 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             // 创建边
             JanusGraphEdge janusEdge = startVertex.addEdge(edge.getLabel(), endVertex);
 
-            // 设置UID
             if (edge.getUid() != null) {
                 janusEdge.property(GraphConstants.UID, edge.getUid());
             }
 
-            // 设置其他属性
             if (edge.getProperties() != null) {
                 edge.getProperties().forEach((key, value) -> {
                     if (value != null) {
@@ -242,7 +228,6 @@ public class JanusGraphDataOperations implements GraphDataOperations {
                 });
             }
 
-            // 提交事务
             tx.commit();
             return edge;
         } catch (Exception e) {
@@ -252,7 +237,6 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             }
             throw new GraphException("Failed to add edge from " + edge.getStartUid() + " to " + edge.getEndUid(), e);
         } finally {
-            // 确保事务已关闭
             if (tx != null && tx.isOpen()) {
                 tx.close();
             }
@@ -314,12 +298,10 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         JanusGraphTransaction tx = null;
         try {
             tx = graph.newTransaction();
-            // 在JanusGraph中更新边的属性
             Iterator<JanusGraphEdge> edges = tx.query().has(GraphConstants.UID, edge.getUid()).edges().iterator();
             if (edges.hasNext()) {
                 JanusGraphEdge janusEdge = edges.next();
 
-                // 更新属性
                 if (edge.getProperties() != null) {
                     edge.getProperties().forEach((key, value) -> {
                         if (value != null) {
@@ -328,7 +310,6 @@ public class JanusGraphDataOperations implements GraphDataOperations {
                     });
                 }
 
-                // 提交事务
                 tx.commit();
                 return edge;
             } else {
@@ -352,13 +333,10 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         JanusGraphTransaction tx = null;
         try {
             tx = graph.newTransaction();
-            // 查找边
             Iterator<JanusGraphEdge> edges = tx.query().has(GraphConstants.UID, edge.getUid()).edges().iterator();
             if (edges.hasNext()) {
                 JanusGraphEdge janusEdge = edges.next();
-                // 删除边
                 janusEdge.remove();
-                // 提交事务
                 tx.commit();
                 return true;
             } else {
@@ -391,7 +369,6 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             if (result instanceof GraphTraversal) {
                 return traversalResult((GraphTraversal) result);
             }
-            // 如果脚本引擎返回了 List 等非 GraphTraversal 结果，直接迭代处理
             if (result instanceof Iterable) {
                 List<CacheVertex> vertexList = new ArrayList<>();
                 List<CacheEdge> edgeList = new ArrayList<>();
@@ -442,16 +419,27 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         }
         log.info("Iterate over the result set returned by gremlin server, time (ms)={}", System.currentTimeMillis() - start);
 
-        // 如果只返回了顶点而没有边，补全顶点关联的边
+        // 如果只返回了顶点而没有边，补全顶点关联的边（仅当顶点标签相同时才添加对端顶点，避免污染结果）
         if (edgeList.isEmpty() && !vertexList.isEmpty()) {
+            // 获取查询结果的顶点标签
+            String queryVertexLabel = vertexList.get(0).label();
             List<CacheVertex> additionalVertices = new ArrayList<>();
             for (CacheVertex vertex : vertexList) {
                 vertex.edges(Direction.BOTH).forEachRemaining(edge -> {
                     CacheEdge cacheEdge = (CacheEdge) edge;
                     if (!edgeList.contains(cacheEdge)) {
                         edgeList.add(cacheEdge);
-                        additionalVertices.add((CacheVertex) cacheEdge.outVertex());
-                        additionalVertices.add((CacheVertex) cacheEdge.inVertex());
+                        // 只添加标签相同的对端顶点，避免引入不同标签的顶点
+                        CacheVertex outV = (CacheVertex) cacheEdge.outVertex();
+                        CacheVertex inV = (CacheVertex) cacheEdge.inVertex();
+                        if (queryVertexLabel != null) {
+                            if (queryVertexLabel.equals(outV.label())) {
+                                additionalVertices.add(outV);
+                            }
+                            if (queryVertexLabel.equals(inV.label())) {
+                                additionalVertices.add(inV);
+                            }
+                        }
                     }
                 });
             }
@@ -480,7 +468,6 @@ public class JanusGraphDataOperations implements GraphDataOperations {
     private GraphData convertToGraphData(List<CacheVertex> vertexList, List<CacheEdge> edgeList) {
         GraphData graphData = new GraphData();
         List<GraphVertex> vertices = convertVertex(vertexList);
-        // 建立 id → vertex 和 uid → vertex 的双重映射，支持两种方式查找
         Map<String, GraphVertex> idVertexMap = new HashMap<>();
         for (GraphVertex v : vertices) {
             if (v.getId() != null && !v.getId().isEmpty()) {
@@ -520,11 +507,13 @@ public class JanusGraphDataOperations implements GraphDataOperations {
      * 通过 uid 或 id 查找顶点，支持用 uid 或 JanusGraph 内部 ID 匹配
      */
     private GraphVertex findVertex(String vertexKey, Map<String, GraphVertex> idVertexMap, List<GraphVertex> vertices) {
-        if (vertexKey == null || vertexKey.isEmpty()) return null;
-        // 先在映射中查找
+        if (vertexKey == null || vertexKey.isEmpty()) {
+            return null;
+        }
         GraphVertex v = idVertexMap.get(vertexKey);
-        if (v != null) return v;
-        // 再遍历 vertices 按 id 或 uid 匹配
+        if (v != null) {
+            return v;
+        }
         for (GraphVertex gv : vertices) {
             if (vertexKey.equals(gv.getId()) || vertexKey.equals(gv.getUid())) {
                 return gv;
@@ -541,12 +530,12 @@ public class JanusGraphDataOperations implements GraphDataOperations {
      */
     private List<GraphVertex> convertVertex(List<CacheVertex> detachedVertexList) {
         List<GraphVertex> vertexList = Lists.newArrayList();
-        Set< String> idSet = new HashSet<>();
+        Set<String> idSet = new HashSet<>();
         for (CacheVertex detachedVertex : detachedVertexList) {
             String id = valueOf(detachedVertex.id());
-            if (idSet.contains(id)){
+            if (idSet.contains(id)) {
                 continue;
-            }else {
+            } else {
                 idSet.add(id);
             }
             GraphVertex graphVertex = new GraphVertex();
@@ -584,7 +573,6 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             GraphEdge graphEdge = new GraphEdge();
             graphEdge.setId(valueOf(detachedEdge.id()));
 
-            // 优先使用uid属性作为起点/终点标识
             JanusGraphVertex outVertex = detachedEdge.outVertex();
             JanusGraphVertex inVertex = detachedEdge.inVertex();
             graphEdge.setStartUid(getVertexUid(outVertex));
@@ -607,117 +595,6 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             edgeList.add(graphEdge);
         }
         return edgeList;
-    }
-
-    /**
-     * 处理查询结果
-     *
-     * @param result    查询结果
-     * @param graphData 图数据容器
-     */
-    private void processQueryResult(Object result, GraphData graphData) {
-        if (result == null) {
-            return;
-        }
-
-        // 处理不同类型的查询结果
-        if (result instanceof Iterable) {
-            Iterable<?> iterable = (Iterable<?>) result;
-            for (Object item : iterable) {
-                processResultItem(item, graphData);
-            }
-        } else {
-            processResultItem(result, graphData);
-        }
-    }
-
-    /**
-     * 处理单个查询结果项
-     *
-     * @param item      结果项
-     * @param graphData 图数据容器
-     */
-    private void processResultItem(Object item, GraphData graphData) {
-        if (item instanceof Vertex) {
-            graphData.addVertex(convertVertex((Vertex) item));
-        } else if (item instanceof Edge) {
-            graphData.addEdge(convertEdge((Edge) item));
-        } else if (item instanceof Map) {
-            // 处理Map类型的结果，可能是属性
-            // 这里可以进一步扩展处理逻辑
-            log.debug("Map result item: {}", item);
-        } else {
-            // 其他类型的结果，暂时忽略
-            log.debug("Unknown result item type: {}", item.getClass());
-        }
-    }
-
-    /**
-     * 转换TinkerPop Vertex为GraphVertex
-     *
-     * @param vertex TinkerPop顶点
-     * @return GraphVertex
-     */
-    private GraphVertex convertVertex(Vertex vertex) {
-        GraphVertex graphVertex = new GraphVertex();
-        graphVertex.setId(vertex.id().toString());
-
-        // 获取标签
-        graphVertex.setLabel(vertex.label());
-
-        // 获取UID，优先使用uid属性，否则使用内部ID
-        graphVertex.setUid(getVertexUid(vertex));
-
-        // 获取属性
-        Map<String, Object> properties = new HashMap<>();
-        vertex.keys().forEach(key -> {
-            Object value = vertex.property(key).orElse(null);
-            if (value != null) {
-                properties.put(key, value);
-            }
-        });
-
-        graphVertex.setProperties(properties);
-        return graphVertex;
-    }
-
-    /**
-     * 转换TinkerPop Edge为GraphEdge
-     *
-     * @param edge TinkerPop边
-     * @return GraphEdge
-     */
-    private GraphEdge convertEdge(Edge edge) {
-        GraphEdge graphEdge = new GraphEdge();
-        graphEdge.setId(edge.id().toString());
-
-        // 获取标签
-        graphEdge.setLabel(edge.label());
-
-        // 获取起始和结束顶点UID（优先使用uid属性，否则使用内部ID）
-        Vertex outV = edge.outVertex();
-        Vertex inV = edge.inVertex();
-        graphEdge.setStartUid(getVertexUid(outV));
-        graphEdge.setEndUid(getVertexUid(inV));
-
-        // 获取UID，优先使用uid属性，否则使用内部ID
-        if (edge.properties("uid").hasNext()) {
-            graphEdge.setUid(edge.property("uid").value().toString());
-        } else {
-            graphEdge.setUid(edge.id().toString());
-        }
-
-        // 获取属性
-        Map<String, Object> properties = new HashMap<>();
-        edge.keys().forEach(key -> {
-            Object value = edge.property(key).orElse(null);
-            if (value != null) {
-                properties.put(key, value);
-            }
-        });
-
-        graphEdge.setProperties(properties);
-        return graphEdge;
     }
 
     /**
@@ -802,7 +679,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
 
     @Override
     public GraphData expand(String vertexId, int depth) throws GraphException {
-        String gremlinQuery = String.format("g.V().has('%s', '%s').repeat(bothE().bothV().simplePath()).times(%d).path()", 
+        String gremlinQuery = String.format("g.V().has('%s', '%s').repeat(bothE().bothV().simplePath()).times(%d).path()",
                 GraphConstants.UID, vertexId, depth);
         log.debug("Executing expand query: {}", gremlinQuery);
         return query(gremlinQuery);
@@ -895,31 +772,31 @@ public class JanusGraphDataOperations implements GraphDataOperations {
     public GraphSummary getSummary() throws GraphException {
         JanusGraphTransaction tx = null;
         GraphSummary summary = new GraphSummary();
-        
+
         try {
             tx = graph.newTransaction();
             // 获取节点总数
             long nodeCount = tx.traversal().V().count().next();
             summary.setVertexCount((int) nodeCount);
-            
+
             // 获取边总数
             long edgeCount = tx.traversal().E().count().next();
             summary.setEdgeCount((int) edgeCount);
-            
+
             // 获取各标签节点数量统计
             Map<String, Integer> vertexLabelCount = new HashMap<>();
             tx.traversal().V().label().groupCount().next().forEach((label, count) -> {
                 vertexLabelCount.put(label.toString(), count.intValue());
             });
             summary.setVertexLabelCount(vertexLabelCount);
-            
+
             // 获取各类型边数量统计
             Map<String, Integer> edgeLabelCount = new HashMap<>();
             tx.traversal().E().label().groupCount().next().forEach((label, count) -> {
                 edgeLabelCount.put(label.toString(), count.intValue());
             });
             summary.setEdgeLabelCount(edgeLabelCount);
-            
+
             tx.commit();
             log.debug("Retrieved graph summary: {} vertices, {} edges", nodeCount, edgeCount);
             return summary;
@@ -946,10 +823,14 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             return count;
         } catch (Exception e) {
             log.error("Failed to count vertices with label {} from JanusGraph", label, e);
-            if (tx != null && tx.isOpen()) tx.rollback();
+            if (tx != null && tx.isOpen()) {
+                tx.rollback();
+            }
             return 0L;
         } finally {
-            if (tx != null && tx.isOpen()) tx.close();
+            if (tx != null && tx.isOpen()) {
+                tx.close();
+            }
         }
     }
 
@@ -963,10 +844,14 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             return count;
         } catch (Exception e) {
             log.error("Failed to count edges with label {} from JanusGraph", label, e);
-            if (tx != null && tx.isOpen()) tx.rollback();
+            if (tx != null && tx.isOpen()) {
+                tx.rollback();
+            }
             return 0L;
         } finally {
-            if (tx != null && tx.isOpen()) tx.close();
+            if (tx != null && tx.isOpen()) {
+                tx.close();
+            }
         }
     }
 }

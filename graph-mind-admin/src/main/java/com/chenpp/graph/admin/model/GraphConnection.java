@@ -24,7 +24,7 @@ public class GraphConnection {
 
     private String name;
     @TableField(value = "graph_type")
-    private GraphTypeEnum graphType;
+    private String graphType;
     private String hosts;
     private Integer port;
     private String username;
@@ -40,4 +40,11 @@ public class GraphConnection {
      * json参数
      */
     private String params;
+
+    public GraphTypeEnum getGraphTypeEnum() {
+        if (graphType == null) {
+            return null;
+        }
+        return GraphTypeEnum.valueOf(graphType.toLowerCase());
+    }
 }
