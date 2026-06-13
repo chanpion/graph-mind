@@ -145,25 +145,17 @@ public class Neo4jGraphOperations implements GraphOperations {
     @Override
     public GraphSchema getPublishedSchema(GraphConf graphConf) throws GraphException {
         GraphSchema schema = new GraphSchema();
-        // 企业版：使用 graphCode 作为数据库名
-        // 社区版：使用默认数据库
         String database = resolveDatabase(graphConf.getGraphCode());
 
         try {
-            // 获取节点标签信息
             List<GraphEntity> entities = getNodeLabels(database);
             schema.setEntities(entities);
 
-            // 获取关系类型信息
             List<GraphRelation> relations = getRelationshipTypes(database);
             schema.setRelations(relations);
 
-            // 获取索引信息
             List<GraphIndex> indexes = getIndexes(database);
             schema.setIndexes(indexes);
-
-            log.debug("Retrieved schema from Neo4j (database={}): {} entities, {} relations, {} indexes",
-                    database, entities.size(), relations.size(), indexes.size());
         } catch (Exception e) {
             log.error("Failed to get published schema from Neo4j", e);
             throw new GraphException("Failed to get published schema from Neo4j", e);
@@ -284,7 +276,7 @@ public class Neo4jGraphOperations implements GraphOperations {
                 relation.getProperties().add(prop);
             }
 
-            inferEdgeEndpoints(session, database, relationMap);
+            inferEdgeEndpoints(session, relationMap);
         } catch (Exception e) {
             log.error("Failed to get relationship types from Neo4j", e);
             throw new GraphException("Failed to get relationship types", e);
@@ -296,7 +288,7 @@ public class Neo4jGraphOperations implements GraphOperations {
     /**
      * 从实际数据中采样推断边的起点/终点节点标签
      */
-    private void inferEdgeEndpoints(Session session, String database, Map<String, GraphRelation> relationMap) {
+    private void inferEdgeEndpoints(Session session, Map<String, GraphRelation> relationMap) {
         if (relationMap.isEmpty()) return;
 
         for (String relType : relationMap.keySet()) {

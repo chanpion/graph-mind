@@ -3,6 +3,7 @@ package com.chenpp.graph.neo4j;
 import com.chenpp.graph.core.exception.ErrorCode;
 import com.chenpp.graph.core.exception.GraphDatabaseException;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.neo4j.driver.AuthTokens;
 import org.neo4j.driver.Config;
 import org.neo4j.driver.Driver;
@@ -26,18 +27,17 @@ public class Neo4jClientFactory {
             throw new IllegalArgumentException("Neo4jConf cannot be null");
         }
 
-        if (!neo4jConf.isValid()) {
+        if (StringUtils.isAnyBlank(neo4jConf.getUri(),neo4jConf.getUsername(),neo4jConf.getPassword())) {
             log.error("Neo4jConf is invalid: {}", neo4jConf);
             throw new IllegalArgumentException("Invalid Neo4jConf: " + neo4jConf);
         }
 
-        String cacheKey = generateCacheKey(neo4jConf);
+        String cacheKey = neo4jConf.getUri() + "|" + neo4jConf.getGraphCode();
         Driver driver = CACHE.get(cacheKey);
 
         if (driver != null) {
             try {
                 driver.verifyConnectivity();
-                log.debug("Reusing existing Neo4j driver for: {}", neo4jConf.getUri());
             } catch (Exception e) {
                 log.warn("Existing Neo4j driver is not connected, creating new one: {}", e.getMessage());
                 driver = null;
@@ -70,9 +70,6 @@ public class Neo4jClientFactory {
         return driver;
     }
 
-    private static String generateCacheKey(Neo4jConf conf) {
-        return conf.getUri() + "|" + conf.getUsername() + "|" + conf.getGraphCode();
-    }
 
     /**
      * 关闭并清理所有缓存的驱动程序

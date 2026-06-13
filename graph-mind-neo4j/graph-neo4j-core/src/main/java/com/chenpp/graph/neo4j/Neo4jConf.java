@@ -25,27 +25,4 @@ public class Neo4jConf extends GraphConf {
      * 最大连接池大小
      */
     private int maxConnectionPoolSize = 100;
-    
-    /**
-     * 验证配置是否完整
-     * @return 配置是否有效
-     */
-    public boolean isValid() {
-        if (uri == null || uri.isEmpty()) {
-            log.warn("Neo4j URI is not configured");
-            return false;
-        }
-        
-        if (username == null || username.isEmpty()) {
-            log.warn("Neo4j username is not configured");
-            return false;
-        }
-        
-        if (password == null || password.isEmpty()) {
-            log.warn("Neo4j password is not configured");
-            return false;
-        }
-        
-        return true;
-    }
 }
