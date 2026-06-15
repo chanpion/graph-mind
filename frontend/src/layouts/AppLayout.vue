@@ -115,6 +115,7 @@ const appStore = useAppStore()
 const authStore = useAuthStore()
 const graphsStore = useGraphsStore()
 const { currentGraphId, graphs, selectedConnectionId } = storeToRefs(graphsStore)
+const currentGraph = computed(() => graphsStore.currentGraph)
 const { toggleTheme, isDark } = useTheme()
 
 const sidebarCollapsed = computed(() => appStore.sidebarCollapsed)
@@ -136,12 +137,12 @@ const DB_TAG_MAP = {
 }
 
 function connLabel(conn) {
-  const raw = (conn.type || conn.databaseType || '').toLowerCase()
+  const raw = (conn.type || conn.databaseType || conn.graphType || '').toLowerCase()
   return DB_TAG_MAP[raw]?.label || raw.toUpperCase()
 }
 
 function connTagType(conn) {
-  const raw = (conn.type || conn.databaseType || '').toLowerCase()
+  const raw = (conn.type || conn.databaseType || conn.graphType || '').toLowerCase()
   return DB_TAG_MAP[raw]?.type || 'info'
 }
 
@@ -191,11 +192,31 @@ onMounted(async () => {
     const res = await connectionApi.list()
     const data = res?.data || res
     connections.value = Array.isArray(data) ? data : data?.records || []
+    // 验证持久化的 selectedConnectionId 是否在已加载的连接列表中
+    if (selectedConnectionId.value) {
+      const exists = connections.value.some(conn => String(conn.id) === String(selectedConnectionId.value))
+      if (!exists) {
+        graphsStore.setSelectedConnection('')
+        graphsStore.setCurrentGraph(null)
+      }
+    }
   } catch (err) {
     console.error('加载连接列表失败:', err)
+    // API 失败时清理持久化的选中状态，避免显示无效 ID
+    if (selectedConnectionId.value) {
+      graphsStore.setSelectedConnection('')
+      graphsStore.setCurrentGraph(null)
+    }
   }
   if (selectedConnectionId.value) {
     await graphsStore.fetchGraphsByConnection(selectedConnectionId.value)
+    // 验证持久化的 currentGraph 是否在已加载的图列表中
+    if (currentGraph.value) {
+      const exists = graphs.value.some(g => String(g.id) === String(currentGraph.value.id))
+      if (!exists) {
+        graphsStore.setCurrentGraph(null)
+      }
+    }
   } else if (graphs.value.length === 0) {
     graphsStore.fetchGraphs()
   }

@@ -21,6 +21,11 @@ public interface GraphSchemaService {
     void publishSchema(Long graphId);
 
     /**
+     * 发布图Schema到图数据库（支持 discovered graph）
+     */
+    void publishSchema(Long graphId, Long connectionId, String graphCode);
+
+    /**
      * 获取图Schema
      */
     GraphSchema getGraphSchema(Long graphId);

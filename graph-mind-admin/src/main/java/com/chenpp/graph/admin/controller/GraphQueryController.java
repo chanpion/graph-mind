@@ -2,14 +2,17 @@ package com.chenpp.graph.admin.controller;
 
 import com.chenpp.graph.admin.model.Result;
 import com.chenpp.graph.admin.service.GraphConnectionService;
+import com.chenpp.graph.admin.service.GraphDataService;
 import com.chenpp.graph.admin.service.GraphService;
 import com.chenpp.graph.admin.util.GraphClientFactory;
 import com.chenpp.graph.core.GraphClient;
 import com.chenpp.graph.core.GraphDataOperations;
 import com.chenpp.graph.core.model.GraphConf;
 import com.chenpp.graph.core.model.GraphData;
+import com.chenpp.graph.core.model.GraphSummary;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -34,6 +37,9 @@ public class GraphQueryController {
 
     @Autowired
     private GraphConnectionService connectionService;
+
+    @Autowired
+    private GraphDataService graphDataService;
 
     @PostMapping("/query")
     public Result<GraphData> query(
@@ -79,58 +85,58 @@ public class GraphQueryController {
         GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
         GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
 
-        // 如果传入了 label + property，先用属性值查找节点 uid，再展开
-        String nodeUid = queryValue;
+        // 如果传入了 label + property，先用属性值查找顶点 uid，再展开
+        String vertexUid = queryValue;
         if (label != null && !label.isEmpty() && propertyName != null && !propertyName.isEmpty()) {
             // 按 uid 属性查找时，直接使用值作为 uid，无需 LOOKUP
             if ("uid".equals(propertyName)) {
-                nodeUid = queryValue;
-                log.debug("按 uid 直接定位节点: {}", nodeUid);
+                vertexUid = queryValue;
+                log.debug("按 uid 直接定位顶点: {}", vertexUid);
             } else {
-                String foundUid = lookupNodeUid(graphDataOperations, graphConf.getType(), label, propertyName, queryValue);
+                String foundUid = lookupVertexUid(graphDataOperations, graphConf.getType(), label, propertyName, queryValue);
                 if (foundUid != null) {
-                    nodeUid = foundUid;
+                    vertexUid = foundUid;
                 }
             }
         }
 
-        GraphData graphData = graphDataOperations.expand(nodeUid, depth);
+        GraphData graphData = graphDataOperations.expand(vertexUid, depth);
         return Result.success(graphData);
     }
 
     /**
-     * 按 Label + 属性查找节点 uid
+     * 按 Label + 属性查找顶点 uid
      * @return 找到的 uid；如果该图数据库不支持按属性查找（如 Nebula 无索引），返回 null
      */
-    private String lookupNodeUid(GraphDataOperations ops, String dbType, String label, String property, String value) {
+    private String lookupVertexUid(GraphDataOperations ops, String dbType, String label, String property, String value) {
         try {
-            String lookupQuery = buildFindNodeByPropertyQuery(dbType, label, property, value);
-            log.debug("查找节点: {}", lookupQuery);
+            String lookupQuery = buildFindVertexByPropertyQuery(dbType, label, property, value);
+            log.debug("查找顶点: {}", lookupQuery);
             GraphData lookupResult = ops.query(lookupQuery);
             if (lookupResult != null && lookupResult.getVertices() != null && !lookupResult.getVertices().isEmpty()) {
                 String foundUid = lookupResult.getVertices().get(0).getUid();
                 if (foundUid != null && !foundUid.isEmpty()) {
-                    log.info("通过属性找到节点 uid={}", foundUid);
+                    log.info("通过属性找到顶点 uid={}", foundUid);
                     return foundUid;
                 }
             }
-            log.warn("未找到匹配的节点: label={}, property={}, value={}", label, property, value);
+            log.warn("未找到匹配的顶点: label={}, property={}, value={}", label, property, value);
             return null;
         } catch (Exception e) {
             String msg = e.getMessage();
             if (msg != null && msg.contains("-1005")) {
                 log.warn("Nebula 无索引，不支持按属性查找: label={}, property={}, value={}", label, property, value);
             } else {
-                log.warn("查找节点失败: label={}, property={}, value={}, error={}", label, property, value, msg);
+                log.warn("查找顶点失败: label={}, property={}, value={}, error={}", label, property, value, msg);
             }
             return null;
         }
     }
 
     /**
-     * 构建按 Label + 属性查找节点的查询语句
+     * 构建按 Label + 属性查找顶点的查询语句
      */
-    private String buildFindNodeByPropertyQuery(String dbType, String label, String property, String value) {
+    private String buildFindVertexByPropertyQuery(String dbType, String label, String property, String value) {
         String escapedValue = value.replace("'", "\\'");
         if ("nebula".equalsIgnoreCase(dbType)) {
             return String.format("MATCH (n:`%s`) WHERE n.`%s`.`%s` == '%s' RETURN n", label, label, property, escapedValue);
@@ -171,7 +177,7 @@ public class GraphQueryController {
                 startVertexId = startValue;
                 log.debug("起点按 uid 直接定位: {}", startVertexId);
             } else {
-                String foundUid = lookupNodeUid(graphDataOperations, graphConf.getType(), startLabel, startProp, startValue);
+                String foundUid = lookupVertexUid(graphDataOperations, graphConf.getType(), startLabel, startProp, startValue);
                 if (foundUid != null) {
                     startVertexId = foundUid;
                 } else {
@@ -187,7 +193,7 @@ public class GraphQueryController {
                 endVertexId = endValue;
                 log.debug("终点按 uid 直接定位: {}", endVertexId);
             } else {
-                String foundUid = lookupNodeUid(graphDataOperations, graphConf.getType(), endLabel, endProp, endValue);
+                String foundUid = lookupVertexUid(graphDataOperations, graphConf.getType(), endLabel, endProp, endValue);
                 if (foundUid != null) {
                     endVertexId = foundUid;
                 } else {
@@ -197,11 +203,11 @@ public class GraphQueryController {
         }
 
         if (startVertexId == null || startVertexId.isEmpty()) {
-            return Result.error("起始节点不能为空，请检查起点查询条件");
+            return Result.error("起始顶点不能为空，请检查起点查询条件");
         }
 
         if (endVertexId == null || endVertexId.isEmpty()) {
-            return Result.error("目标节点不能为空，请检查终点查询条件");
+            return Result.error("目标顶点不能为空，请检查终点查询条件");
         }
 
         if (maxDepth == null) {
@@ -228,5 +234,14 @@ public class GraphQueryController {
         // 执行查询
         GraphData graphData = graphDataOperations.query(pathQuery);
         return Result.success(graphData);
+    }
+
+    @GetMapping("/summary")
+    public Result<GraphSummary> getSummary(
+            @PathVariable Long graphId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode) {
+        GraphSummary summary = graphDataService.getGraphSummary(graphId, connectionId, graphCode);
+        return Result.success(summary);
     }
 }

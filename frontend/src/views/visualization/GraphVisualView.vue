@@ -37,7 +37,9 @@
               :width="vizWidth"
               :height="vizHeight"
               :layout-type="layoutType"
-              @node-click="onNodeClick"
+              :vertex-display-prop-map="vertexDisplayPropMap"
+              :default-vertex-display-prop="defaultVertexDisplayProp"
+              @vertex-click="onVertexClick"
               @edge-click="onEdgeClick"
               class="viz-graph"
             />
@@ -100,14 +102,17 @@
             </div>
 
             <!-- 图例 -->
-            <div class="canvas-legend" v-if="legendItems.nodes.length > 0 || legendItems.edges.length > 0">
+            <div class="canvas-legend" v-if="legendItems.vertices.length > 0 || legendItems.edges.length > 0">
               <div class="legend-title">图例</div>
               <div class="legend-items">
-                <div class="legend-group" v-if="legendItems.nodes.length > 0">
-                  <div class="legend-group-title">节点</div>
-                  <div v-for="item in legendItems.nodes" :key="item.label" class="legend-item">
+                <div class="legend-group" v-if="legendItems.vertices.length > 0">
+                  <div class="legend-group-title">顶点</div>
+                  <div v-for="item in legendItems.vertices" :key="item.label" class="legend-item">
                     <span class="legend-node-dot" :style="{ background: item.color }"></span>
                     <span class="legend-label">{{ item.label }}</span>
+                    <el-select v-model="vertexDisplayPropMap[item.label]" size="small" style="width: 80px; margin-left: 4px" :disabled="!getAvailablePropsForLabel(item.label).length">
+                      <el-option v-for="prop in getAvailablePropsForLabel(item.label)" :key="prop" :label="prop" :value="prop" />
+                    </el-select>
                   </div>
                 </div>
                 <div class="legend-group" v-if="legendItems.edges.length > 0">
@@ -119,11 +124,10 @@
                 </div>
               </div>
             </div>
-
             <!-- 统计 -->
             <div class="canvas-stats">
               <div class="stat-item">
-                <span class="stat-label">节点</span>
+                <span class="stat-label">顶点</span>
                 <span class="stat-value">{{ graphData.nodes.length }}</span>
               </div>
               <div class="stat-divider"></div>
@@ -133,10 +137,10 @@
               </div>
             </div>
 
-            <!-- 节点/边详情浮动面板 -->
+            <!-- 顶点/边详情浮动面板 -->
             <div v-if="detailDrawerVisible && selectedElement" class="detail-panel">
               <div class="detail-header">
-                <h3>{{ selectedElement.type === 'node' ? '节点详情' : '边详情' }}</h3>
+                <h3>{{ selectedElement.type === 'vertex' ? '顶点详情' : '边详情' }}</h3>
                 <el-button
                   type="text"
                   size="small"
@@ -152,7 +156,7 @@
                   <h4>基础信息</h4>
                   <el-descriptions :column="1" border size="small" class="compact-descriptions">
                     <el-descriptions-item label="ID">{{ selectedElement.id }}</el-descriptions-item>
-                    <el-descriptions-item label="标签" v-if="selectedElement.type === 'node'">{{ selectedElement.label }}</el-descriptions-item>
+                    <el-descriptions-item label="标签" v-if="selectedElement.type === 'vertex'">{{ selectedElement.label }}</el-descriptions-item>
                     <el-descriptions-item label="类型" v-if="selectedElement.type === 'edge'">{{ selectedElement.label }}</el-descriptions-item>
                   </el-descriptions>
                 </div>
@@ -216,6 +220,24 @@ const queryLoading = ref(false)
 const graphData = ref({
   nodes: [],
   edges: []
+})
+
+// 节点显示属性配置
+const defaultVertexDisplayProp = ref('uid')
+const vertexDisplayPropMap = ref({})
+const getAvailablePropsForLabel = (label) => {
+  const props = new Set(['id', 'label', 'uid'])
+  graphData.value.nodes.forEach(n => {
+    if (n.label === label && n.properties) {
+      Object.keys(n.properties).forEach(k => props.add(k))
+    }
+  })
+  return Array.from(props)
+}
+// 所有图数据中的唯一节点 label
+const uniqueVertexLabels = computed(() => {
+  const labels = new Set(graphData.value.nodes.map(n => n.label).filter(Boolean))
+  return Array.from(labels)
 })
 
 // 当图类型变化时，自动填充默认查询语句
@@ -354,10 +376,10 @@ const loadSampleData = () => {
   ElMessage.success('已加载示例数据')
 }
 
-const onNodeClick = (node) => {
+const onVertexClick = (node) => {
   selectedElement.value = {
-    type: 'node',
-    id: node.properties?.id ?? node.id,
+    type: 'vertex',
+    id: node.id,
     label: node.label,
     properties: node.properties
   }
@@ -381,10 +403,10 @@ const closeDetailPanel = () => {
   selectedElement.value = null
 }
 
-// 展开邻居：从图数据库加载选中节点的邻居并合并到当前图中
+// 展开邻居：从图数据库加载选中顶点的邻居并合并到当前图中
 async function expandNeighbors() {
-  if (!selectedElement.value || selectedElement.value.type !== 'node') {
-    ElMessage.warning('请先选择一个节点')
+  if (!selectedElement.value || selectedElement.value.type !== 'vertex') {
+    ElMessage.warning('请先选择一个顶点')
     return
   }
 
@@ -405,7 +427,9 @@ async function expandNeighbors() {
   }
 
   try {
-    const params = {}
+    const params = {
+      label: selectedElement.value.label
+    }
     if (graphsStore.currentGraphId < 0 && graphsStore.currentGraph) {
       params.connectionId = graphsStore.currentGraph.connectionId
       params.graphCode = graphsStore.currentGraph.code
@@ -415,12 +439,12 @@ async function expandNeighbors() {
     const newData = transformApiResponseToGraphData(response) || { nodes: [], edges: [] }
 
     if (newData.nodes.length === 0 && newData.edges.length === 0) {
-      ElMessage.info('该节点没有邻居')
+      ElMessage.info('该顶点没有邻居')
       return
     }
 
     // 合并新数据到现有图中（去重）
-    const existingNodeIds = new Set(graphData.value.nodes.map(n => n.id))
+    const existingVertexIds = new Set(graphData.value.nodes.map(n => n.id))
     const existingEdgeKeys = new Set(
       graphData.value.edges.map(e => {
         const s = typeof e.source === 'object' ? e.source.id : e.source
@@ -429,11 +453,11 @@ async function expandNeighbors() {
       })
     )
 
-    const mergedNodes = [...graphData.value.nodes]
+    const mergedVertices = [...graphData.value.nodes]
     for (const node of newData.nodes) {
-      if (!existingNodeIds.has(node.id)) {
-        mergedNodes.push(node)
-        existingNodeIds.add(node.id)
+      if (!existingVertexIds.has(node.id)) {
+        mergedVertices.push(node)
+        existingVertexIds.add(node.id)
       }
     }
 
@@ -448,9 +472,9 @@ async function expandNeighbors() {
       }
     }
 
-    graphData.value = { nodes: mergedNodes, edges: mergedEdges }
+    graphData.value = { nodes: mergedVertices, edges: mergedEdges }
     isFiltered.value = false
-    ElMessage.success(`已展开 ${newData.nodes.length} 个邻居节点`)
+    ElMessage.success(`已展开 ${newData.nodes.length} 个邻居顶点`)
   } catch (error) {
     console.error('展开邻居失败:', error)
     // 后端调用失败时，回退到本地过滤
@@ -463,11 +487,11 @@ function fallbackLocalExpand(vertexId) {
   const connectedEdges = graphData.value.edges.filter(e => {
     const sourceId = typeof e.source === 'object' ? e.source.id : e.source
     const targetId = typeof e.target === 'object' ? e.target.id : e.target
-    return sourceId === nodeId || targetId === nodeId
+    return sourceId === vertexId || targetId === vertexId
   })
 
   if (connectedEdges.length === 0) {
-    ElMessage.warning('当前数据中没有找到该节点的邻居，请先执行查询加载更多数据')
+    ElMessage.warning('当前数据中没有找到该顶点的邻居，请先执行查询加载更多数据')
     return
   }
 
@@ -484,13 +508,13 @@ function fallbackLocalExpand(vertexId) {
     edges: connectedEdges
   }
   isFiltered.value = true
-  ElMessage.success(`展开节点邻居: ${neighborIds.size - 1} 个邻居`)
+  ElMessage.success(`展开顶点邻居: ${neighborIds.size - 1} 个邻居`)
 }
 
-// 收起邻居：仅显示选中节点
+// 收起邻居：仅显示选中顶点
 function collapseNeighbors() {
-  if (!selectedElement.value || selectedElement.value.type !== 'node') {
-    ElMessage.warning('请先选择一个节点')
+  if (!selectedElement.value || selectedElement.value.type !== 'vertex') {
+    ElMessage.warning('请先选择一个顶点')
     return
   }
 
@@ -510,7 +534,7 @@ function collapseNeighbors() {
   }
 
   isFiltered.value = true
-  ElMessage.success('已收起邻居节点')
+  ElMessage.success('已收起邻居顶点')
 }
 
 // 重置过滤：恢复完整图数据
@@ -537,8 +561,8 @@ const GRAPH_TYPE_TAG = {
 const graphTypeLabel = computed(() => GRAPH_TYPE_TAG[graphType.value]?.label || graphType.value)
 const graphTypeTagType = computed(() => GRAPH_TYPE_TAG[graphType.value]?.type || 'info')
 
-// 节点颜色映射
-const NODE_COLORS = {
+// 顶点颜色映射
+const VERTEX_COLORS = {
   person: '#6366f1',
   people: '#6366f1',
   company: '#f59e0b',
@@ -547,10 +571,10 @@ const NODE_COLORS = {
   location: '#10b981'
 }
 
-function getNodeColor(label) {
+function getVertexColor(label) {
   if (!label) return '#6366f1'
   const key = label.toLowerCase()
-  return NODE_COLORS[key] || stringToColor(key)
+  return VERTEX_COLORS[key] || stringToColor(key)
 }
 
 // 边颜色映射
@@ -579,16 +603,16 @@ function stringToColor(str, saturation = 70) {
 
 // 图例项
 const legendItems = computed(() => {
-  const nodes = []
+  const vertices = []
   const edges = []
-  const nodeLabels = new Set()
+  const vertexLabels = new Set()
   const edgeLabels = new Set()
 
   ;(graphData.value.nodes || []).forEach(n => {
     const label = n.label || 'Unknown'
-    if (!nodeLabels.has(label)) {
-      nodeLabels.add(label)
-      nodes.push({ label, color: getNodeColor(label) })
+    if (!vertexLabels.has(label)) {
+      vertexLabels.add(label)
+      vertices.push({ label, color: getVertexColor(label) })
     }
   })
 
@@ -600,7 +624,7 @@ const legendItems = computed(() => {
     }
   })
 
-  return { nodes, edges }
+  return { vertices, edges }
 })
 
 // 缩放控制
@@ -745,11 +769,11 @@ const transformApiResponseToGraphData = (apiResponse) => {
     const nodeMap = new Map()
     const edgeMap = new Map()
 
-    // 遍历结果，提取节点和边
+    // 遍历结果，提取顶点和边
     rawData.forEach((item, index) => {
       // 处理不同的返回格式
       if (item && typeof item === 'object') {
-        // 如果是节点
+        // 如果是顶点
         if (item.uid && item.label) {
           const vertexId = item.uid
           if (!nodeMap.has(vertexId)) {
@@ -1182,4 +1206,5 @@ const transformApiResponseToGraphData = (apiResponse) => {
     flex-direction: column;
   }
 }
+
 </style>

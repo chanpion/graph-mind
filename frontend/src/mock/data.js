@@ -46,7 +46,7 @@ export const mockGetVertex = async (connectionId, graphName, uid) => {
     const vertex = mockVertices[label].find(v => v.uid === uid)
     if (vertex) return mockSuccess(vertex)
   }
-  return mockError('节点不存在', 404)
+  return mockError('顶点不存在', 404)
 }
 
 export const mockUpdateVertex = async (connectionId, graphName, uid, data) => {
@@ -58,7 +58,7 @@ export const mockUpdateVertex = async (connectionId, graphName, uid, data) => {
       return mockSuccess(mockVertices[label][index])
     }
   }
-  return mockError('节点不存在', 404)
+  return mockError('顶点不存在', 404)
 }
 
 export const mockDeleteVertex = async (connectionId, graphName, uid) => {
@@ -70,7 +70,7 @@ export const mockDeleteVertex = async (connectionId, graphName, uid) => {
       return mockSuccess({ message: '删除成功' })
     }
   }
-  return mockError('节点不存在', 404)
+  return mockError('顶点不存在', 404)
 }
 
 export const mockCreateVertex = async (connectionId, graphName, data) => {

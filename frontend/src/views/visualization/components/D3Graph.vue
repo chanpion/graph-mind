@@ -13,10 +13,12 @@ const props = defineProps({
   data: { type: Object, default: () => ({ nodes: [], edges: [] }) },
   width: { type: Number, default: 800 },
   height: { type: Number, default: 600 },
-  layoutType: { type: String, default: 'force' }
+  layoutType: { type: String, default: 'force' },
+  vertexDisplayPropMap: { type: Object, default: () => ({}) },
+  defaultVertexDisplayProp: { type: String, default: 'uid' }
 })
 
-const emit = defineEmits(['node-click', 'edge-click'])
+const emit = defineEmits(['vertex-click', 'edge-click'])
 
 const container = ref(null)
 
@@ -73,6 +75,35 @@ function prepareData(data) {
   })
 
   return { nodes, edges }
+}
+
+// 获取节点显示文本
+function getVertexDisplayText(node) {
+  const prop = props.vertexDisplayPropMap[node.label] || props.defaultVertexDisplayProp
+  if (prop === 'id') return String(node.id).substring(0, 6)
+  if (prop === 'label') return String(node.label || '').substring(0, 6)
+  const value = node.properties?.[prop] ?? node[prop] ?? node.id
+  return String(value).substring(0, 6)
+}
+
+// 更新所有节点标签文本（当 nodeDisplayProp 变化时调用）
+function updateVertexLabels() {
+  if (labelElements) {
+    labelElements.text(d => getVertexDisplayText(d))
+  }
+}
+
+// 计算边的路径：自环用弧线，普通边用直线
+function getEdgePath(d) {
+  if (d.source === d.target) {
+    // 自环：在节点上方画一个弧
+    const x = d.source.x
+    const y = d.source.y
+    const radius = 24
+    const dx = radius * 1.2
+    return `M${x - dx},${y - radius} A${dx},${radius * 1.5} 0 1,1 ${x + dx},${y - radius}`
+  }
+  return `M${d.source.x},${d.source.y}L${d.target.x},${d.target.y}`
 }
 
 // 计算层次布局 (自上而下的树)
@@ -192,17 +223,19 @@ function render() {
     })
 
   // 透明宽点击热区
-  edgeGroup.append('line')
+  edgeGroup.append('path')
     .attr('class', 'edge-hit')
     .attr('stroke', 'transparent')
     .attr('stroke-width', 14)
+    .attr('fill', 'none')
 
-  // 可见边线
-  edgeGroup.append('line')
+  // 可见边线（自环边使用弧线，普通边使用直线）
+  edgeGroup.append('path')
     .attr('class', 'edge-visual')
     .attr('stroke', '#94a3b8')
     .attr('stroke-width', 2)
     .attr('stroke-opacity', 0.6)
+    .attr('fill', 'none')
     .attr('marker-end', 'url(#arrowhead)')
 
   // 保存引用（用于 tick 更新）
@@ -246,7 +279,7 @@ function render() {
     )
     .on('click', (event, d) => {
       event.stopPropagation()
-      emit('node-click', d)
+      emit('vertex-click', d)
     })
 
   // 节点圆形
@@ -264,10 +297,7 @@ function render() {
 
   // 节点标签（居中显示在节点圆形内）
   labelElements = nodeGroup.append('text')
-    .text(d => {
-      const uid = d.properties?.uid || d.uid || d.id || ''
-      return String(uid).substring(0, 6)
-    })
+    .text(d => getVertexDisplayText(d))
     .attr('text-anchor', 'middle')
     .attr('dy', '0.35em')
     .attr('font-size', 10)
@@ -283,11 +313,8 @@ function render() {
       .force('center', d3.forceCenter(props.width / 2, props.height / 2))
       .force('collision', d3.forceCollide(25))
       .on('tick', () => {
-        linkElements.selectAll('line')
-          .attr('x1', d => d.source.x)
-          .attr('y1', d => d.source.y)
-          .attr('x2', d => d.target.x)
-          .attr('y2', d => d.target.y)
+        linkElements.selectAll('path')
+          .attr('d', d => getEdgePath(d))
         edgeLabels
           .attr('x', d => (d.source.x + d.target.x) / 2)
           .attr('y', d => (d.source.y + d.target.y) / 2)
@@ -300,11 +327,8 @@ function render() {
   } else {
     // 非力导向：直接定位
     nodeGroup.attr('transform', d => `translate(${d.x},${d.y})`)
-    linkElements.selectAll('line')
-      .attr('x1', d => d.source.x)
-      .attr('y1', d => d.source.y)
-      .attr('x2', d => d.target.x)
-      .attr('y2', d => d.target.y)
+    linkElements.selectAll('path')
+      .attr('d', d => getEdgePath(d))
     edgeLabels
       .attr('x', d => (d.source.x + d.target.x) / 2)
       .attr('y', d => (d.source.y + d.target.y) / 2)
@@ -389,6 +413,14 @@ watch(() => props.data, () => {
   destroySimulation()
   nextTick(render)
 }, { deep: true })
+
+watch(() => props.vertexDisplayPropMap, () => {
+  updateVertexLabels()
+}, { deep: true })
+
+watch(() => props.defaultVertexDisplayProp, () => {
+  updateVertexLabels()
+})
 
 watch(() => props.layoutType, () => {
   destroySimulation()

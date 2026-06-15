@@ -156,24 +156,60 @@ public class NebulaUtil {
 
     /**
      * 格式化属性值，用于构建NGQL语句
+     * 根据值的类型正确格式化：
+     * - 字符串：加双引号
+     * - 数字：直接输出（不加引号）
+     * - 布尔：转大写
+     * - null/NULL：输出 NULL（不加引号）
+     * - 数字字符串：转换为数字后输出
      *
      * @param value 属性值
      * @return 格式化后的字符串
      */
     public static String formatValue(Object value) {
         if (value == null) {
-            return "null";
+            return "NULL";
         }
 
         if (value instanceof String) {
-            return "\"" + value.toString().replace("\"", "\\\"") + "\"";
+            String str = ((String) value).trim();
+            // 处理 null 字符串
+            if ("null".equalsIgnoreCase(str) || "NULL".equals(str)) {
+                return "NULL";
+            }
+            // 尝试解析为数字
+            try {
+                if (str.contains(".")) {
+                    double d = Double.parseDouble(str);
+                    return String.valueOf(d);
+                } else {
+                    long l = Long.parseLong(str);
+                    return String.valueOf(l);
+                }
+            } catch (NumberFormatException e) {
+                // 不是数字，作为字符串处理
+            }
+            // 尝试解析为布尔值
+            if ("true".equalsIgnoreCase(str)) {
+                return "TRUE";
+            }
+            if ("false".equalsIgnoreCase(str)) {
+                return "FALSE";
+            }
+            return "\"" + str.replace("\"", "\\\"") + "\"";
+        }
+
+        if (value instanceof Number) {
+            // 数字类型：整数和浮点数都直接输出
+            return value.toString();
         }
 
         if (value instanceof Boolean) {
             return value.toString().toUpperCase();
         }
 
-        return value.toString();
+        // 其他类型默认转为字符串（加引号）
+        return "\"" + value.toString().replace("\"", "\\\"") + "\"";
     }
 
     /**
@@ -265,8 +301,17 @@ public class NebulaUtil {
      */
     private static Object parseValueWrapper(ValueWrapper value) {
         try {
+            // 先检查是否为 null
+            if (value.isNull()) {
+                return null;
+            }
             if (value.isString()) {
-                return value.asString();
+                String str = value.asString();
+                // 如果是 "NULL" 字符串，转为 null
+                if ("NULL".equals(str)) {
+                    return null;
+                }
+                return str;
             } else if (value.isLong()) {
                 return value.asLong();
             } else if (value.isDouble()) {

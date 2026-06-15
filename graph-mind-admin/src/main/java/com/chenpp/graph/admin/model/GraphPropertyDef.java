@@ -24,7 +24,7 @@ public class GraphPropertyDef {
     private Long graphId;
 
     /**
-     * 节点定义ID或边定义ID
+     * 顶点定义ID或边定义ID
      */
     private Long entityId;
 
@@ -60,7 +60,7 @@ public class GraphPropertyDef {
     private Boolean indexed = false;
     
     /**
-     * 属性类型标记：vertex-节点属性，edge-边属性
+     * 属性类型标记：vertex-顶点属性，edge-边属性
      */
     private String propertyType;
 }

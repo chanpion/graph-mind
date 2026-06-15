@@ -129,34 +129,34 @@
           </g>
 
           <!-- 节点 -->
-          <g class="nodes">
+          <g class="vertices">
             <g
-              v-for="node in filteredNodes"
-              :key="node.id"
-              class="node"
-              :class="{ selected: isNodeSelected(node.id), highlighted: isHighlighted(node), dragging: draggedNode?.id === node.id }"
-              :transform="`translate(${node.x}, ${node.y})`"
-              @mousedown="startDrag(node, $event)"
-              @click="selectNode(node, $event)"
+              v-for="vertex in filteredVertices"
+              :key="vertex.id"
+              class="vertex"
+              :class="{ selected: isVertexSelected(vertex.id), highlighted: isHighlighted(vertex), dragging: draggedVertex?.id === vertex.id }"
+              :transform="`translate(${vertex.x}, ${vertex.y})`"
+              @mousedown="startDrag(vertex, $event)"
+              @click="selectVertex(vertex, $event)"
             >
               <circle
-                v-if="draggedNode?.id === node.id"
-                :r="getNodeRadius(node) + 7"
+                v-if="draggedVertex?.id === vertex.id"
+                :r="getVertexRadius(vertex) + 7"
                 fill="rgba(var(--el-color-primary-rgb), 0.2)"
                 class="drag-halo"
               />
               <circle
-                v-if="isNodeSelected(node.id)"
-                :r="getNodeRadius(node) + 5"
+                v-if="isVertexSelected(vertex.id)"
+                :r="getVertexRadius(vertex) + 5"
                 fill="rgba(var(--el-color-primary-rgb), 0.3)"
                 class="select-halo"
               />
               <circle
-                :r="getNodeRadius(node)"
-                :fill="getNodeColor(node)"
+                :r="getVertexRadius(vertex)"
+                :fill="getVertexColor(vertex)"
                 stroke="var(--el-border-color)"
                 stroke-width="2"
-                class="node-circle"
+                class="vertex-circle"
               />
               <text
                 text-anchor="middle"
@@ -164,37 +164,37 @@
                 fill="var(--el-color-white)"
                 font-size="11"
                 font-weight="600"
-                class="node-label"
+                class="vertex-label"
               >
-                {{ ((node.label || node.name) || '?').substring(0, 6) }}
+                {{ ((vertex.label || vertex.name) || '?').substring(0, 6) }}
               </text>
               <text
-                :dy="getNodeRadius(node) + 16"
+                :dy="getVertexRadius(vertex) + 16"
                 text-anchor="middle"
                 :fill="edgeAccentColor"
                 font-size="11"
-                class="node-type"
+                class="vertex-type"
               >
-                {{ node.label || node.name }}
+                {{ vertex.label || vertex.name }}
               </text>
               <circle
-                v-if="node.propertyCount > 0"
-                :cx="getNodeRadius(node) - 10"
-                :cy="-getNodeRadius(node) + 10"
+                v-if="vertex.propertyCount > 0"
+                :cx="getVertexRadius(vertex) - 10"
+                :cy="-getVertexRadius(vertex) + 10"
                 r="12"
                 fill="var(--el-color-success)"
                 class="property-badge"
               />
               <text
-                v-if="node.propertyCount > 0"
-                :x="getNodeRadius(node) - 10"
-                :y="-getNodeRadius(node) + 13"
+                v-if="vertex.propertyCount > 0"
+                :x="getVertexRadius(vertex) - 10"
+                :y="-getVertexRadius(vertex) + 13"
                 text-anchor="middle"
                 fill="white"
                 font-size="10"
                 font-weight="600"
               >
-                {{ node.propertyCount }}
+                {{ vertex.propertyCount }}
               </text>
             </g>
           </g>
@@ -236,16 +236,16 @@
         </div>
         <div class="legend-content">
           <div class="legend-section">
-            <div class="legend-title">点类型 ({{ nodes.length }})</div>
+            <div class="legend-title">点类型 ({{ vertices.length }})</div>
             <div
-              v-for="node in nodes"
-              :key="node.id"
+              v-for="vertex in vertices"
+              :key="vertex.id"
               class="legend-item"
-              @click="selectNode(node)"
+              @click="selectVertex(vertex)"
             >
-              <div class="legend-color" :style="{ backgroundColor: getNodeColor(node) }" />
-              <span class="legend-label">{{ node.label || node.name }}</span>
-              <el-tag size="small" type="info">{{ node.propertyCount }} 属性</el-tag>
+              <div class="legend-color" :style="{ backgroundColor: getVertexColor(vertex) }" />
+              <span class="legend-label">{{ vertex.label || vertex.name }}</span>
+              <el-tag size="small" type="info">{{ vertex.propertyCount }} 属性</el-tag>
             </div>
           </div>
           <div class="legend-section">
@@ -267,18 +267,18 @@
           </el-button>
         </div>
         <div class="detail-panel-body">
-          <template v-if="selectedNode">
+          <template v-if="selectedVertex">
             <div class="detail-item">
               <span class="detail-label">类型:</span>
               <el-tag type="success" size="small">点类型</el-tag>
             </div>
             <div class="detail-item">
               <span class="detail-label">属性数量:</span>
-              <span>{{ mergedNodeProperties.length }}</span>
+              <span>{{ mergedVertexProperties.length }}</span>
             </div>
-            <div v-if="selectedNode.description" class="detail-item">
+            <div v-if="selectedVertex.description" class="detail-item">
               <span class="detail-label">描述:</span>
-              <span>{{ selectedNode.description }}</span>
+              <span>{{ selectedVertex.description }}</span>
             </div>
             <div class="properties-section">
               <div class="section-title">属性列表</div>
@@ -288,7 +288,7 @@
                 <span class="prop-col-type">类型</span>
                 <span class="prop-col-flags">标记</span>
               </div>
-              <div class="property-item" v-for="prop in mergedNodeProperties" :key="prop.code || prop.name">
+              <div class="property-item" v-for="prop in mergedVertexProperties" :key="prop.code || prop.name">
                 <span class="prop-col-code prop-code">{{ prop.code }}</span>
                 <span class="prop-col-name prop-name">{{ prop.name }}</span>
                 <span class="prop-col-type"><el-tag size="small" type="info">{{ prop.type || prop.dataType }}</el-tag></span>
@@ -353,9 +353,9 @@ const containerRef = ref(null)
 const svgRef = ref(null)
 const zoomGroupRef = ref(null)
 
-const nodes = ref([])
+const vertices = ref([])
 const edges = ref([])
-const selectedNode = ref(null)
+const selectedVertex = ref(null)
 const selectedEdge = ref(null)
 const drawerVisible = ref(false)
 const drawerTitle = ref('')
@@ -368,14 +368,14 @@ const isDragging = ref(false)
 const isPanning = ref(false)
 const dragStart = ref({ x: 0, y: 0 })
 const panStart = ref({ x: 0, y: 0 })
-const draggedNode = ref(null)
+const draggedVertex = ref(null)
 const panOffset = ref({ x: 0, y: 0 })
-const selectedNodes = ref(new Set())
+const selectedVertexs = ref(new Set())
 
-const filteredNodes = computed(() => nodes.value)
-const mergedNodeProperties = computed(() => {
-  if (!selectedNode.value) return []
-  return (selectedNode.value.properties || []).map(p => ({ ...p, isBuiltIn: false }))
+const filteredVertices = computed(() => vertices.value)
+const mergedVertexProperties = computed(() => {
+  if (!selectedVertex.value) return []
+  return (selectedVertex.value.properties || []).map(p => ({ ...p, isBuiltIn: false }))
 })
 
 const mergedEdgeProperties = computed(() => {
@@ -394,8 +394,8 @@ const colorMap = [
   '#84CC16'
 ]
 
-function getNodeColor(node) {
-  const index = nodes.value.findIndex(n => n.id === node.id)
+function getVertexColor(vertex) {
+  const index = vertices.value.findIndex(n => n.id === vertex.id)
   const raw = colorMap[index % colorMap.length]
   if (raw.startsWith('var(--el-')) {
     return getCssVar(raw)
@@ -425,8 +425,8 @@ function getEdgeColor() {
   return edgeAccentColor.value
 }
 
-function getNodeRadius(node) {
-  return 24 + Math.min(3, (node.propertyCount || 0) * 0.3)
+function getVertexRadius(vertex) {
+  return 24 + Math.min(3, (vertex.propertyCount || 0) * 0.3)
 }
 
 function isSelfLoop(edge) {
@@ -436,7 +436,7 @@ function isSelfLoop(edge) {
 function getSelfLoopPath(edge) {
   const cx = edge.source.x
   const cy = edge.source.y
-  const r = getNodeRadius(edge.source)
+  const r = getVertexRadius(edge.source)
   const loopRadius = 60
   const startX = cx + r
   const startY = cy
@@ -452,7 +452,7 @@ function getSelfLoopPath(edge) {
 function getSelfLoopLabelPos(edge) {
   const cx = edge.source.x
   const cy = edge.source.y
-  const r = getNodeRadius(edge.source)
+  const r = getVertexRadius(edge.source)
   const loopRadius = 60
   const p0x = cx + r, p0y = cy
   const p1x = cx + r + loopRadius, p1y = cy - loopRadius - 20
@@ -472,7 +472,7 @@ function getEdgeTarget(edge) {
   const dy = t.y - s.y
   const dist = Math.sqrt(dx * dx + dy * dy)
   if (dist === 0) return { x: t.x, y: t.y }
-  const radius = getNodeRadius(t)
+  const radius = getVertexRadius(t)
   const ratio = (dist - radius - 2) / dist
   return { x: s.x + dx * ratio, y: s.y + dy * ratio }
 }
@@ -544,57 +544,57 @@ function getEdgeLabelMid(edge) {
 }
 
 function isHighlighted(item) {
-  if (selectedNodes.value.size === 0 && !selectedNode.value) return false
-  if (item.id && selectedNodes.value.has(item.id)) return true
-  if (item.source?.id && selectedNodes.value.has(item.source.id)) return true
-  if (item.target?.id && selectedNodes.value.has(item.target.id)) return true
-  if (selectedNode.value) {
-    if (item.id === selectedNode.value.id) return true
-    if (item.source?.id === selectedNode.value.id) return true
-    if (item.target?.id === selectedNode.value.id) return true
+  if (selectedVertexs.value.size === 0 && !selectedVertex.value) return false
+  if (item.id && selectedVertexs.value.has(item.id)) return true
+  if (item.source?.id && selectedVertexs.value.has(item.source.id)) return true
+  if (item.target?.id && selectedVertexs.value.has(item.target.id)) return true
+  if (selectedVertex.value) {
+    if (item.id === selectedVertex.value.id) return true
+    if (item.source?.id === selectedVertex.value.id) return true
+    if (item.target?.id === selectedVertex.value.id) return true
   }
   return false
 }
 
-function isNodeSelected(vertexId) {
-  return selectedNodes.value.has(vertexId) || (selectedNode.value && selectedNode.value.id === vertexId)
+function isVertexSelected(vertexId) {
+  return selectedVertexs.value.has(vertexId) || (selectedVertex.value && selectedVertex.value.id === vertexId)
 }
 
-function selectNode(node, event) {
+function selectVertex(vertex, event) {
   if (event?.shiftKey) {
-    if (selectedNodes.value.has(node.id)) {
-      selectedNodes.value.delete(node.id)
-      if (selectedNodes.value.size === 0) selectedNode.value = null
+    if (selectedVertexs.value.has(vertex.id)) {
+      selectedVertexs.value.delete(vertex.id)
+      if (selectedVertexs.value.size === 0) selectedVertex.value = null
     } else {
-      selectedNodes.value.add(node.id)
-      selectedNode.value = node
+      selectedVertexs.value.add(vertex.id)
+      selectedVertex.value = vertex
     }
   } else {
-    selectedNodes.value.clear()
-    selectedNode.value = node
+    selectedVertexs.value.clear()
+    selectedVertex.value = vertex
   }
   selectedEdge.value = null
-  drawerTitle.value = node.label || node.name
+  drawerTitle.value = vertex.label || vertex.name
   drawerVisible.value = true
 }
 
 function selectEdge(edge) {
   selectedEdge.value = edge
-  selectedNode.value = null
+  selectedVertex.value = null
   drawerTitle.value = edge.label || edge.name
   drawerVisible.value = true
 }
 
 function closeDetail() {
   drawerVisible.value = false
-  selectedNode.value = null
+  selectedVertex.value = null
   selectedEdge.value = null
-  selectedNodes.value.clear()
+  selectedVertexs.value.clear()
 }
 
 function transformData() {
-  // Map vertexDefs to D3 nodes, use numeric id for edge lookup
-  nodes.value = (props.vertexDefs || []).map(vt => ({
+  // Map vertexDefs to D3 vertices, use numeric id for edge lookup
+  vertices.value = (props.vertexDefs || []).map(vt => ({
     id: vt.id,
     label: vt.label || vt.name,
     name: vt.name,
@@ -606,19 +606,19 @@ function transformData() {
 
   // Map edgeDefs to D3 edges using startLabel/endLabel IDs (use == to handle String/Number type mismatch)
   edges.value = (props.edgeDefs || []).map(et => {
-    // 优先按 node.id 匹配，兼容按 node.startLabel 匹配
-    let sourceNode = nodes.value.find(n => n.label == et.startLabel)
-    if (!sourceNode) sourceNode = nodes.value.find(n => n.name == et.startLabel)
-    let targetNode = nodes.value.find(n => n.label == et.endLabel)
-    if (!targetNode) targetNode = nodes.value.find(n => n.name == et.endLabel)
+    // 优先按 vertex.id 匹配，兼容按 vertex.startLabel 匹配
+    let sourceVertex = vertices.value.find(n => n.label == et.startLabel)
+    if (!sourceVertex) sourceVertex = vertices.value.find(n => n.name == et.startLabel)
+    let targetVertex = vertices.value.find(n => n.label == et.endLabel)
+    if (!targetVertex) targetVertex = vertices.value.find(n => n.name == et.endLabel)
     return {
       id: et.id,
       label: et.label || et.name,
       name: et.name,
       description: et.description,
       properties: et.properties || [],
-      source: sourceNode,
-      target: targetNode
+      source: sourceVertex,
+      target: targetVertex
     }
   }).filter(e => e.source && e.target) // only valid edges
 
@@ -637,7 +637,7 @@ function transformData() {
     }
   })
 
-  if (nodes.value.length > 0) applyLayout()
+  if (vertices.value.length > 0) applyLayout()
 }
 
 function applyLayout() {
@@ -650,13 +650,13 @@ function applyForceLayout(width, height) {
   const cx = width / 2, cy = height / 2
 
   // 初始位置分散在容器中心附近，避免从(0,0)开始互相排斥到画布外
-  nodes.value.forEach((n, i) => {
-    const angle = (2 * Math.PI * i) / nodes.value.length
+  vertices.value.forEach((n, i) => {
+    const angle = (2 * Math.PI * i) / vertices.value.length
     n.x = cx + 120 * Math.cos(angle)
     n.y = cy + 120 * Math.sin(angle)
   })
 
-  const simulation = d3.forceSimulation(nodes.value)
+  const simulation = d3.forceSimulation(vertices.value)
     .force('link', d3.forceLink(edges.value).id(d => d.id).distance(220))
     .force('charge', d3.forceManyBody().strength(-350))
     .force('center', d3.forceCenter(cx, cy))
@@ -690,10 +690,10 @@ function updateZoom() {
 
 function toggleLegend() { showLegend.value = !showLegend.value }
 
-function startDrag(node, event) {
+function startDrag(vertex, event) {
   event.stopPropagation()
   isDragging.value = true
-  draggedNode.value = node
+  draggedVertex.value = vertex
   dragStart.value = { x: event.clientX, y: event.clientY }
 }
 
@@ -705,16 +705,16 @@ function handleMouseDown(event) {
 }
 
 function handleMouseMove(event) {
-  if (isDragging.value && draggedNode.value) {
+  if (isDragging.value && draggedVertex.value) {
     const dx = (event.clientX - dragStart.value.x) / zoom.value
     const dy = (event.clientY - dragStart.value.y) / zoom.value
-    if (selectedNodes.value.size > 1 && selectedNodes.value.has(draggedNode.value.id)) {
-      nodes.value.forEach(node => {
-        if (selectedNodes.value.has(node.id)) { node.x += dx; node.y += dy }
+    if (selectedVertexs.value.size > 1 && selectedVertexs.value.has(draggedVertex.value.id)) {
+      vertices.value.forEach(vertex => {
+        if (selectedVertexs.value.has(vertex.id)) { vertex.x += dx; vertex.y += dy }
       })
     } else {
-      draggedNode.value.x += dx
-      draggedNode.value.y += dy
+      draggedVertex.value.x += dx
+      draggedVertex.value.y += dy
     }
     dragStart.value = { x: event.clientX, y: event.clientY }
   } else if (isPanning.value) {
@@ -725,7 +725,7 @@ function handleMouseMove(event) {
 
 function handleMouseUp() {
   isDragging.value = false
-  draggedNode.value = null
+  draggedVertex.value = null
   isPanning.value = false
 }
 
@@ -763,8 +763,8 @@ onMounted(() => {
       const { width, height } = entry.contentRect
       if (wasZero && width > 0 && height > 0) {
         wasZero = false
-        if (nodes.value.length > 0) applyLayout()
-      } else if (width > 0 && height > 0 && nodes.value.length > 0) {
+        if (vertices.value.length > 0) applyLayout()
+      } else if (width > 0 && height > 0 && vertices.value.length > 0) {
         applyLayout()
       } else if (width === 0 || height === 0) {
         wasZero = true
@@ -835,22 +835,22 @@ onMounted(() => {
 
 .graph-svg:active { cursor: grabbing; }
 
-.node { cursor: pointer; }
+.vertex { cursor: pointer; }
 
-.node .node-circle {
+.vertex .vertex-circle {
   transition: filter 0.2s, stroke-width 0.2s;
 }
 
-.node:hover .node-circle {
+.vertex:hover .vertex-circle {
   stroke-width: 3;
 }
 
-.node.selected .node-circle {
+.vertex.selected .vertex-circle {
   stroke: var(--el-color-primary);
   stroke-width: 3;
 }
 
-.node.dragging .node-circle {
+.vertex.dragging .vertex-circle {
   stroke: var(--el-color-primary);
   stroke-width: 3;
 }

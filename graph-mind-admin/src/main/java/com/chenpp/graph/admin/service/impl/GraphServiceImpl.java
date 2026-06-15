@@ -92,16 +92,16 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, GraphInfo> implement
             return;
         }
         List<Long> graphIds = records.stream().map(GraphInfo::getId).collect(Collectors.toList());
-        List<GraphVertexDef> allNodes = graphVertexDefDao.selectList(
+        List<GraphVertexDef> allVertices = graphVertexDefDao.selectList(
                 new QueryWrapper<GraphVertexDef>().in("graph_id", graphIds).select("graph_id"));
-        Map<Long, Long> nodeCountMap = allNodes.stream()
+        Map<Long, Long> vertexCountMap = allVertices.stream()
                 .collect(Collectors.groupingBy(GraphVertexDef::getGraphId, Collectors.counting()));
         List<GraphEdgeDef> allEdges = graphEdgeDefDao.selectList(
                 new QueryWrapper<GraphEdgeDef>().in("graph_id", graphIds).select("graph_id"));
         Map<Long, Long> edgeCountMap = allEdges.stream()
                 .collect(Collectors.groupingBy(GraphEdgeDef::getGraphId, Collectors.counting()));
         for (GraphInfo graphInfo : records) {
-            graphInfo.setVertexTypeCount(nodeCountMap.getOrDefault(graphInfo.getId(), 0L).intValue());
+            graphInfo.setVertexTypeCount(vertexCountMap.getOrDefault(graphInfo.getId(), 0L).intValue());
             graphInfo.setEdgeTypeCount(edgeCountMap.getOrDefault(graphInfo.getId(), 0L).intValue());
         }
     }
@@ -125,6 +125,9 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, GraphInfo> implement
         queryWrapper.eq("connection_id", connectionId);
         queryWrapper.orderByDesc("create_time");
         Page<GraphInfo> pageResult = this.page(page, queryWrapper);
+
+        // 从本地数据库填充节点/边类型计数（对本地创建的图有效）
+        fillGraphCounts(pageResult.getRecords());
 
         // 标记本地图为平台创建
         for (GraphInfo g : pageResult.getRecords()) {
@@ -165,6 +168,13 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, GraphInfo> implement
 
         GraphInfo graphInfo = new GraphInfo();
         graphInfo.setConnectionId(connectionId);
+
+        // 对于 JanusGraph，无法发现已有图（架构不支持），直接返回
+        if ("janus".equalsIgnoreCase(connection.getGraphType())) {
+            log.debug("JanusGraph does not support listing existing graphs, skipping discovery");
+            return result;
+        }
+
         GraphConf graphConf = GraphClientFactory.createGraphConf(connection, "placeholder");
 
         try {
@@ -186,7 +196,9 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, GraphInfo> implement
                 result.add(g);
             }
         } catch (Exception e) {
-            log.warn("发现远程图失败，connectionId={}: {}", connectionId, e.getMessage());
+            // 仅记录简要错误信息，避免过多堆栈跟踪
+            String briefMsg = e.getMessage() != null ? e.getMessage().split("\n")[0] : e.getClass().getSimpleName();
+            log.warn("发现远程图失败，connectionId={}: {}", connectionId, briefMsg);
         }
         return result;
     }
@@ -253,8 +265,13 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, GraphInfo> implement
         if (connection == null || graphInfos == null || graphInfos.isEmpty()) {
             return;
         }
-        GraphInfo graphInfo = new GraphInfo();
-        graphInfo.setConnectionId(connectionId);
+
+        // JanusGraph 不支持按图名独立获取 schema，跳过
+        if ("janus".equalsIgnoreCase(connection.getGraphType())) {
+            log.debug("JanusGraph does not support fetching schema stats per graph, skipping");
+            return;
+        }
+
         GraphConf graphConf = GraphClientFactory.createGraphConf(connection, "");
 
         try {

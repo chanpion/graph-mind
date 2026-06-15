@@ -26,7 +26,7 @@
         <input ref="fileInputRef" type="file" accept=".json" style="display:none" @change="handleFileChange" />
       </div>
       <el-tabs v-model="activeTab" @tab-change="handleTabChange" class="schema-tabs">
-        <el-tab-pane label="点定义" name="nodes">
+        <el-tab-pane label="点定义" name="vertices">
           <el-table :data="vertexDefs" style="width: 100%" row-key="id" v-loading="loading">
           <el-table-column prop="label" label="标签" min-width="120" />
           <el-table-column prop="name" label="名称" min-width="150" />
@@ -40,8 +40,8 @@
           </el-table-column>
           <el-table-column label="操作" width="120" align="center">
             <template #default="{ row }">
-              <el-button type="primary" :icon="Edit" size="small" circle @click="handleEditNode(row)" title="编辑" />
-              <el-button type="danger" :icon="Delete" size="small" circle @click="handleDeleteNode(row)" title="删除" />
+              <el-button type="primary" :icon="Edit" size="small" circle @click="handleEditVertex(row)" title="编辑" />
+              <el-button type="danger" :icon="Delete" size="small" circle @click="handleDeleteVertex(row)" title="删除" />
             </template>
           </el-table-column>
           <el-table-column type="expand">
@@ -70,10 +70,10 @@
           <el-table-column prop="label" label="标签" min-width="120" />
           <el-table-column prop="name" label="名称" min-width="150" />
           <el-table-column label="起点类型" min-width="120">
-            <template #default="{ row }">{{ getNodeNameByLabel(row.startLabel) }}</template>
+            <template #default="{ row }">{{ getVertexNameByLabel(row.startLabel) }}</template>
           </el-table-column>
           <el-table-column label="终点类型" min-width="120">
-            <template #default="{ row }">{{ getNodeNameByLabel(row.endLabel) }}</template>
+            <template #default="{ row }">{{ getVertexNameByLabel(row.endLabel) }}</template>
           </el-table-column>
           <el-table-column prop="description" label="描述" min-width="180" />
           <el-table-column prop="status" label="状态" width="90" align="center">
@@ -112,22 +112,22 @@
     </div>
 
     <!-- 点定义弹窗 -->
-    <el-dialog v-model="nodeDialogVisible" :title="nodeDialogTitle" width="800px">
-      <el-form :model="nodeForm" label-width="80px">
+    <el-dialog v-model="vertexDialogVisible" :title="vertexDialogTitle" width="800px">
+      <el-form :model="vertexForm" label-width="80px">
         <el-form-item label="标签">
-          <el-input v-model="nodeForm.label" placeholder="请输入标签" />
+          <el-input v-model="vertexForm.label" placeholder="请输入标签" />
         </el-form-item>
         <el-form-item label="名称">
-          <el-input v-model="nodeForm.name" placeholder="请输入名称" />
+          <el-input v-model="vertexForm.name" placeholder="请输入名称" />
         </el-form-item>
         <el-form-item label="描述">
-          <el-input v-model="nodeForm.description" placeholder="请输入描述" />
+          <el-input v-model="vertexForm.description" placeholder="请输入描述" />
         </el-form-item>
         <el-form-item label="状态">
-          <el-tag :type="nodeForm.status === 1 ? 'success' : 'info'">{{ nodeForm.status === 1 ? '已发布' : '未发布' }}</el-tag>
+          <el-tag :type="vertexForm.status === 1 ? 'success' : 'info'">{{ vertexForm.status === 1 ? '已发布' : '未发布' }}</el-tag>
         </el-form-item>
         <el-form-item label="属性">
-          <el-table :data="nodeForm.properties" style="width: 100%">
+          <el-table :data="vertexForm.properties" style="width: 100%">
             <el-table-column label="属性标识" min-width="120">
               <template #default="{ row, $index }">
                 <el-input v-model="row.code" placeholder="属性标识" :disabled="row.code === 'uid'" />
@@ -156,19 +156,19 @@
             </el-table-column>
             <el-table-column label="操作" width="80" align="center">
               <template #default="{ row, $index }">
-                <el-button type="danger" size="small" :icon="Delete" circle @click="removeNodeProperty($index)" :disabled="row.code === 'uid'" />
+                <el-button type="danger" size="small" :icon="Delete" circle @click="removeVertexProperty($index)" :disabled="row.code === 'uid'" />
               </template>
             </el-table-column>
           </el-table>
           <div style="margin-top: 10px;">
-            <el-button type="primary" size="small" @click="addNodeProperty">新增属性</el-button>
+            <el-button type="primary" size="small" @click="addVertexProperty">新增属性</el-button>
           </div>
         </el-form-item>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="nodeDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="saveNode" :loading="saving">确定</el-button>
+          <el-button @click="vertexDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="saveVertex" :loading="saving">确定</el-button>
         </div>
       </template>
     </el-dialog>
@@ -184,12 +184,12 @@
         </el-form-item>
         <el-form-item label="起点类型">
           <el-select v-model="edgeForm.startLabel" placeholder="请选择起点类型" style="width: 100%">
-            <el-option v-for="node in vertexDefs" :key="node.id" :label="node.name" :value="node.label" />
+            <el-option v-for="vertex in vertexDefs" :key="vertex.id" :label="vertex.name" :value="vertex.label" />
           </el-select>
         </el-form-item>
         <el-form-item label="终点类型">
           <el-select v-model="edgeForm.endLabel" placeholder="请选择终点类型" style="width: 100%">
-            <el-option v-for="node in vertexDefs" :key="node.id" :label="node.name" :value="node.label" />
+            <el-option v-for="vertex in vertexDefs" :key="vertex.id" :label="vertex.name" :value="vertex.label" />
           </el-select>
         </el-form-item>
         <el-form-item label="描述">
@@ -251,16 +251,16 @@
         <p>检测到以下定义，是否导入？</p>
         <el-alert type="info" :closable="false" show-icon>
           <template #title>
-            点定义 {{ importData.nodes?.length || 0 }} 个 · 边定义 {{ importData.edges?.length || 0 }} 个
+            点定义 {{ importData.vertices?.length || 0 }} 个 · 边定义 {{ importData.edges?.length || 0 }} 个
           </template>
         </el-alert>
-        <div class="import-preview" v-if="importData.nodes?.length">
+        <div class="import-preview" v-if="importData.vertices?.length">
           <div class="preview-title">点定义预览：</div>
-          <div v-for="n in importData.nodes.slice(0, 5)" :key="n.id || n.label" class="preview-item">
+          <div v-for="n in importData.vertices.slice(0, 5)" :key="n.id || n.label" class="preview-item">
             <el-tag size="small" type="success">{{ n.label }}</el-tag> {{ n.name }}
           </div>
-          <div v-if="importData.nodes.length > 5" class="preview-more">
-            ... 还有 {{ importData.nodes.length - 5 }} 个
+          <div v-if="importData.vertices.length > 5" class="preview-more">
+            ... 还有 {{ importData.vertices.length - 5 }} 个
           </div>
         </div>
         <div class="import-preview" v-if="importData.edges?.length">
@@ -307,15 +307,15 @@ const importing = ref(false)
 const fileInputRef = ref(null)
 const importDialogVisible = ref(false)
 const importData = ref({ nodes: [], edges: [] })
-const activeTab = ref('nodes')
+const activeTab = ref('vertices')
 const viewMode = ref('list')
 
 const vertexDefs = ref([])
 const edgeDefs = ref([])
 
-const nodeDialogVisible = ref(false)
-const nodeDialogTitle = ref('')
-const nodeForm = ref({
+const vertexDialogVisible = ref(false)
+const vertexDialogTitle = ref('')
+const vertexForm = ref({
   label: '',
   name: '',
   description: '',
@@ -388,42 +388,42 @@ function handleTabChange(tab) {
   }
 }
 
-function getNodeNameByLabel(label) {
+function getVertexNameByLabel(label) {
   if (!label) return '未定义'
-  const node = vertexDefs.value.find(n => n.label === label)
-  return node ? node.name : label
+  const vertex = vertexDefs.value.find(n => n.label === label)
+  return vertex ? vertex.name : label
 }
 
 function handleAdd() {
-  if (activeTab.value === 'nodes') {
-    handleAddNode()
+  if (activeTab.value === 'vertices') {
+    handleAddVertex()
   } else {
     handleAddEdge()
   }
 }
 
-function handleAddNode() {
-  nodeForm.value = {
+function handleAddVertex() {
+  vertexForm.value = {
     label: '',
     name: '',
     description: '',
     status: 0,
     properties: [{ code: 'uid', name: '唯一标识', type: 'String', status: 0, indexed: true }]
   }
-  nodeDialogTitle.value = '新增点定义'
-  nodeDialogVisible.value = true
+  vertexDialogTitle.value = '新增点定义'
+  vertexDialogVisible.value = true
 }
 
-function handleEditNode(row) {
-  nodeForm.value = {
+function handleEditVertex(row) {
+  vertexForm.value = {
     ...row,
     properties: row.properties ? [...row.properties] : []
   }
-  nodeDialogTitle.value = '编辑点定义'
-  nodeDialogVisible.value = true
+  vertexDialogTitle.value = '编辑点定义'
+  vertexDialogVisible.value = true
 }
 
-async function handleDeleteNode(row) {
+async function handleDeleteVertex(row) {
   try {
     await ElMessageBox.confirm('确定要删除该点定义吗？', '提示', { type: 'warning' })
     await graphApi.deleteVertexDef(currentGraphId.value, row.id)
@@ -435,18 +435,19 @@ async function handleDeleteNode(row) {
   }
 }
 
-async function saveNode() {
+async function saveVertex() {
   saving.value = true
   try {
-    const data = { ...nodeForm.value }
-    if (nodeForm.value.id) {
-      await graphApi.updateVertexDef(currentGraphId.value, nodeForm.value.id, data)
+    const data = { ...vertexForm.value }
+    const params = getExtraParams()
+    if (vertexForm.value.id) {
+      await graphApi.updateVertexDef(currentGraphId.value, vertexForm.value.id, data, params)
       ElMessage.success('更新成功')
     } else {
-      await graphApi.addVertexDef(currentGraphId.value, data)
+      await graphApi.addVertexDef(currentGraphId.value, data, params)
       ElMessage.success('新增成功')
     }
-    nodeDialogVisible.value = false
+    vertexDialogVisible.value = false
     await fetchVertexDefs()
   } catch (e) {
     ElMessage.error('保存失败')
@@ -455,12 +456,22 @@ async function saveNode() {
   }
 }
 
-function addNodeProperty() {
-  nodeForm.value.properties.push({ code: '', name: '', type: 'String', status: 0, indexed: false })
+function addVertexProperty() {
+  vertexForm.value.properties.push({ code: '', name: '', type: 'String', status: 0, indexed: false })
 }
 
-function removeNodeProperty(index) {
-  nodeForm.value.properties.splice(index, 1)
+function removeVertexProperty(index) {
+  vertexForm.value.properties.splice(index, 1)
+}
+
+/** 对于发现的图（graphId < 0），写操作需额外传 connectionId + graphCode */
+function getExtraParams() {
+  const extra = {}
+  if (currentGraphId.value < 0 && graphsStore.currentGraph) {
+    extra.connectionId = graphsStore.currentGraph.connectionId
+    extra.graphCode = graphsStore.currentGraph.code
+  }
+  return extra
 }
 
 function handleAddEdge() {
@@ -502,11 +513,12 @@ async function saveEdge() {
   saving.value = true
   try {
     const data = { ...edgeForm.value }
+    const params = getExtraParams()
     if (edgeForm.value.id) {
-      await graphApi.updateEdgeDef(currentGraphId.value, edgeForm.value.id, data)
+      await graphApi.updateEdgeDef(currentGraphId.value, edgeForm.value.id, data, params)
       ElMessage.success('更新成功')
     } else {
-      await graphApi.addEdgeDef(currentGraphId.value, data)
+      await graphApi.addEdgeDef(currentGraphId.value, data, params)
       ElMessage.success('新增成功')
     }
     edgeDialogVisible.value = false
@@ -537,7 +549,7 @@ async function handleFileChange(event) {
   try {
     const text = await file.text()
     const data = JSON.parse(text)
-    if (!data.nodes && !data.edges) {
+    if (!data.vertices && !data.edges) {
       ElMessage.error('文件格式错误，缺少 nodes 或 edges 字段')
       return
     }
@@ -554,7 +566,7 @@ async function handleImportMerge() {
   try {
     await graphApi.importSchema(currentGraphId.value, {
       mode: 'merge',
-      nodes: importData.value.nodes,
+      nodes: importData.value.vertices,
       edges: importData.value.edges
     })
     ElMessage.success('导入成功')
@@ -574,7 +586,7 @@ async function handleImportClean() {
   try {
     await graphApi.importSchema(currentGraphId.value, {
       mode: 'replace',
-      nodes: importData.value.nodes,
+      nodes: importData.value.vertices,
       edges: importData.value.edges
     })
     ElMessage.success('导入成功（已覆盖）')
@@ -603,7 +615,7 @@ async function handleExport() {
       exportedAt: new Date().toISOString(),
       graphId: currentGraphId.value,
       graphCode: data.graphCode,
-      nodes: data.nodes || [],
+      nodes: data.vertices || [],
       edges: data.edges || []
     }
     const now = new Date()

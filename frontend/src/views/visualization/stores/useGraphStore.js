@@ -13,7 +13,7 @@ export const useGraphStore = defineStore('graph-viz', () => {
   const expandedSubgraphs = ref(new Set())
 
   // 选中的节点ID
-  const selectedNode = ref(null)
+  const selectedVertex = ref(null)
 
   // 图布局算法
   const layoutAlgorithm = ref('force-directed')
@@ -52,13 +52,13 @@ export const useGraphStore = defineStore('graph-viz', () => {
   }
 
   /** 设置选中的节点 */
-  function setSelectedNode(vertexId) {
-    selectedNode.value = vertexId
+  function setSelectedVertex(vertexId) {
+    selectedVertex.value = vertexId
   }
 
   /** 清除选中的节点 */
-  function clearSelectedNode() {
-    selectedNode.value = null
+  function clearSelectedVertex() {
+    selectedVertex.value = null
   }
 
   /** 设置布局算法 */
@@ -70,14 +70,14 @@ export const useGraphStore = defineStore('graph-viz', () => {
   function resetVisualizationState() {
     highlightedPath.value = []
     expandedSubgraphs.value.clear()
-    selectedNode.value = null
+    selectedVertex.value = null
     layoutAlgorithm.value = 'force-directed'
   }
 
   return {
     highlightedPath,
     expandedSubgraphs,
-    selectedNode,
+    selectedVertex,
     layoutAlgorithm,
     hasHighlightedPath,
     expandedSubgraphCount,
@@ -86,8 +86,8 @@ export const useGraphStore = defineStore('graph-viz', () => {
     expandSubgraph,
     collapseSubgraph,
     toggleSubgraph,
-    setSelectedNode,
-    clearSelectedNode,
+    setSelectedVertex,
+    clearSelectedVertex,
     setLayoutAlgorithm,
     resetVisualizationState
   }

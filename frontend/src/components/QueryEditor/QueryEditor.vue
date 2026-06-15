@@ -267,7 +267,7 @@ const highlightSyntax = () => {
 
   // 高亮变量和节点标识
   highlighted = highlighted.replace(/\$[a-zA-Z_][a-zA-Z0-9_]*/g, '<span class="variable">$&</span>')
-  highlighted = highlighted.replace(/\([a-zA-Z_][a-zA-Z0-9_]*\)/g, '<span class="node">$&</span>')
+  highlighted = highlighted.replace(/\([a-zA-Z_][a-zA-Z0-9_]*\)/g, '<span class="vertex">$&</span>')
   highlighted = highlighted.replace(/\[[a-zA-Z_][a-zA-Z0-9_]*\]/g, '<span class="relationship">$&</span>')
 
   highlightRef.value.innerHTML = highlighted

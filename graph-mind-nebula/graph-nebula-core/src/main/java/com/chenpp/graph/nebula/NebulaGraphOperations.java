@@ -145,8 +145,18 @@ public class NebulaGraphOperations implements GraphOperations {
             createTags(graphSchema.getEntities(), session);
             // 创建边
             createEdges(graphSchema.getRelations(), session);
-            // 创建索引
-            createIndices(graphSchema.getIndexes(), session);
+            // 重新 USE space（确保会话上下文正确）
+            rs = session.execute(useSpace);
+            if (!rs.isSucceeded()) {
+                log.warn("Failed to re-use space after creating tags/edges");
+            }
+            // 创建索引（Nebula 中索引创建需要标签已存在且属性已定义）
+            try {
+                createIndices(graphSchema.getIndexes(), session);
+            } catch (Exception e) {
+                // 索引创建失败不影响 schema 发布，记录警告
+                log.warn("Failed to create some indexes, continuing with schema publish: {}", e.getMessage());
+            }
             log.info("Successfully applied schema for graph: {}", graphConf.getGraphCode());
         } catch (Exception e) {
             log.error("Nebula create schema error", e);
@@ -536,16 +546,21 @@ public class NebulaGraphOperations implements GraphOperations {
                 // 使用NGQLBuilder构建创建索引的NGQL语句
                 String nql = ngqlBuilder.buildCreateIndex(nebulaIndex);
                 log.info("Execute create index NGQL: {}", nql);
+                log.info("Index details: indexType={}, indexName={}, typeName={}, propNameList={}",
+                        nebulaIndex.getIndexType(), nebulaIndex.getIndexName(),
+                        nebulaIndex.getTypeName(), nebulaIndex.getPropNameList());
 
                 // 执行创建索引的语句
                 ResultSet resultSet = session.execute(nql);
                 if (!resultSet.isSucceeded()) {
+                    log.error("Failed to create index: indexName={}, errorCode={}, errorMessage={}, nql={}",
+                            index.getName(), resultSet.getErrorCode(), resultSet.getErrorMessage(), nql);
                     throw new GraphException(String.format("Failed to create index: %s, errorCode: %s, errorMessage: %s",
                             index.getName(), resultSet.getErrorCode(), resultSet.getErrorMessage()));
                 } else {
                     log.info("Successfully created index: {}", index.getName());
-                    // 创建成功后立即 Rebuild，使索引生效
-                    rebuildIndex(nebulaIndex.getIndexType(), index.getName(), session);
+                    // 在 Nebula 3.x+ 中，索引创建后自动生效，无需 rebuild
+                    // 如果需要重建，可以调用 rebuildIndex(nebulaIndex.getIndexType(), index.getName(), session);
                 }
             } catch (Exception e) {
                 log.error("Error creating index: " + index.getName(), e);

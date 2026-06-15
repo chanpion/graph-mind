@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 图节点定义
+ * 图顶点定义
  *
  * @author April.Chen
  * @date 2025/8/4 15:00
@@ -30,7 +30,7 @@ public class GraphVertexDef {
      */
     private String label;
     /**
-     * 节点类型名称
+     * 顶点类型名称
      */
     private String name;
 
@@ -55,7 +55,7 @@ public class GraphVertexDef {
     private LocalDateTime updateTime;
 
     /**
-     * 节点属性列表
+     * 顶点属性列表
      */
     private List<GraphPropertyDef> properties;
 }

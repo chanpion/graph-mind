@@ -236,7 +236,7 @@ public class NGQLBuilder {
         builder.append("CREATE ").append(index.getIndexType()).append(" INDEX IF NOT EXISTS ").append(index.getIndexName())
                 .append(" ON ").append(index.getTypeName()).append(" (");
         if (index.getPropNameList() != null && !index.getPropNameList().isEmpty()) {
-            builder.append(index.getPropNameList().stream().map(p -> "").collect(java.util.stream.Collectors.joining(", ")));
+            builder.append(String.join(", ", index.getPropNameList()));
         }
         builder.append(")");
         return builder.toString();

@@ -82,8 +82,15 @@ public class GraphVertexDefServiceImpl extends ServiceImpl<GraphVertexDefDao, Gr
     @Transactional(rollbackFor = Exception.class)
     @Override
     public boolean updateVertexDefWithProperties(GraphVertexDef vertexDef) {
-        // 更新节点定义
-        boolean updated = this.updateById(vertexDef);
+        boolean updated = false;
+
+        // 先尝试更新，如果记录不存在则插入
+        if (vertexDef.getId() != null && this.getById(vertexDef.getId()) != null) {
+            updated = this.updateById(vertexDef);
+        } else {
+            // 记录不存在，执行插入（新增顶点定义时也走此逻辑）
+            updated = this.save(vertexDef);
+        }
 
         if (updated) {
             // 删除原有的属性

@@ -59,7 +59,7 @@ public class GraphInfo {
     @TableField(exist = false)
     private Integer edgeCount;
 
-    /** 节点类型数量（展示用，来自 graph_node_def 统计） */
+    /** 顶点类型数量（展示用，来自 graph_vertex_def 统计） */
     @TableField(exist = false)
     private Integer vertexTypeCount;
 

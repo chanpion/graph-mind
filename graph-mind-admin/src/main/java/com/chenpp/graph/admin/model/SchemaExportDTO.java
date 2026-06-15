@@ -15,6 +15,6 @@ public class SchemaExportDTO {
     private String exportedAt;
     private Long graphId;
     private String graphCode;
-    private List<GraphVertexDef> nodes;
+    private List<GraphVertexDef> vertices;
     private List<GraphEdgeDef> edges;
 }

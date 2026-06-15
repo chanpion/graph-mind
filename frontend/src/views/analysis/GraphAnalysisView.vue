@@ -25,7 +25,7 @@
                 <el-form-item label="目标实体" prop="targetEntity">
                   <el-cascader
                     v-model="analysisForm.targetEntity"
-                    placeholder="请选择目标节点类型和属性"
+                    placeholder="请选择目标顶点类型和属性"
                     style="width: 100%"
                     :options="entityOptions"
                     @change="handleEntityChange"
@@ -106,11 +106,11 @@
                   :rules="analysisRules"
                   label-position="top"
               >
-                <!-- 节点类型和属性 -->
-                <el-form-item label="节点类型和属性" prop="pathEntity">
+                <!-- 顶点类型和属性 -->
+                <el-form-item label="顶点类型和属性" prop="pathEntity">
                   <el-cascader
                     v-model="analysisForm.pathEntity"
-                    placeholder="请选择节点类型和属性"
+                    placeholder="请选择顶点类型和属性"
                     style="width: 100%"
                     :options="entityOptions"
                   />
@@ -162,7 +162,7 @@
               <template v-if="activeAlgorithmTab === 'pathQuery' || analysisForm.algorithm === 'shortestPath'">
                 <h4>最短路径</h4>
                 <p>路径长度: {{ analysisResult.pathLength }}</p>
-                <p>路径节点数: {{ analysisResult.nodeCount }}</p>
+                <p>路径顶点数: {{ analysisResult.vertexCount }}</p>
                 <el-button
                     type="primary"
                     size="small"
@@ -202,7 +202,6 @@
                     <el-icon><FullScreen /></el-icon>
                   </el-button>
                 </el-button-group>
-                <div class="toolbar-divider"></div>
                 <el-dropdown trigger="click" @command="handleExport">
                   <el-button size="small">
                     导出 <el-icon><Download /></el-icon>
@@ -218,14 +217,17 @@
               </div>
 
               <!-- 图例 -->
-              <div v-if="legendItems.nodes.length > 0 || legendItems.edges.length > 0" class="canvas-legend">
+              <div v-if="legendItems.vertices.length > 0 || legendItems.edges.length > 0" class="canvas-legend">
                 <div class="legend-title">图例</div>
                 <div class="legend-items">
-                  <div class="legend-group" v-if="legendItems.nodes.length > 0">
-                    <div class="legend-group-title">节点</div>
-                    <div v-for="item in legendItems.nodes" :key="'node-'+item.label" class="legend-item">
+                  <div class="legend-group" v-if="legendItems.vertices.length > 0">
+                    <div class="legend-group-title">顶点</div>
+                    <div v-for="item in legendItems.vertices" :key="'node-'+item.label" class="legend-item">
                       <span class="legend-node-dot" :style="{ background: item.color }"></span>
                       <span class="legend-label">{{ item.label }}</span>
+                      <el-select v-model="vertexDisplayPropMap[item.label]" size="small" style="width: 80px; margin-left: 4px" :disabled="!getAvailablePropsForLabel(item.label).length">
+                        <el-option v-for="prop in getAvailablePropsForLabel(item.label)" :key="prop" :label="prop" :value="prop" />
+                      </el-select>
                     </div>
                   </div>
                   <div class="legend-group" v-if="legendItems.edges.length > 0">
@@ -241,7 +243,7 @@
               <!-- 点边统计 -->
               <div v-if="nodes.length > 0" class="canvas-stats">
                 <div class="stat-item">
-                  <span class="stat-label">节点</span>
+                  <span class="stat-label">顶点</span>
                   <span class="stat-value">{{ nodes.length }}</span>
                 </div>
                 <div class="stat-divider"></div>
@@ -251,10 +253,10 @@
                 </div>
               </div>
 
-              <!-- 节点/边详情浮动面板 -->
+              <!-- 顶点/边详情浮动面板 -->
               <div v-if="detailDrawerVisible && selectedElement" class="detail-panel">
                 <div class="detail-header">
-                  <h3>{{ selectedElement.type === 'node' ? '节点详情' : '边详情' }}</h3>
+                  <h3>{{ selectedElement.type === 'vertex' ? '顶点详情' : '边详情' }}</h3>
                   <el-button
                     type="text"
                     size="small"
@@ -269,7 +271,7 @@
                     <h4>基础信息</h4>
                     <el-descriptions :column="1" border size="small" class="compact-descriptions">
                       <el-descriptions-item label="ID">{{ selectedElement.id }}</el-descriptions-item>
-                      <el-descriptions-item label="标签" v-if="selectedElement.type === 'node'">{{ selectedElement.label }}</el-descriptions-item>
+                      <el-descriptions-item label="标签" v-if="selectedElement.type === 'vertex'">{{ selectedElement.label }}</el-descriptions-item>
                       <el-descriptions-item label="类型" v-if="selectedElement.type === 'edge'">{{ selectedElement.label }}</el-descriptions-item>
                     </el-descriptions>
                   </div>
@@ -312,7 +314,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted, nextTick, watch, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, nextTick, watch, watchEffect, computed } from 'vue'
 import * as d3 from 'd3'
 import {ElMessage} from 'element-plus'
 import { useGraphsStore } from '@/views/graphs/stores/useGraphsStore'
@@ -351,11 +353,11 @@ const legendItems = computed(() => {
   const nodeLabels = new Set()
   const edgeLabels = new Set()
 
-  ;(nodes.value || []).forEach(n => {
+  ;(vertices.value || []).forEach(n => {
     const label = n.label || 'Unknown'
     if (!nodeLabels.has(label)) {
       nodeLabels.add(label)
-      legendNodes.push({ label, color: getNodeColor(label) })
+      legendNodes.push({ label, color: getVertexColor(label) })
     }
   })
 
@@ -367,11 +369,11 @@ const legendItems = computed(() => {
     }
   })
 
-  return { nodes: legendNodes, edges: legendEdges }
+  return { vertices: legendNodes, edges: legendEdges }
 })
 
-// 节点颜色映射
-const NODE_COLORS = {
+// 顶点颜色映射
+const VERTEX_COLORS = {
   center: '#e6a23c',
   layer1: '#409EFF',
   layer2: '#67c23a',
@@ -385,10 +387,10 @@ const NODE_COLORS = {
   location: '#10b981'
 }
 
-function getNodeColor(label) {
+function getVertexColor(label) {
   if (!label) return '#6366f1'
   const key = label.toLowerCase()
-  return NODE_COLORS[key] || stringToColor(key)
+  return VERTEX_COLORS[key] || stringToColor(key)
 }
 
 // 边颜色映射
@@ -432,7 +434,7 @@ const analysisForm = reactive({
   resolution: 1.0,
   weakly: true,
   targetEntity: [], // 修改为数组以适应级联选择（K层展开用）
-  pathEntity: [], // 路径查询共用节点类型和属性
+  pathEntity: [], // 路径查询共用顶点类型和属性
   entityProperty: '',
   queryValue: '',
   maxPaths: 1000,
@@ -528,7 +530,7 @@ const analysisRules = {
     {required: true, message: '请输入查询值', trigger: 'blur'}
   ],
   pathEntity: [
-    {required: true, message: '请选择节点类型和属性', trigger: 'change', type: 'array', min: 2}
+    {required: true, message: '请选择顶点类型和属性', trigger: 'change', type: 'array', min: 2}
   ],
   sourceValue: [
     {required: true, message: '请输入起点值', trigger: 'blur'}
@@ -554,7 +556,7 @@ const kLayerExpandRules = {
 // 路径查询专用验证规则
 const pathQueryRules = {
   pathEntity: [
-    {required: true, message: '请选择节点类型和属性', trigger: 'change', type: 'array', min: 2}
+    {required: true, message: '请选择顶点类型和属性', trigger: 'change', type: 'array', min: 2}
   ],
   sourceValue: [
     {required: true, message: '请输入起点值', trigger: 'blur'}
@@ -572,8 +574,36 @@ const analysisLoading = ref(false)
 const analysisResult = ref(null)
 
 // 图数据
-const nodes = ref([])
+const vertices = ref([])
 const edges = ref([])
+
+// 节点显示属性配置
+const defaultVertexDisplayProp = ref('id')
+const vertexDisplayPropMap = ref({})
+const nodes = computed(() => vertices.value)
+const getAvailablePropsForLabel = (label) => {
+  const props = new Set(['id', 'label', 'uid'])
+  vertices.value.forEach(n => {
+    if (n.label === label) {
+      if (n.properties) Object.keys(n.properties).forEach(k => props.add(k))
+      // also check direct properties (from transform)
+      Object.keys(n).forEach(k => { if (k !== 'id' && k !== 'label' && k !== 'group' && k !== 'x' && k !== 'y' && k !== 'fx' && k !== 'fy') props.add(k) })
+    }
+  })
+  return Array.from(props)
+}
+// All unique vertex labels in the data
+const uniqueVertexLabels = computed(() => {
+  const labels = new Set(vertices.value.map(n => n.label).filter(Boolean))
+  return Array.from(labels)
+})
+const availableVertexProps = computed(() => {
+  const props = new Set(['id', 'label', 'uid'])
+  vertices.value.forEach(n => {
+    if (n.properties) Object.keys(n.properties).forEach(k => props.add(k))
+  })
+  return Array.from(props)
+})
 
 // 图统计信息
 const graphStats = ref({
@@ -589,6 +619,28 @@ let svg = null
 let g = null
 let zoom = null
 let rafId = null // 用于requestAnimationFrame的ID，避免过多DOM更新
+let labelElements = null // 顶点标签元素引用，用于更新显示属性
+
+// 获取顶点显示文本 (computed 包装以追踪响应式依赖)
+const getVertexDisplayText = computed(() => (d) => {
+  const prop = vertexDisplayPropMap[d.label] || defaultVertexDisplayProp.value
+  if (prop === 'id') return String(d.id).substring(0, 6)
+  if (prop === 'label') return String(d.label || '').substring(0, 6)
+  const value = d.properties?.[prop] ?? d[prop] ?? d.id
+  return String(value).substring(0, 6)
+})
+
+// 更新所有顶点标签文本
+const updateVertexLabels = () => {
+  if (labelElements) {
+    labelElements.text(getVertexDisplayText.value)
+  }
+}
+
+// 监听默认属性变化，实时更新标签
+watch(defaultVertexDisplayProp, () => {
+  updateVertexLabels()
+})
 
 // 拓展配置可见性
 const expandConfigVisible = ref([])
@@ -659,19 +711,19 @@ const executePathQuery = async () => {
 
       // 转换API响应数据为图数据
       const transformedData = transformApiResponseToGraphData(apiResponse)
-      // 标记路径节点并设置起点/终点高亮
+      // 标记路径顶点并设置起点/终点高亮
       transformedData.nodes = transformedData.nodes.map(n => ({
         ...n,
         group: 'path'
       }))
       analysisForm.sourceId = analysisForm.sourceValue
       analysisForm.targetId = analysisForm.targetValue
-      nodes.value = transformedData.nodes
+      vertices.value = transformedData.nodes
       edges.value = transformedData.edges
 
       // 设置分析结果
       analysisResult.value = {
-        nodeCount: nodes.value.length,
+        vertexCount: vertices.value.length,
         edgeCount: edges.value.length,
         algorithm: 'shortestPath'
       }
@@ -786,7 +838,7 @@ const executeAnalysis = async () => {
           }
           apiResponse = await graphApi.expandVertex(
             graphsStore.currentGraphId,
-            analysisForm.queryValue, // 使用查询值作为节点ID
+            analysisForm.queryValue, // 使用查询值作为顶点ID
             analysisForm.layers,
             opParams,
             {
@@ -837,7 +889,7 @@ const executeAnalysis = async () => {
 
       // 转换API响应数据为图数据
       const transformedData = transformApiResponseToGraphData(apiResponse);
-      // 标记种子节点
+      // 标记种子顶点
       if (algorithm === 'kLayerExpand') {
         transformedData.nodes = transformedData.nodes.map(n => ({
           ...n,
@@ -849,12 +901,12 @@ const executeAnalysis = async () => {
           group: 'path'
         }));
       }
-      nodes.value = transformedData.nodes;
+      vertices.value = transformedData.nodes;
       edges.value = transformedData.edges;
 
       // 设置分析结果
       analysisResult.value = {
-        nodeCount: nodes.value.length,
+        vertexCount: vertices.value.length,
         edgeCount: edges.value.length,
         algorithm: algorithm
       };
@@ -880,15 +932,15 @@ const executeAnalysis = async () => {
 }
 
 // 生成示例图数据
-const generateSampleGraphData = (nodeCount) => {
-  nodes.value = []
+const generateSampleGraphData = (vertexCount) => {
+  vertices.value = []
   edges.value = []
 
-  // 生成节点
-  for (let i = 0; i < nodeCount; i++) {
-    nodes.value.push({
-      id: `node_${i}`,
-      label: `节点${i}`,
+  // 生成顶点
+  for (let i = 0; i < vertexCount; i++) {
+    vertices.value.push({
+      id: `vertex_${i}`,
+      label: `顶点${i}`,
       group: 'normal',
       x: Math.random() * 600,
       y: Math.random() * 400
@@ -896,17 +948,17 @@ const generateSampleGraphData = (nodeCount) => {
   }
 
   // 生成边
-  const edgeCount = Math.min(nodeCount * 2, nodeCount * (nodeCount - 1) / 2)
+  const edgeCount = Math.min(vertexCount * 2, vertexCount * (vertexCount - 1) / 2)
   for (let i = 0; i < edgeCount; i++) {
-    const sourceIndex = Math.floor(Math.random() * nodeCount)
+    const sourceIndex = Math.floor(Math.random() * vertexCount)
     let targetIndex
     do {
-      targetIndex = Math.floor(Math.random() * nodeCount)
+      targetIndex = Math.floor(Math.random() * vertexCount)
     } while (targetIndex === sourceIndex)
 
     edges.value.push({
-      source: nodes.value[sourceIndex].id,
-      target: nodes.value[targetIndex].id,
+      source: vertices.value[sourceIndex].id,
+      target: vertices.value[targetIndex].id,
       value: Math.random() * 5
     })
   }
@@ -914,35 +966,35 @@ const generateSampleGraphData = (nodeCount) => {
 
 // 生成K层展开示例数据
 const generateKLayerExpandData = () => {
-  nodes.value = []
+  vertices.value = []
   edges.value = []
 
-  // 生成中心节点
-  const centerNode = {
+  // 生成中心顶点
+  const centerVertex = {
     id: 'center',
-    label: '中心节点',
+    label: '中心顶点',
     group: 'center',
     x: 300,
     y: 200
   }
-  nodes.value.push(centerNode)
+  vertices.value.push(centerVertex)
 
-  // 生成第一层节点
+  // 生成第一层顶点
   for (let i = 1; i <= 5; i++) {
-    nodes.value.push({
+    vertices.value.push({
       id: `layer1_${i}`,
-      label: `第一层节点${i}`,
+      label: `第一层顶点${i}`,
       group: 'layer1',
       x: 300 + Math.random() * 100 - 50,
       y: 200 + Math.random() * 100 - 50
     })
   }
 
-  // 生成第二层节点
+  // 生成第二层顶点
   for (let i = 1; i <= 8; i++) {
-    nodes.value.push({
+    vertices.value.push({
       id: `layer2_${i}`,
-      label: `第二层节点${i}`,
+      label: `第二层顶点${i}`,
       group: 'layer2',
       x: 300 + Math.random() * 150 - 75,
       y: 200 + Math.random() * 150 - 75
@@ -967,8 +1019,8 @@ const generateKLayerExpandData = () => {
   }
 }
 
-// 获取节点半径
-const getNodeRadius = (node) => {
+// 获取顶点半径
+const getVertexRadius = (node) => {
   if (node.id === analysisForm.sourceId || node.id === analysisForm.targetId) return 22;
   if (node.group === 'center') return 22;
   if (node.group === 'path') return 16;
@@ -1000,7 +1052,7 @@ const drawGraph = () => {
   svg.call(zoom)
 
   // 创建力导向模拟
-  simulation = d3.forceSimulation(nodes.value)
+  simulation = d3.forceSimulation(vertices.value)
       .force('link', d3.forceLink(edges.value).id(d => d.id).distance(80))
       .force('charge', d3.forceManyBody().strength(-120))
       .force('center', d3.forceCenter(container.clientWidth / 2, container.clientHeight / 2))
@@ -1064,11 +1116,11 @@ const drawGraph = () => {
       .attr('pointer-events', 'none')
       .attr("marker-end", (d, i) => `url(#arrow-${i})`)
 
-  // 绘制节点
+  // 绘制顶点
   const node = g.append('g')
       .attr('class', 'nodes')
       .selectAll('circle')
-      .data(nodes.value)
+      .data(vertices.value)
       .enter()
       .append('circle')
       .attr('r', d => {
@@ -1094,10 +1146,10 @@ const drawGraph = () => {
           .on('start', dragstarted)
           .on('drag', dragged)
           .on('end', dragended))
-      // 添加节点点击事件
+      // 添加顶点点击事件
       .on('click', (event, d) => {
         selectedElement.value = {
-          type: 'node',
+          type: 'vertex',
           id: d.id,
           label: d.label,
           properties: d.properties
@@ -1106,14 +1158,14 @@ const drawGraph = () => {
         event.stopPropagation();
       })
 
-  // 节点标签
-  const text = g.append('g')
+  // 顶点标签
+  labelElements = g.append('g')
       .attr('class', 'labels')
       .selectAll('text')
-      .data(nodes.value)
+      .data(vertices.value)
       .enter()
       .append('text')
-      .text(d => d.id)
+      .text(getVertexDisplayText.value)
       .attr('text-anchor', 'middle')
       .attr('dy', '0.35em')
       .attr('fill', '#fff')
@@ -1131,31 +1183,31 @@ const drawGraph = () => {
     
     rafId = requestAnimationFrame(() => {
       // 批量更新DOM，减少重绘次数
-      // 连线偏移到节点边缘，让箭头可见
+      // 连线偏移到顶点边缘，让箭头可见
       link
         .attr('x1', d => {
-          const r = getNodeRadius(d.source);
+          const r = getVertexRadius(d.source);
           const dx = d.target.x - d.source.x;
           const dy = d.target.y - d.source.y;
           const dist = Math.sqrt(dx * dx + dy * dy) || 1;
           return d.source.x + (dx / dist) * r;
         })
         .attr('y1', d => {
-          const r = getNodeRadius(d.source);
+          const r = getVertexRadius(d.source);
           const dx = d.target.x - d.source.x;
           const dy = d.target.y - d.source.y;
           const dist = Math.sqrt(dx * dx + dy * dy) || 1;
           return d.source.y + (dy / dist) * r;
         })
         .attr('x2', d => {
-          const r = getNodeRadius(d.target);
+          const r = getVertexRadius(d.target);
           const dx = d.target.x - d.source.x;
           const dy = d.target.y - d.source.y;
           const dist = Math.sqrt(dx * dx + dy * dy) || 1;
           return d.target.x - (dx / dist) * r;
         })
         .attr('y2', d => {
-          const r = getNodeRadius(d.target);
+          const r = getVertexRadius(d.target);
           const dx = d.target.x - d.source.x;
           const dy = d.target.y - d.source.y;
           const dist = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -1164,28 +1216,28 @@ const drawGraph = () => {
 
       linkLine
         .attr('x1', d => {
-          const r = getNodeRadius(d.source);
+          const r = getVertexRadius(d.source);
           const dx = d.target.x - d.source.x;
           const dy = d.target.y - d.source.y;
           const dist = Math.sqrt(dx * dx + dy * dy) || 1;
           return d.source.x + (dx / dist) * r;
         })
         .attr('y1', d => {
-          const r = getNodeRadius(d.source);
+          const r = getVertexRadius(d.source);
           const dx = d.target.x - d.source.x;
           const dy = d.target.y - d.source.y;
           const dist = Math.sqrt(dx * dx + dy * dy) || 1;
           return d.source.y + (dy / dist) * r;
         })
         .attr('x2', d => {
-          const r = getNodeRadius(d.target);
+          const r = getVertexRadius(d.target);
           const dx = d.target.x - d.source.x;
           const dy = d.target.y - d.source.y;
           const dist = Math.sqrt(dx * dx + dy * dy) || 1;
           return d.target.x - (dx / dist) * r;
         })
         .attr('y2', d => {
-          const r = getNodeRadius(d.target);
+          const r = getVertexRadius(d.target);
           const dx = d.target.x - d.source.x;
           const dy = d.target.y - d.source.y;
           const dist = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -1196,7 +1248,7 @@ const drawGraph = () => {
         .attr('cx', d => d.x)
         .attr('cy', d => d.y)
 
-      text
+      labelElements
         .attr('x', d => d.x)
         .attr('y', d => d.y)
         
@@ -1284,6 +1336,17 @@ const resetView = () => {
 }
 
 // 导出功能
+/**
+ * 将SVG中的CSS变量替换为实际计算值，保证导出的图片颜色正确
+ */
+function resolveSvgCssVars(svgString) {
+  const style = getComputedStyle(document.documentElement)
+  return svgString.replace(/var\(--[^)]+\)/g, (match) => {
+    const varName = match.slice(4, -1).trim()
+    return style.getPropertyValue(varName).trim() || match
+  })
+}
+
 const handleExport = (format) => {
   if (format === 'png') exportAsPNG()
   else if (format === 'svg') exportAsSVG()
@@ -1294,14 +1357,14 @@ const exportAsPNG = () => {
   const svgEl = document.querySelector('.graph-container svg')
   if (!svgEl) { ElMessage.warning('没有可导出的内容'); return }
   
-  const svgData = new XMLSerializer().serializeToString(svgEl)
+  const svgData = resolveSvgCssVars(new XMLSerializer().serializeToString(svgEl))
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
   const img = new Image()
-  
+
   const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
   const url = URL.createObjectURL(svgBlob)
-  
+
   img.onload = () => {
     canvas.width = svgEl.clientWidth * 2
     canvas.height = svgEl.clientHeight * 2
@@ -1310,22 +1373,22 @@ const exportAsPNG = () => {
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     ctx.drawImage(img, 0, 0)
     URL.revokeObjectURL(url)
-    
+
     const link = document.createElement('a')
     link.download = 'graph-export.png'
     link.href = canvas.toDataURL('image/png')
     link.click()
     ElMessage.success('已导出为 PNG')
   }
-  
+
   img.src = url
 }
 
 const exportAsSVG = () => {
   const svgEl = document.querySelector('.graph-container svg')
   if (!svgEl) { ElMessage.warning('没有可导出的内容'); return }
-  
-  const svgData = new XMLSerializer().serializeToString(svgEl)
+
+  const svgData = resolveSvgCssVars(new XMLSerializer().serializeToString(svgEl))
   const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   
@@ -1338,8 +1401,8 @@ const exportAsSVG = () => {
 }
 
 const exportAsJSON = () => {
-  const data = { nodes: nodes.value, edges: edges.value }
-  if (!data.nodes || data.nodes.length === 0) {
+  const data = { nodes: vertices.value, edges: edges.value }
+  if (!data.vertices || data.vertices.length === 0) {
     ElMessage.warning('没有可导出的数据')
     return
   }
@@ -1369,7 +1432,7 @@ onMounted(() => {
 })
 
 // 获取点类型列表
-const fetchNodeTypes = async (graphId) => {
+const fetchVertexTypes = async (graphId) => {
   try {
     const params = {}
     if (graphId < 0 && graphsStore.currentGraph) {
@@ -1460,9 +1523,9 @@ const transformApiResponseToGraphData = (apiResponse) => {
   }
 
   // 如果返回的是标准图数据结构
-  if (rawData.nodes && rawData.edges) {
+  if (rawData.vertices && rawData.edges) {
     return {
-      nodes: rawData.nodes || [],
+      nodes: rawData.vertices || [],
       edges: rawData.edges || []
     }
   }
@@ -2005,4 +2068,5 @@ const transformApiResponseToGraphData = (apiResponse) => {
 .dark .canvas-stats {
   border-color: var(--el-border-color-light);
 }
+
 </style>

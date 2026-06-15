@@ -119,18 +119,32 @@ public class GraphSchemaController {
     }
 
     /**
-     * 更新节点定义
+     * 新增或更新节点定义
      */
     @PutMapping("/vertex")
-    public Result<String> updateVertexDef(@RequestParam Long graphId, @RequestParam Long vertexId, @RequestBody GraphVertexDef vertexDef) {
-        vertexDef.setId(vertexId);
-        vertexDef.setGraphId(graphId);
-        boolean success = vertexDefService.updateVertexDefWithProperties(vertexDef);
-        if (success) {
-            graphSchemaService.publishSchema(graphId);
-            return Result.success("更新节点定义成功");
+    public Result<String> updateVertexDef(
+            @RequestParam Long vertexId,
+            @RequestParam(required = false) Long graphId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode,
+            @RequestBody GraphVertexDef vertexDef) {
+        boolean success;
+        if (vertexId != null && vertexId > 0) {
+            // 更新已有记录
+            vertexDef.setId(vertexId);
+            success = vertexDefService.updateVertexDefWithProperties(vertexDef);
+        } else {
+            // 新增记录（前端传来的是虚拟id或空id）
+            vertexDef.setId(null);
+            success = vertexDefService.saveVertexDefWithProperties(vertexDef);
         }
-        return Result.error("更新节点定义失败");
+
+        if (success) {
+            Long targetGraphId = vertexDef.getGraphId() != null ? vertexDef.getGraphId() : graphId;
+            graphSchemaService.publishSchema(targetGraphId, connectionId, graphCode);
+            return Result.success(vertexId != null && vertexId > 0 ? "更新节点定义成功" : "新增节点定义成功");
+        }
+        return Result.error(vertexId != null && vertexId > 0 ? "更新节点定义失败" : "新增节点定义失败");
     }
 
     /**

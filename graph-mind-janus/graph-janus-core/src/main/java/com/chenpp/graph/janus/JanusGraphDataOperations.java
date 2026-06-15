@@ -598,12 +598,34 @@ public class JanusGraphDataOperations implements GraphDataOperations {
     }
 
     /**
-     * 从TinkerPop顶点获取uid属性值
+     * 从TinkerPop顶点获取uid属性值，支持 detached vertex（从 CacheEdge 获取的顶点需刷新）
      */
     private String getVertexUid(Vertex vertex) {
-        if (vertex.properties("uid").hasNext()) {
-            return vertex.property("uid").value().toString();
+        // 尝试直接从属性读取
+        try {
+            if (vertex.property("uid").isPresent()) {
+                Object uid = vertex.property("uid").value();
+                if (uid != null && !uid.toString().isEmpty()) {
+                    return uid.toString();
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Failed to get uid directly, will try to refresh vertex: {}", e.getMessage());
         }
+        
+        // 对于 detached vertex（如 CacheEdge 的 incident vertex），从图数据库刷新获取
+        try {
+            Iterator<Vertex> refreshed = graph.vertices(vertex.id());
+            if (refreshed.hasNext()) {
+                Vertex freshVertex = refreshed.next();
+                if (freshVertex.property("uid").isPresent()) {
+                    return freshVertex.property("uid").value().toString();
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Failed to refresh vertex for uid: {}", e.getMessage());
+        }
+        
         return vertex.id().toString();
     }
 

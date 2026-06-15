@@ -58,7 +58,7 @@ public class GraphDataController {
     }
 
     /**
-     * 查询节点数据列表
+     * 查询顶点数据列表
      * 对于发现的图（vertexTypeId < 0），需通过 connectionId + graphCode 发现 label
      */
     @GetMapping("/vertices")
@@ -127,7 +127,7 @@ public class GraphDataController {
     public Result<GraphVertex> getVertexData(
             @RequestParam Long graphId,
             @RequestParam String vertexId) {
-        GraphVertex data = graphDataService.getNodeData(graphId, vertexId);
+        GraphVertex data = graphDataService.getVertexData(graphId, vertexId);
         return Result.success(data);
     }
 
@@ -143,10 +143,12 @@ public class GraphDataController {
     public Result<Boolean> addVertexData(
             @RequestParam Long graphId,
             @RequestParam Long vertexTypeId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode,
             @RequestBody Map<String, Object> data) {
-        boolean result = graphDataService.addNodeData(graphId, vertexTypeId, data);
+        boolean result = graphDataService.addVertexData(graphId, vertexTypeId, connectionId, graphCode, data);
         if (!result) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "新增节点数据失败");
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "新增顶点数据失败");
         }
         return Result.success(true);
     }
@@ -155,8 +157,10 @@ public class GraphDataController {
     public Result<Boolean> addEdgeData(
             @RequestParam Long graphId,
             @RequestParam Long edgeTypeId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode,
             @RequestBody Map<String, Object> data) {
-        boolean result = graphDataService.addEdgeData(graphId, edgeTypeId, data);
+        boolean result = graphDataService.addEdgeData(graphId, edgeTypeId, connectionId, graphCode, data);
         if (!result) {
             throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "新增边数据失败");
         }
@@ -167,10 +171,12 @@ public class GraphDataController {
     public Result<Boolean> updateVertexData(
             @RequestParam Long graphId,
             @RequestParam String vertexId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode,
             @RequestBody Map<String, Object> data) {
-        boolean result = graphDataService.updateNodeData(graphId, vertexId, data);
+        boolean result = graphDataService.updateVertexData(graphId, vertexId, connectionId, graphCode, data);
         if (!result) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "更新节点数据失败");
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "更新顶点数据失败");
         }
         return Result.success(true);
     }
@@ -179,8 +185,10 @@ public class GraphDataController {
     public Result<Boolean> updateEdgeData(
             @RequestParam Long graphId,
             @RequestParam String edgeId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode,
             @RequestBody Map<String, Object> data) {
-        boolean result = graphDataService.updateEdgeData(graphId, edgeId, data);
+        boolean result = graphDataService.updateEdgeData(graphId, edgeId, connectionId, graphCode, data);
         if (!result) {
             throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "更新边数据失败");
         }
@@ -191,28 +199,66 @@ public class GraphDataController {
     public Result<Boolean> deleteVertex(
             @RequestParam Long graphId,
             @RequestParam String vertexId,
-            @RequestParam(required = false) String label) {
-        boolean result = graphDataService.deleteNode(graphId, vertexId, label);
+            @RequestParam(required = false) String label,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode) {
+        boolean result = graphDataService.deleteVertex(graphId, vertexId, label, connectionId, graphCode);
         if (!result) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "删除节点失败");
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "删除顶点失败");
         }
         return Result.success(true);
     }
 
     /**
-     * 批量删除节点
+     * 批量删除顶点
      */
     @DeleteMapping("/vertices")
     public Result<Boolean> deleteVertices(
             @RequestParam Long graphId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode,
             @RequestBody Map<String, Object> request) {
         List<String> vertexIds = (List<String>) request.get("vertexIds");
         if (vertexIds == null || vertexIds.isEmpty()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "节点ID列表不能为空");
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "顶点ID列表不能为空");
         }
-        boolean result = graphDataService.deleteNodes(graphId, vertexIds, request.get("label").toString());
+        boolean result = graphDataService.deleteVertices(graphId, vertexIds, request.get("label").toString(), connectionId, graphCode);
         if (!result) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "批量删除节点失败");
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "批量删除顶点失败");
+        }
+        return Result.success(true);
+    }
+
+    @DeleteMapping("/edge")
+    public Result<Boolean> deleteEdge(
+            @RequestParam Long graphId,
+            @RequestParam String edgeId,
+            @RequestParam(required = false) String label,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode) {
+        boolean result = graphDataService.deleteEdge(graphId, edgeId, label, connectionId, graphCode);
+        if (!result) {
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "删除边失败");
+        }
+        return Result.success(true);
+    }
+
+    /**
+     * 批量删除边
+     */
+    @DeleteMapping("/edges")
+    public Result<Boolean> deleteEdges(
+            @RequestParam Long graphId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode,
+            @RequestBody Map<String, Object> request) {
+        List<String> edgeIds = (List<String>) request.get("edgeIds");
+        if (edgeIds == null || edgeIds.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "边ID列表不能为空");
+        }
+        boolean result = graphDataService.deleteEdges(graphId, edgeIds, request.get("label").toString(), connectionId, graphCode);
+        if (!result) {
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "批量删除边失败");
         }
         return Result.success(true);
     }

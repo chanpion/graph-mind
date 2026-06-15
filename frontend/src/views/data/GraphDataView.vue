@@ -12,11 +12,11 @@
           </div>
         </div>
         <div class="sidebar-content">
-          <!-- 节点类型 -->
+          <!-- 顶点类型 -->
           <div class="section">
             <div class="section-header">
               <span class="section-icon"><el-icon><Connection /></el-icon></span>
-              <h4>节点类型</h4>
+              <h4>顶点类型</h4>
               <span class="section-count">{{ vertexTypes.length }}</span>
             </div>
             <div class="label-tags" v-if="vertexTypes.length">
@@ -24,13 +24,13 @@
                 v-for="t in vertexTypes"
                 :key="t.id"
                 class="label-tag"
-                :class="{ active: selectedType === 'node' && selectedTypeId === t.id }"
-                @click="selectNodeType(t)"
+                :class="{ active: selectedType === 'vertex' && selectedTypeId === t.id }"
+                @click="selectVertexType(t)"
               >
                 <span class="tag-text">{{ t.name || t.label }}</span>
               </div>
             </div>
-            <el-empty v-else-if="graphLoaded" description="无节点类型" :image-size="60" />
+            <el-empty v-else-if="graphLoaded" description="无顶点类型" :image-size="60" />
           </div>
           <!-- 边类型 -->
           <div class="section">
@@ -63,16 +63,16 @@
           <!-- 操作栏 -->
           <div class="data-header">
             <div class="header-left">
-              <h3>{{ selectedType === 'node' ? '节点数据' : '边数据' }}</h3>
-              <el-tag :type="selectedType === 'node' ? 'primary' : 'success'" size="small" effect="plain">
-                {{ selectedType === 'node' ? '节点' : '边' }}
+              <h3>{{ selectedType === 'vertex' ? '顶点数据' : '边数据' }}</h3>
+              <el-tag :type="selectedType === 'vertex' ? 'primary' : 'success'" size="small" effect="plain">
+                {{ selectedType === 'vertex' ? '顶点' : '边' }}
               </el-tag>
               <span class="data-count">共 <strong>{{ total }}</strong> 条</span>
             </div>
             <div class="header-actions">
               <el-input
                 v-model="searchText"
-                :placeholder="selectedType === 'node' ? '搜索节点...' : '搜索边...'"
+                :placeholder="selectedType === 'vertex' ? '搜索顶点...' : '搜索边...'"
                 size="small"
                 style="width: 200px"
                 clearable
@@ -152,21 +152,21 @@
         </div>
 
         <div v-else class="empty-hint">
-          <el-empty description="请从左侧选择节点或边类型" />
+          <el-empty description="请从左侧选择顶点或边类型" />
         </div>
       </el-main>
     </el-container>
 
-    <!-- 创建/编辑节点对话框 -->
-    <el-dialog v-model="nodeDialogVisible" :title="nodeDialogTitle" width="600px">
-      <el-form :model="nodeForm" label-width="90px">
+    <!-- 创建/编辑顶点对话框 -->
+    <el-dialog v-model="vertexDialogVisible" :title="vertexDialogTitle" width="600px">
+      <el-form :model="vertexForm" label-width="90px">
         <el-form-item label="标签" required>
-          <el-select v-model="nodeForm.label" placeholder="选择节点标签" style="width: 100%" @change="onNodeLabelChange">
+          <el-select v-model="vertexForm.label" placeholder="选择顶点标签" style="width: 100%" @change="onVertexLabelChange">
             <el-option v-for="t in vertexTypes" :key="t.id" :label="t.name || t.label" :value="t.label" />
           </el-select>
         </el-form-item>
         <el-form-item label="UID" required>
-          <el-input v-model="nodeForm.uid" placeholder="输入唯一标识符" />
+          <el-input v-model="vertexForm.uid" placeholder="输入唯一标识符" :disabled="vertexDialogTitle === '编辑顶点'" />
         </el-form-item>
         <el-form-item label="属性" v-if="currentVertexDef && currentVertexDef.properties?.length">
           <div class="props-form">
@@ -177,7 +177,7 @@
               :prop="`props.${prop.code}`"
             >
               <el-input
-                v-model="nodeForm.props[prop.code]"
+                v-model="vertexForm.props[prop.code]"
                 :placeholder="`输入${prop.name || prop.code}`"
                 clearable
               />
@@ -185,12 +185,12 @@
           </div>
         </el-form-item>
         <el-form-item label="属性" v-else>
-          <span style="color: var(--el-text-color-placeholder); font-size: 13px;">该节点类型暂无自定义属性</span>
+          <span style="color: var(--el-text-color-placeholder); font-size: 13px;">该顶点类型暂无自定义属性</span>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="nodeDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="saveNode">保存</el-button>
+        <el-button @click="vertexDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="saving" @click="saveVertex">保存</el-button>
       </template>
     </el-dialog>
 
@@ -203,10 +203,10 @@
           </el-select>
         </el-form-item>
         <el-form-item label="起点UID" required>
-          <el-input v-model="edgeForm.startUid" placeholder="输入起点节点UID" />
+          <el-input v-model="edgeForm.startUid" placeholder="输入起点顶点UID" :disabled="edgeDialogTitle === '编辑边'" />
         </el-form-item>
         <el-form-item label="终点UID" required>
-          <el-input v-model="edgeForm.endUid" placeholder="输入终点节点UID" />
+          <el-input v-model="edgeForm.endUid" placeholder="输入终点顶点UID" :disabled="edgeDialogTitle === '编辑边'" />
         </el-form-item>
         <el-form-item label="属性" v-if="currentEdgeDef && currentEdgeDef.properties?.length">
           <div class="props-form">
@@ -291,13 +291,13 @@ const edgeTypes = ref([])
 const graphLoaded = ref(false)
 
 // ---- 侧边栏选择 ----
-const selectedType = ref('')   // 'node' | 'edge'
+const selectedType = ref('')   // 'vertex' | 'edge'
 const selectedTypeId = ref('')
 // 保存当前选中类型的图上下文（discovered graph 需要 connectionId + graphCode）
 const selectedTypeGraph = ref(null)
 
-function selectNodeType(t) {
-  selectedType.value = 'node'
+function selectVertexType(t) {
+  selectedType.value = 'vertex'
   selectedTypeId.value = t.id
   // 从 store 的 currentGraph 获取图上下文，discovered graph 需要传 connectionId + graphCode
   selectedTypeGraph.value = graphsStore.currentGraph
@@ -337,8 +337,8 @@ async function loadData() {
       params.connectionId = selectedTypeGraph.value.connectionId
       params.graphCode = selectedTypeGraph.value.code
     }
-    if (selectedType.value === 'node') {
-      res = await graphApi.getNodeDataList(graphId.value, selectedTypeId.value, params)
+    if (selectedType.value === 'vertex') {
+      res = await graphApi.getVertexDataList(graphId.value, selectedTypeId.value, params)
     } else {
       res = await graphApi.getEdgeDataList(graphId.value, selectedTypeId.value, params)
     }
@@ -390,18 +390,18 @@ async function loadTypes() {
       params.connectionId = graphsStore.currentGraph.connectionId
       params.graphCode = graphsStore.currentGraph.code
     }
-    const [nodes, edges] = await Promise.all([
+    const [vertexDefsResponse, edges] = await Promise.all([
       graphApi.getVertexDefs(graphId.value, params),
       graphApi.getEdgeDefs(graphId.value, params)
     ])
-    vertexTypes.value = Array.isArray(nodes) ? nodes : (nodes?.data || [])
+    vertexTypes.value = Array.isArray(vertexDefsResponse) ? vertexDefsResponse : (vertexDefsResponse?.data || [])
     edgeTypes.value = Array.isArray(edges) ? edges : (edges?.data || [])
     graphLoaded.value = true
 
     // 自动选中第一个类型，右侧直接显示数据
     if (!selectedTypeId.value) {
       if (vertexTypes.value.length > 0) {
-        selectNodeType(vertexTypes.value[0])
+        selectVertexType(vertexTypes.value[0])
       } else if (edgeTypes.value.length > 0) {
         selectEdgeType(edgeTypes.value[0])
       }
@@ -411,18 +411,18 @@ async function loadTypes() {
   }
 }
 
-// ---- 新增/编辑 节点 ----
-const nodeDialogVisible = ref(false)
-const nodeDialogTitle = ref('')
-const nodeForm = ref({ label: '', uid: '', props: {} })
+// ---- 新增/编辑 顶点 ----
+const vertexDialogVisible = ref(false)
+const vertexDialogTitle = ref('')
+const vertexForm = ref({ label: '', uid: '', props: {} })
 const currentVertexDef = ref(null)
 
 function showCreateDialog() {
-  if (selectedType.value === 'node') {
-    nodeForm.value = { label: '', uid: '', props: {} }
+  if (selectedType.value === 'vertex') {
+    vertexForm.value = { label: '', uid: '', props: {} }
     currentVertexDef.value = null
-    nodeDialogTitle.value = '新增节点'
-    nodeDialogVisible.value = true
+    vertexDialogTitle.value = '新增顶点'
+    vertexDialogVisible.value = true
   } else {
     edgeForm.value = { label: '', startUid: '', endUid: '', props: {} }
     currentEdgeDef.value = null
@@ -431,9 +431,9 @@ function showCreateDialog() {
   }
 }
 
-function onNodeLabelChange(label) {
+function onVertexLabelChange(label) {
   currentVertexDef.value = vertexTypes.value.find(t => t.label === label) || null
-  nodeForm.value.props = {}
+  vertexForm.value.props = {}
 }
 
 function onEdgeLabelChange(label) {
@@ -443,16 +443,21 @@ function onEdgeLabelChange(label) {
 
 function showEditDialog(row) {
   const props = row.properties || {}
-  if (selectedType.value === 'node') {
-    const def = vertexTypes.value.find(t => t.startLabel === row.label)
+  // 过滤掉 null 和 undefined 值
+  const filteredProps = {}
+  Object.entries(props).forEach(([k, v]) => {
+    if (v != null && v !== '') filteredProps[k] = v
+  })
+  if (selectedType.value === 'vertex') {
+    const def = vertexTypes.value.find(t => t.label === row.label)
     currentVertexDef.value = def || null
-    nodeForm.value = {
+    vertexForm.value = {
       uid: row.uid,
       label: row.label,
-      props: { ...props }
+      props: filteredProps
     }
-    nodeDialogTitle.value = '编辑节点'
-    nodeDialogVisible.value = true
+    vertexDialogTitle.value = '编辑顶点'
+    vertexDialogVisible.value = true
   } else {
     const def = edgeTypes.value.find(t => t.label === row.label)
     currentEdgeDef.value = def || null
@@ -461,7 +466,7 @@ function showEditDialog(row) {
       label: row.label,
       startUid: row.startUid,
       endUid: row.endUid,
-      props: { ...props }
+      props: filteredProps
     }
     edgeDialogTitle.value = '编辑边'
     edgeDialogVisible.value = true
@@ -470,23 +475,34 @@ function showEditDialog(row) {
 
 const saving = ref(false)
 
-async function saveNode() {
-  if (!nodeForm.value.label) { ElMessage.warning('请选择标签'); return }
-  if (!nodeForm.value.uid) { ElMessage.warning('请输入UID'); return }
+/** 对于发现的图（graphId < 0），写操作需额外传 connectionId + graphCode */
+function getExtraParams() {
+  const extra = {}
+  if (graphId.value < 0 && graphsStore.currentGraph) {
+    extra.connectionId = graphsStore.currentGraph.connectionId
+    extra.graphCode = graphsStore.currentGraph.code
+  }
+  return extra
+}
+
+async function saveVertex() {
+  if (!vertexForm.value.label) { ElMessage.warning('请选择标签'); return }
+  if (!vertexForm.value.uid) { ElMessage.warning('请输入UID'); return }
   saving.value = true
   try {
     const properties = {}
-    Object.entries(nodeForm.value.props).forEach(([k, v]) => {
+    Object.entries(vertexForm.value.props).forEach(([k, v]) => {
       if (v !== '' && v != null) properties[k] = v
     })
-    const data = { uid: nodeForm.value.uid, label: nodeForm.value.label, properties }
-    if (nodeDialogTitle.value === '编辑节点') {
-      await graphApi.updateNodeData(graphId.value, nodeForm.value.uid, data)
+    const data = { uid: vertexForm.value.uid, label: vertexForm.value.label, properties }
+    const extra = getExtraParams()
+    if (vertexDialogTitle.value === '编辑顶点') {
+      await graphApi.updateVertexData(graphId.value, vertexForm.value.uid, data, extra)
     } else {
-      await graphApi.addNodeData(graphId.value, selectedTypeId.value, data)
+      await graphApi.addVertexData(graphId.value, selectedTypeId.value, data, extra)
     }
-    ElMessage.success(nodeDialogTitle.value === '编辑节点' ? '更新成功' : '新增成功')
-    nodeDialogVisible.value = false
+    ElMessage.success(vertexDialogTitle.value === '编辑顶点' ? '更新成功' : '新增成功')
+    vertexDialogVisible.value = false
     await loadData()
   } catch (e) {
     ElMessage.error('保存失败')
@@ -517,10 +533,11 @@ async function saveEdge() {
       endUid: edgeForm.value.endUid,
       properties
     }
+    const extra = getExtraParams()
     if (edgeDialogTitle.value === '编辑边') {
-      await graphApi.updateEdgeData(graphId.value, edgeForm.value.uid, data)
+      await graphApi.updateEdgeData(graphId.value, edgeForm.value.uid, data, extra)
     } else {
-      await graphApi.addEdgeData(graphId.value, selectedTypeId.value, data)
+      await graphApi.addEdgeData(graphId.value, selectedTypeId.value, data, extra)
     }
     ElMessage.success(edgeDialogTitle.value === '编辑边' ? '更新成功' : '新增成功')
     edgeDialogVisible.value = false
@@ -533,10 +550,11 @@ async function saveEdge() {
 }async function handleDelete(row) {
   try {
     await ElMessageBox.confirm('确定要删除该数据吗？', '提示', { type: 'warning' })
-    if (selectedType.value === 'node') {
-      await graphApi.deleteNode(graphId.value, row.uid, row.label)
+    const extra = getExtraParams()
+    if (selectedType.value === 'vertex') {
+      await graphApi.deleteVertexData(graphId.value, row.uid, row.label, extra)
     } else {
-      await graphApi.deleteEdge(graphId.value, row.uid, row.label)
+      await graphApi.deleteEdge(graphId.value, row.uid, row.label, extra)
     }
     ElMessage.success('删除成功')
     await loadData()
@@ -560,7 +578,7 @@ function exportData(format) {
 }
 
 function exportJson(items) {
-  const typeLabel = selectedType.value === 'node' ? 'nodes' : 'edges'
+  const typeLabel = selectedType.value === 'vertex' ? 'vertices' : 'edges'
   const data = items.map(d => ({
     uid: d.uid,
     label: d.label,
@@ -578,7 +596,7 @@ function exportJson(items) {
 }
 
 function exportCsv(items) {
-  const typeLabel = selectedType.value === 'node' ? 'nodes' : 'edges'
+  const typeLabel = selectedType.value === 'vertex' ? 'vertices' : 'edges'
   const fields = baseFields.value
   const headerRow = fields.join(',')
   const dataRows = items.map(d => {
@@ -617,7 +635,7 @@ const baseFields = computed(() => {
     cols.push('startUid', 'endUid')
   }
   // 从 schema 获取属性列
-  const typeDefs = selectedType.value === 'node' ? vertexTypes.value : edgeTypes.value
+  const typeDefs = selectedType.value === 'vertex' ? vertexTypes.value : edgeTypes.value
   const currentType = typeDefs.find(t => t.id === selectedTypeId.value)
   const schemaProps = (currentType?.properties || [])
     .filter(p => !cols.includes(p.code))
@@ -681,8 +699,8 @@ function parseCsvLine(line, delimiter = ',') {
 
 function downloadTemplate() {
   const graphCode = graphsStore.currentGraph?.code || graphId.value
-  const typePrefix = selectedType.value === 'node' ? 'vertex' : 'edge'
-  const typeDefs = selectedType.value === 'node' ? vertexTypes.value : edgeTypes.value
+  const typePrefix = selectedType.value === 'vertex' ? 'vertex' : 'edge'
+  const typeDefs = selectedType.value === 'vertex' ? vertexTypes.value : edgeTypes.value
   const currentType = typeDefs.find(t => t.id === selectedTypeId.value)
   const typeLabel = currentType?.label || 'unknown'
   const fields = baseFields.value
@@ -722,8 +740,8 @@ async function importData() {
       hasHeader: true
     }))
     let res
-    if (selectedType.value === 'node') {
-      res = await graphApi.importNodeData(graphId.value, selectedTypeId.value, formData)
+    if (selectedType.value === 'vertex') {
+      res = await graphApi.importVertexData(graphId.value, selectedTypeId.value, formData)
     } else {
       res = await graphApi.importEdgeData(graphId.value, selectedTypeId.value, formData)
     }
@@ -1121,6 +1139,9 @@ watch(() => graphId.value, (newId) => {
 /* ===== 属性表单（对话框内，根据 schema 动态生成） ===== */
 .props-form .el-form-item {
   margin-bottom: 12px;
+}
+.props-form .el-form-item__label {
+  justify-content: flex-start;
 }
 
 /* ===== 上传区域 ===== */

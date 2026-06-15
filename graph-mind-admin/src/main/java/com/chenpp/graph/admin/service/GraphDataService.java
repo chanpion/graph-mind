@@ -72,7 +72,7 @@ public interface GraphDataService {
      * @param vertexId  节点ID
      * @return 节点数据详情
      */
-    GraphVertex getNodeData(Long graphId, String vertexId);
+    GraphVertex getVertexData(Long graphId, String vertexId);
 
     /**
      * 获取边数据详情
@@ -88,40 +88,48 @@ public interface GraphDataService {
      *
      * @param graphId    图ID
      * @param vertexTypeId 节点类型ID
+     * @param connectionId 连接ID（发现的图使用）
+     * @param graphCode   图代码（发现的图使用）
      * @param data       节点数据
      * @return 是否成功
      */
-    boolean addNodeData(Long graphId, Long vertexTypeId, Map<String, Object> data);
+    boolean addVertexData(Long graphId, Long vertexTypeId, Long connectionId, String graphCode, Map<String, Object> data);
 
     /**
      * 新增边数据
      *
      * @param graphId    图ID
      * @param edgeTypeId 边类型ID
+     * @param connectionId 连接ID（发现的图使用）
+     * @param graphCode   图代码（发现的图使用）
      * @param data       边数据
      * @return 是否成功
      */
-    boolean addEdgeData(Long graphId, Long edgeTypeId, Map<String, Object> data);
+    boolean addEdgeData(Long graphId, Long edgeTypeId, Long connectionId, String graphCode, Map<String, Object> data);
 
     /**
      * 更新节点数据
      *
      * @param graphId 图ID
      * @param vertexId  节点ID
+     * @param connectionId 连接ID（发现的图使用）
+     * @param graphCode   图代码（发现的图使用）
      * @param data    节点数据
      * @return 是否成功
      */
-    boolean updateNodeData(Long graphId, String vertexId, Map<String, Object> data);
+    boolean updateVertexData(Long graphId, String vertexId, Long connectionId, String graphCode, Map<String, Object> data);
 
     /**
      * 更新边数据
      *
      * @param graphId 图ID
      * @param edgeId  边ID
+     * @param connectionId 连接ID（发现的图使用）
+     * @param graphCode   图代码（发现的图使用）
      * @param data    边数据
      * @return 是否成功
      */
-    boolean updateEdgeData(Long graphId, String edgeId, Map<String, Object> data);
+    boolean updateEdgeData(Long graphId, String edgeId, Long connectionId, String graphCode, Map<String, Object> data);
 
     /**
      * 删除图数据库中的节点
@@ -129,9 +137,11 @@ public interface GraphDataService {
      * @param graphId 图ID
      * @param vertexId  节点ID
      * @param label   节点标签
+     * @param connectionId 连接ID（发现的图使用）
+     * @param graphCode   图代码（发现的图使用）
      * @return 删除结果
      */
-    boolean deleteNode(Long graphId, String vertexId, String label);
+    boolean deleteVertex(Long graphId, String vertexId, String label, Long connectionId, String graphCode);
 
     /**
      * 批量删除图数据库中的节点
@@ -139,9 +149,35 @@ public interface GraphDataService {
      * @param graphId 图ID
      * @param vertexIds 节点ID列表
      * @param label   节点标签
+     * @param connectionId 连接ID（发现的图使用）
+     * @param graphCode   图代码（发现的图使用）
      * @return 删除结果
      */
-    boolean deleteNodes(Long graphId, List<String> vertexIds, String label);
+    boolean deleteVertices(Long graphId, List<String> vertexIds, String label, Long connectionId, String graphCode);
+
+    /**
+     * 删除图数据库中的边
+     *
+     * @param graphId 图ID
+     * @param edgeId  边ID
+     * @param label   边标签
+     * @param connectionId 连接ID（发现的图使用）
+     * @param graphCode   图代码（发现的图使用）
+     * @return 删除结果
+     */
+    boolean deleteEdge(Long graphId, String edgeId, String label, Long connectionId, String graphCode);
+
+    /**
+     * 批量删除图数据库中的边
+     *
+     * @param graphId 图ID
+     * @param edgeIds 边ID列表
+     * @param label   边标签
+     * @param connectionId 连接ID（发现的图使用）
+     * @param graphCode   图代码（发现的图使用）
+     * @return 删除结果
+     */
+    boolean deleteEdges(Long graphId, List<String> edgeIds, String label, Long connectionId, String graphCode);
     
     /**
      * 获取图统计信息

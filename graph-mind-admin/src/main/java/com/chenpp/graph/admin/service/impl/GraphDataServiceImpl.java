@@ -94,8 +94,8 @@ public class GraphDataServiceImpl implements GraphDataService {
 
             GraphVertexDef vertexDef = vertexDefService.getById(vertexTypeId);
             if (vertexDef == null) {
-                log.error("节点类型不存在，vertexTypeId={}", vertexTypeId);
-                errorMessages.add("节点类型不存在，vertexTypeId=" + vertexTypeId);
+                log.error("顶点类型不存在，vertexTypeId={}", vertexTypeId);
+                errorMessages.add("顶点类型不存在，vertexTypeId=" + vertexTypeId);
                 result.setErrorMessages(errorMessages.toArray(new String[0]));
                 return result;
             }
@@ -143,7 +143,7 @@ public class GraphDataServiceImpl implements GraphDataService {
                     graphDataOperations.addVertex(vertex);
                     successCount++;
                 } catch (Exception e) {
-                    log.error("导入节点数据失败: {}", e.getMessage(), e);
+                    log.error("导入顶点数据失败: {}", e.getMessage(), e);
                     failureCount++;
                 }
             }
@@ -152,10 +152,10 @@ public class GraphDataServiceImpl implements GraphDataService {
             result.setFailureCount(failureCount);
             result.setErrorMessages(errorMessages.toArray(new String[0]));
 
-            log.info("导入节点数据完成，总数={}，成功={}，失败={}", dataList.size(), successCount, failureCount);
+            log.info("导入顶点数据完成，总数={}，成功={}，失败={}", dataList.size(), successCount, failureCount);
         } catch (Exception e) {
-            log.error("导入节点数据失败", e);
-            errorMessages.add("导入节点数据失败: " + e.getMessage());
+            log.error("导入顶点数据失败", e);
+            errorMessages.add("导入顶点数据失败: " + e.getMessage());
             result.setErrorMessages(errorMessages.toArray(new String[0]));
         }
 
@@ -318,7 +318,7 @@ public class GraphDataServiceImpl implements GraphDataService {
             if (label == null) {
                 GraphVertexDef vertexDef = vertexDefService.getById(vertexTypeId);
                 if (vertexDef == null) {
-                    log.error("节点类型不存在，vertexTypeId={}", vertexTypeId);
+                    log.error("顶点类型不存在，vertexTypeId={}", vertexTypeId);
                     return PageResult.empty(page, size);
                 }
                 label = vertexDef.getLabel();
@@ -338,7 +338,7 @@ public class GraphDataServiceImpl implements GraphDataService {
 
             return new PageResult<>(records, total, page, size);
         } catch (Exception e) {
-            log.error("查询节点数据列表失败，graphId={}, vertexTypeId={}", graphId, vertexTypeId, e);
+            log.error("查询顶点数据列表失败，graphId={}, vertexTypeId={}", graphId, vertexTypeId, e);
             return PageResult.empty(page, size);
         }
     }
@@ -376,7 +376,7 @@ public class GraphDataServiceImpl implements GraphDataService {
     }
 
     @Override
-    public GraphVertex getNodeData(Long graphId, String vertexId) {
+    public GraphVertex getVertexData(Long graphId, String vertexId) {
         try {
             GraphDataOperations ops = getGraphDataOperations(graphId);
             String query = buildFindVertexQuery(graphId, vertexId);
@@ -387,7 +387,7 @@ public class GraphDataServiceImpl implements GraphDataService {
             }
             return null;
         } catch (Exception e) {
-            log.error("获取节点数据详情失败，graphId={}, vertexId={}", graphId, vertexId, e);
+            log.error("获取顶点数据详情失败，graphId={}, vertexId={}", graphId, vertexId, e);
             return null;
         }
     }
@@ -410,15 +410,15 @@ public class GraphDataServiceImpl implements GraphDataService {
     }
 
     @Override
-    public boolean addNodeData(Long graphId, Long vertexTypeId, Map<String, Object> data) {
+    public boolean addVertexData(Long graphId, Long vertexTypeId, Long connectionId, String graphCode, Map<String, Object> data) {
         try {
             GraphVertexDef vertexDef = vertexDefService.getById(vertexTypeId);
             if (vertexDef == null) {
-                log.error("节点类型不存在，vertexTypeId={}", vertexTypeId);
+                log.error("顶点类型不存在，vertexTypeId={}", vertexTypeId);
                 return false;
             }
 
-            GraphDataOperations ops = getGraphDataOperations(graphId);
+            GraphDataOperations ops = getGraphDataOperations(graphId, connectionId, graphCode);
 
             GraphVertex vertex = new GraphVertex();
             vertex.setLabel(vertexDef.getLabel());
@@ -432,6 +432,15 @@ public class GraphDataServiceImpl implements GraphDataService {
                 properties.remove("label");
                 properties.remove("properties");
             }
+            // 根据属性定义进行类型转换
+            if (vertexDef.getProperties() != null) {
+                for (GraphPropertyDef propDef : vertexDef.getProperties()) {
+                    String code = propDef.getCode();
+                    if (properties.containsKey(code)) {
+                        properties.put(code, convertValueType(properties.get(code), propDef.getType()));
+                    }
+                }
+            }
             vertex.setProperties(properties);
             // uid 可能在前端数据顶层或 properties 中
             if (properties.containsKey("uid")) {
@@ -442,16 +451,16 @@ public class GraphDataServiceImpl implements GraphDataService {
             }
 
             ops.addVertex(vertex);
-            log.info("新增节点成功，label={}, uid={}", vertexDef.getLabel(), vertex.getUid());
+            log.info("新增顶点成功，label={}, uid={}", vertexDef.getLabel(), vertex.getUid());
             return true;
         } catch (Exception e) {
-            log.error("新增节点数据失败，graphId={}, vertexTypeId={}", graphId, vertexTypeId, e);
+            log.error("新增顶点数据失败，graphId={}, vertexTypeId={}", graphId, vertexTypeId, e);
             return false;
         }
     }
 
     @Override
-    public boolean addEdgeData(Long graphId, Long edgeTypeId, Map<String, Object> data) {
+    public boolean addEdgeData(Long graphId, Long edgeTypeId, Long connectionId, String graphCode, Map<String, Object> data) {
         try {
             GraphEdgeDef edgeDef = edgeDefService.getById(edgeTypeId);
             if (edgeDef == null) {
@@ -459,7 +468,7 @@ public class GraphDataServiceImpl implements GraphDataService {
                 return false;
             }
 
-            GraphDataOperations ops = getGraphDataOperations(graphId);
+            GraphDataOperations ops = getGraphDataOperations(graphId, connectionId, graphCode);
 
             GraphEdge edge = new GraphEdge();
             edge.setLabel(edgeDef.getLabel());
@@ -472,6 +481,15 @@ public class GraphDataServiceImpl implements GraphDataService {
                 properties = new HashMap<>(data);
                 properties.remove("label");
                 properties.remove("properties");
+            }
+            // 根据属性定义进行类型转换
+            if (edgeDef.getProperties() != null) {
+                for (GraphPropertyDef propDef : edgeDef.getProperties()) {
+                    String code = propDef.getCode();
+                    if (properties.containsKey(code)) {
+                        properties.put(code, convertValueType(properties.get(code), propDef.getType()));
+                    }
+                }
             }
             edge.setProperties(properties);
             // uid 可能在前端数据顶层或 properties 中
@@ -509,15 +527,28 @@ public class GraphDataServiceImpl implements GraphDataService {
     }
 
     @Override
-    public boolean updateNodeData(Long graphId, String vertexId, Map<String, Object> data) {
+    public boolean updateVertexData(Long graphId, String vertexId, Long connectionId, String graphCode, Map<String, Object> data) {
         try {
-            GraphDataOperations ops = getGraphDataOperations(graphId);
+            GraphDataOperations ops = getGraphDataOperations(graphId, connectionId, graphCode);
 
             GraphVertex vertex = new GraphVertex();
             vertex.setUid(vertexId);
             if (data.containsKey("label")) {
                 vertex.setLabel(data.get("label").toString());
             }
+
+            // 根据 label 获取顶点定义，以获取属性类型信息
+            String label = vertex.getLabel();
+            List<GraphPropertyDef> propDefs = new ArrayList<>();
+            if (label != null) {
+                GraphVertexDef vertexDef = vertexDefService.getOne(
+                    new QueryWrapper<GraphVertexDef>().eq("graph_id", graphId).eq("label", label)
+                );
+                if (vertexDef != null && vertexDef.getProperties() != null) {
+                    propDefs = vertexDef.getProperties();
+                }
+            }
+
             // 处理嵌套属性结构
             Map<String, Object> properties;
             if (data.containsKey("properties") && data.get("properties") instanceof Map) {
@@ -527,6 +558,13 @@ public class GraphDataServiceImpl implements GraphDataService {
                 properties.remove("label");
                 properties.remove("properties");
             }
+            // 根据属性定义进行类型转换
+            for (GraphPropertyDef propDef : propDefs) {
+                String code = propDef.getCode();
+                if (properties.containsKey(code)) {
+                    properties.put(code, convertValueType(properties.get(code), propDef.getType()));
+                }
+            }
             vertex.setProperties(properties);
             if (properties.containsKey("uid")) {
                 vertex.setUid(properties.get("uid").toString());
@@ -535,24 +573,77 @@ public class GraphDataServiceImpl implements GraphDataService {
             }
 
             ops.updateVertex(vertex);
-            log.info("更新节点成功，vertexId={}", vertexId);
+            log.info("更新顶点成功，vertexId={}", vertexId);
             return true;
         } catch (Exception e) {
-            log.error("更新节点数据失败，graphId={}, vertexId={}", graphId, vertexId, e);
+            log.error("更新顶点数据失败，graphId={}, vertexId={}", graphId, vertexId, e);
             return false;
         }
     }
 
-    @Override
-    public boolean updateEdgeData(Long graphId, String edgeId, Map<String, Object> data) {
+    /**
+     * 根据属性类型转换值
+     */
+    private Object convertValueType(Object value, String type) {
+        if (value == null) {
+            return null;
+        }
+        String typeLower = type != null ? type.toLowerCase() : "string";
+
         try {
-            GraphDataOperations ops = getGraphDataOperations(graphId);
+            switch (typeLower) {
+                case "long":
+                case "int64":
+                case "integer":
+                    if (value instanceof Number) {
+                        return ((Number) value).longValue();
+                    }
+                    return Long.parseLong(value.toString());
+                case "double":
+                case "float":
+                    if (value instanceof Number) {
+                        return ((Number) value).doubleValue();
+                    }
+                    return Double.parseDouble(value.toString());
+                case "boolean":
+                    if (value instanceof Boolean) {
+                        return value;
+                    }
+                    String str = value.toString().toLowerCase();
+                    return "true".equals(str) || "1".equals(str);
+                case "string":
+                default:
+                    return value.toString();
+            }
+        } catch (NumberFormatException e) {
+            log.warn("Failed to convert value '{}' to type {}, using as-is", value, type);
+            return value;
+        }
+    }
+
+    @Override
+    public boolean updateEdgeData(Long graphId, String edgeId, Long connectionId, String graphCode, Map<String, Object> data) {
+        try {
+            GraphDataOperations ops = getGraphDataOperations(graphId, connectionId, graphCode);
 
             GraphEdge edge = new GraphEdge();
             edge.setUid(edgeId);
             if (data.containsKey("label")) {
                 edge.setLabel(data.get("label").toString());
             }
+
+            // 根据 label 获取边定义，以获取属性类型信息
+            String label = edge.getLabel();
+            List<GraphPropertyDef> propDefs = new ArrayList<>();
+            if (label != null) {
+                GraphEdgeDef edgeDef = edgeDefService.getOne(
+                    new QueryWrapper<GraphEdgeDef>().eq("graph_id", graphId).eq("label", label)
+                );
+                if (edgeDef != null && edgeDef.getProperties() != null) {
+                    propDefs = edgeDef.getProperties();
+                }
+            }
+
             // 处理嵌套属性结构
             Map<String, Object> properties;
             if (data.containsKey("properties") && data.get("properties") instanceof Map) {
@@ -573,6 +664,13 @@ public class GraphDataServiceImpl implements GraphDataService {
             } else if (properties.containsKey("endUid")) {
                 edge.setEndUid(properties.get("endUid").toString());
             }
+            // 根据属性定义进行类型转换
+            for (GraphPropertyDef propDef : propDefs) {
+                String code = propDef.getCode();
+                if (properties.containsKey(code)) {
+                    properties.put(code, convertValueType(properties.get(code), propDef.getType()));
+                }
+            }
             edge.setProperties(properties);
 
             ops.updateEdge(edge);
@@ -585,60 +683,168 @@ public class GraphDataServiceImpl implements GraphDataService {
     }
 
     @Override
-    public boolean deleteNode(Long graphId, String vertexId, String label) {
+    public boolean deleteVertex(Long graphId, String vertexId, String label, Long connectionId, String graphCode) {
         List<String> vertexIds = new ArrayList<>();
         vertexIds.add(vertexId);
-        return deleteNodes(graphId, vertexIds, label);
+        return deleteVertices(graphId, vertexIds, label, connectionId, graphCode);
     }
 
     @Override
-    public boolean deleteNodes(Long graphId, List<String> vertexIds, String label) {
+    public boolean deleteVertices(Long graphId, List<String> vertexIds, String label, Long connectionId, String graphCode) {
         if (graphId == null || vertexIds == null || vertexIds.isEmpty()) {
             return false;
         }
 
         try {
-            // 获取图信息
-            GraphInfo graphInfo = graphService.getById(graphId);
-            if (graphInfo == null) {
-                log.error("图不存在，graphId={}", graphId);
-                return false;
+            // 获取图信息（仅在 graphId > 0 时需要）
+            GraphConf graphConf;
+            if (graphId != null && graphId > 0) {
+                GraphInfo graphInfo = graphService.getById(graphId);
+                if (graphInfo == null) {
+                    log.error("图不存在，graphId={}", graphId);
+                    return false;
+                }
+                GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
+                if (connection == null) {
+                    log.error("图数据库连接不存在，connectionId={}", graphInfo.getConnectionId());
+                    return false;
+                }
+                graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
+            } else {
+                graphConf = GraphClientFactory.resolveGraphConf(graphId, connectionId, graphCode, graphService, connectionService);
             }
 
-            // 获取图数据库连接信息
-            GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
-            if (connection == null) {
-                log.error("图数据库连接不存在，connectionId={}", graphInfo.getConnectionId());
-                return false;
-            }
-
-            // 构建图配置信息
-            GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
-
-            // 创建图客户端并删除节点
+            // 创建图客户端并删除顶点
             GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
             GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
 
-            GraphVertexDef vertexDef = vertexDefService.getOne(new QueryWrapper<GraphVertexDef>().eq("graph_id", graphId).eq("label", label));
-            if (vertexDef == null) {
-                log.warn("节点类型定义不存在，graphId={}, label={}", graphId, label);
+            // 对于发现的图（graphId < 0），label 直接从请求参数获取，无需查数据库
+            String vertexLabel = label;
+            if (graphId > 0) {
+                GraphVertexDef vertexDef = vertexDefService.getOne(new QueryWrapper<GraphVertexDef>().eq("graph_id", graphId).eq("label", label));
+                if (vertexDef != null) {
+                    vertexLabel = vertexDef.getLabel();
+                }
+            }
+            if (vertexLabel == null) {
+                log.warn("顶点类型不存在，graphId={}, label={}", graphId, label);
                 return false;
             }
-            // 删除节点
+            // 删除顶点
             for (String vertexId : vertexIds) {
                 try {
                     GraphVertex vertex = new GraphVertex();
                     vertex.setUid(vertexId);
-                    vertex.setLabel(vertexDef.getLabel());
+                    vertex.setLabel(vertexLabel);
                     graphDataOperations.deleteVertex(vertex);
-                    log.info("成功删除节点，vertexId={}", vertexId);
+                    log.info("成功删除顶点，vertexId={}", vertexId);
                 } catch (Exception e) {
-                    log.error("删除节点失败，vertexId={}", vertexId, e);
+                    log.error("删除顶点失败，vertexId={}", vertexId, e);
                 }
             }
             return true;
         } catch (Exception e) {
-            log.error("批量删除节点失败，graphId={}", graphId, e);
+            log.error("批量删除顶点失败，graphId={}", graphId, e);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean deleteEdge(Long graphId, String edgeId, String label, Long connectionId, String graphCode) {
+        List<String> edgeIds = new ArrayList<>();
+        edgeIds.add(edgeId);
+        return deleteEdges(graphId, edgeIds, label, connectionId, graphCode);
+    }
+
+    @Override
+    public boolean deleteEdges(Long graphId, List<String> edgeIds, String label, Long connectionId, String graphCode) {
+        if (graphId == null || edgeIds == null || edgeIds.isEmpty()) {
+            return false;
+        }
+
+        try {
+            GraphConf graphConf;
+            if (graphId > 0) {
+                GraphInfo graphInfo = graphService.getById(graphId);
+                if (graphInfo == null) {
+                    log.error("图不存在，graphId={}", graphId);
+                    return false;
+                }
+                GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
+                if (connection == null) {
+                    log.error("图数据库连接不存在，connectionId={}", graphInfo.getConnectionId());
+                    return false;
+                }
+                graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
+            } else {
+                graphConf = GraphClientFactory.resolveGraphConf(graphId, connectionId, graphCode, graphService, connectionService);
+            }
+
+            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+            GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
+
+            String edgeLabel = label;
+            if (graphId > 0) {
+                GraphEdgeDef edgeDef = edgeDefService.getOne(new QueryWrapper<GraphEdgeDef>().eq("graph_id", graphId).eq("label", label));
+                if (edgeDef != null) {
+                    edgeLabel = edgeDef.getLabel();
+                }
+            }
+            if (edgeLabel == null) {
+                log.warn("边类型不存在，graphId={}, label={}", graphId, label);
+                return false;
+            }
+
+            for (String edgeId : edgeIds) {
+                try {
+                    GraphEdge edge = new GraphEdge();
+                    edge.setUid(edgeId);
+                    edge.setLabel(edgeLabel);
+
+                    // 解析 edgeId，格式：startUid -> endUid @label 或 复合uid
+                    if (edgeId.contains("->") && edgeId.contains("@")) {
+                        int arrowIdx = edgeId.indexOf("->");
+                        int atIdx = edgeId.indexOf("@");
+                        if (atIdx > arrowIdx) {
+                            edge.setStartUid(edgeId.substring(0, arrowIdx));
+                            edge.setEndUid(edgeId.substring(arrowIdx + 2, atIdx));
+                        }
+                    } else if (edgeId.contains("->")) {
+                        // 格式：startUid->endUid
+                        int arrowIdx = edgeId.indexOf("->");
+                        edge.setStartUid(edgeId.substring(0, arrowIdx));
+                        edge.setEndUid(edgeId.substring(arrowIdx + 2));
+                    }
+
+                    // 如果 startUid/endUid 仍未解析出来，查询边数据
+                    if (edge.getStartUid() == null || edge.getEndUid() == null) {
+                        try {
+                            String query = String.format("MATCH ()-[e:%s]->() WHERE e.uid == '%s' OR id(e) == '%s' RETURN e", edgeLabel, edgeId, edgeId);
+                            GraphData graphData = graphDataOperations.query(query);
+                            if (graphData != null && graphData.getEdges() != null && !graphData.getEdges().isEmpty()) {
+                                GraphEdge foundEdge = graphData.getEdges().get(0);
+                                edge.setStartUid(foundEdge.getStartUid());
+                                edge.setEndUid(foundEdge.getEndUid());
+                            }
+                        } catch (Exception qe) {
+                            log.warn("查询边数据失败，edgeId={}: {}", edgeId, qe.getMessage());
+                        }
+                    }
+
+                    if (edge.getStartUid() == null || edge.getEndUid() == null) {
+                        log.error("无法获取边的起点和终点信息，edgeId={}", edgeId);
+                        continue;
+                    }
+
+                    graphDataOperations.deleteEdge(edge);
+                    log.info("成功删除边，edgeId={}", edgeId);
+                } catch (Exception e) {
+                    log.error("删除边失败，edgeId={}", edgeId, e);
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            log.error("批量删除边失败，graphId={}", graphId, e);
             return false;
         }
     }
@@ -689,7 +895,7 @@ public class GraphDataServiceImpl implements GraphDataService {
 
 
     /**
-     * 构建按标签分页查询节点的查询语句（根据数据库类型生成不同语法）
+     * 构建按标签分页查询顶点的查询语句（根据数据库类型生成不同语法）
      */
     private String buildLabelQuery(Long graphId, String label, int skip, int size) {
         if (isGremlinGraph(graphId)) {
@@ -715,7 +921,7 @@ public class GraphDataServiceImpl implements GraphDataService {
     }
 
     /**
-     * 构建按 uid 查找节点的查询语句
+     * 构建按 uid 查找顶点的查询语句
      */
     private String buildFindVertexQuery(Long graphId, String vertexId) {
         if (isGremlinGraph(graphId)) {
