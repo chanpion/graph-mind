@@ -277,7 +277,7 @@ public class GraphSchemaController {
     /**
      * 导出图Schema
      */
-    @GetMapping("/schema/export")
+    @GetMapping("/export")
     public Result<SchemaExportDTO> exportSchema(@RequestParam Long graphId) {
         return Result.success(graphSchemaService.exportSchema(graphId));
     }
@@ -285,7 +285,7 @@ public class GraphSchemaController {
     /**
      * 导入图Schema
      */
-    @PostMapping("/schema/import")
+    @PostMapping("/import")
     public Result<String> importSchema(@RequestParam Long graphId, @RequestBody SchemaImportDTO importDTO) {
         graphSchemaService.importSchema(graphId, importDTO);
         return Result.success("导入成功");

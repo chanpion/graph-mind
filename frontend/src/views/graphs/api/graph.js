@@ -14,7 +14,7 @@ export const graphApi = {
 
   /** 根据连接ID获取图列表 */
   listByConnection(connectionId, params) {
-    return request.get('/api/graphs/connection', { params: { ...params, connectionId } })
+    return request.get('/api/graphs/list', { params: { ...params, connectionId } })
   },
 
   /** 获取图详情 */

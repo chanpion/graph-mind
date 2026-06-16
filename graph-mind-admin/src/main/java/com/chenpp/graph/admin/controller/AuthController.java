@@ -34,9 +34,6 @@ public class AuthController {
         this.passwordEncoder = passwordEncoder;
     }
 
-    /**
-     * 用户登录接口
-     */
     @PostMapping("/login")
     public ResponseEntity<Result<LoginResponse>> login(@RequestBody LoginRequest loginRequest) {
         log.info("用户登录：{}", loginRequest.getUsername());
@@ -52,13 +49,9 @@ public class AuthController {
         return ResponseEntity.ok(Result.success(loginResponse));
     }
 
-    /**
-     * 用户登出接口
-     */
     @PostMapping("/logout")
     public ResponseEntity<Result<String>> logout() {
         log.info("用户登出");
-        // 清除安全上下文
         SecurityContextHolder.clearContext();
         Result<String> result = Result.success("登出成功", "");
         return ResponseEntity.ok(result);

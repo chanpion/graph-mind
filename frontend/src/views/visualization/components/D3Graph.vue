@@ -74,6 +74,24 @@ function prepareData(data) {
     e.target = nodeMap.get(e.target) || e.target
   })
 
+  // 为同一节点的多条自环边计算偏移角度，使其均匀分布
+  const selfLoopCounts = new Map()
+  edges.forEach(e => {
+    if (e.source === e.target) {
+      const key = typeof e.source === 'object' ? e.source.id : e.source
+      const count = selfLoopCounts.get(key) || 0
+      selfLoopCounts.set(key, count + 1)
+      e._loopIndex = count
+      e._loopTotal = count // 暂存，后面更新
+    }
+  })
+  edges.forEach(e => {
+    if (e.source === e.target) {
+      const key = typeof e.source === 'object' ? e.source.id : e.source
+      e._loopTotal = selfLoopCounts.get(key) || 1
+    }
+  })
+
   return { nodes, edges }
 }
 
@@ -96,12 +114,21 @@ function updateVertexLabels() {
 // 计算边的路径：自环用弧线，普通边用直线
 function getEdgePath(d) {
   if (d.source === d.target) {
-    // 自环：在节点上方画一个弧
+    // 自环：多条自环均匀分布在节点周围
     const x = d.source.x
     const y = d.source.y
-    const radius = 24
-    const dx = radius * 1.2
-    return `M${x - dx},${y - radius} A${dx},${radius * 1.5} 0 1,1 ${x + dx},${y - radius}`
+    const radius = 40
+    const total = d._loopTotal || 1
+    const index = d._loopIndex || 0
+    // 从-90度（上方）开始，按总条数均匀分布
+    const angleStep = (Math.PI * 1.2) / Math.max(total, 1)
+    const startAngle = -Math.PI / 2 - (angleStep * (total - 1)) / 2
+    const angle = startAngle + angleStep * index
+    const dx = Math.cos(angle) * radius * 3
+    const dy = Math.sin(angle) * radius * 3
+    const cx = x + dx * 0.4
+    const cy = y + dy * 0.4
+    return `M${x},${y} Q${cx},${cy} ${x + dx},${y + dy}`
   }
   return `M${d.source.x},${d.source.y}L${d.target.x},${d.target.y}`
 }
@@ -232,9 +259,9 @@ function render() {
   // 可见边线（自环边使用弧线，普通边使用直线）
   edgeGroup.append('path')
     .attr('class', 'edge-visual')
-    .attr('stroke', '#94a3b8')
-    .attr('stroke-width', 2)
-    .attr('stroke-opacity', 0.6)
+    .attr('stroke', '#f59e0b')
+    .attr('stroke-width', 1.5)
+    .attr('stroke-opacity', 0.8)
     .attr('fill', 'none')
     .attr('marker-end', 'url(#arrowhead)')
 

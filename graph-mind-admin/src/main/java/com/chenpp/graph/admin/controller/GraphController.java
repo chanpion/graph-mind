@@ -48,7 +48,7 @@ public class GraphController {
         return Result.success(result);
     }
 
-    @GetMapping("/connection")
+    @GetMapping("/list")
     public Result<Page<GraphInfo>> getGraphsByConnectionId(
             @RequestParam Long connectionId,
             @RequestParam(defaultValue = "1") Integer page,

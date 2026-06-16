@@ -75,7 +75,6 @@ public class JanusClientFactory {
                 }
             };
             
-            //open a graph database
             graph = JanusGraphFactory.open(configuration);
             JANUS_GRAPH_MAP.put(key, graph);
             log.info("Created new JanusGraph instance for key: {}", key);

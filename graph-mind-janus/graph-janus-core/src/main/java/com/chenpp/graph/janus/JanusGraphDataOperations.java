@@ -618,7 +618,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             Iterator<Vertex> refreshed = graph.vertices(vertex.id());
             if (refreshed.hasNext()) {
                 Vertex freshVertex = refreshed.next();
-                if (freshVertex.property("uid").isPresent()) {
+                if (freshVertex.property("uid").isPresent() && !freshVertex.property("uid").value().toString().isEmpty()) {
                     return freshVertex.property("uid").value().toString();
                 }
             }

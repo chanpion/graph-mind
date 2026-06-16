@@ -150,7 +150,7 @@ register('get', '/api/graphs', async () => {
   return mockListGraphs()
 })
 
-register('get', '/api/graphs/connection', async (config) => {
+register('get', '/api/graphs/list', async (config) => {
   return mockListGraphs(config.params?.connectionId)
 })
 
