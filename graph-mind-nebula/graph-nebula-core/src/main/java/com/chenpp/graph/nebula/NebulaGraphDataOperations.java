@@ -78,7 +78,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                     .map(entry -> entry.getKey() + " = " + NebulaUtil.formatValue(entry.getValue()))
                     .reduce((a, b) -> a + ", " + b)
                     .orElse("");
-            String nql = String.format("UPDATE VERTEX ON %s \"%s\" SET %s", vertex.getLabel(), vid, setClause);
+            String nql = NebulaUtil.buildUpdateVertex(vertex.getLabel(), vid, setClause);
             log.info("Execute NGQL: {}", nql);
 
             ResultSet resultSet = sessionPool.execute(nql);
@@ -123,7 +123,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                 }).collect(Collectors.joining(","));
 
                 // 构建完整的NGQL语句
-                String nql = String.format("INSERT VERTEX %s(%s) VALUES %s", label, keys, valuesClause);
+                String nql = NebulaUtil.buildInsertVertexBatch(label, keys, valuesClause);
                 log.info("Execute batch insert NGQL: {}", nql);
 
                 ResultSet resultSet;
@@ -151,7 +151,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
     public boolean deleteVertex(GraphVertex vertex) throws GraphException {
         try {
             // 删除顶点及其关联的边
-            String nql = String.format("DELETE VERTEX \"%s\" WITH EDGE;", vertex.getUid());
+            String nql = NebulaUtil.buildDeleteVertex(vertex.getUid());
             log.info("Execute NGQL: {}", nql);
 
             ResultSet resultSet = sessionPool.execute(nql);
@@ -175,8 +175,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
             // 语法: INSERT EDGE edge_type (prop1, prop2) VALUES src_vid -> dst_vid @rank: (val1, val2)
             String keys = String.join(",", edge.getProperties().keySet());
             String propValues = NebulaUtil.buildPropertyValuesClause(edge.getProperties());
-            String nql = String.format("INSERT EDGE %s (%s) VALUES \"%s\" -> \"%s\":(%s);",
-                    edge.getLabel(), keys, edge.getStartUid(), edge.getEndUid(), propValues);
+            String nql = NebulaUtil.buildInsertEdge(edge.getLabel(), keys, edge.getStartUid(), edge.getEndUid(), propValues);
 
 
             log.info("Execute NGQL: {}", nql);
@@ -232,7 +231,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                 valuesBuilder.append(valuesStr);
 
                 // 构建完整的NGQL语句
-                String nql = String.format("INSERT EDGE %s (%s) VALUES %s", label, propKeys, valuesBuilder.toString());
+                String nql = NebulaUtil.buildInsertEdgeBatch(label, propKeys, valuesBuilder.toString());
                 log.info("Execute batch insert NGQL: {}", nql);
 
                 ResultSet resultSet = sessionPool.execute(nql);
@@ -258,8 +257,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                     .reduce((a, b) -> a + ", " + b)
                     .orElse("");
 
-            String nql = String.format("UPDATE EDGE ON %s \"%s\" -> \"%s\" SET %s;",
-                    edge.getLabel(), edge.getStartUid(), edge.getEndUid(), setClause);
+            String nql = NebulaUtil.buildUpdateEdge(edge.getLabel(), edge.getStartUid(), edge.getEndUid(), setClause);
 
             log.info("Execute NGQL: {}", nql);
 
@@ -281,7 +279,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
     @Override
     public boolean deleteEdge(GraphEdge edge) throws GraphException {
         try {
-            String nql = String.format("DELETE EDGE %s \"%s\" -> \"%s\";", edge.getLabel(), edge.getStartUid(), edge.getEndUid());
+            String nql = NebulaUtil.buildDeleteEdge(edge.getLabel(), edge.getStartUid(), edge.getEndUid());
             log.info("Execute NGQL: {}", nql);
 
             ResultSet resultSet = sessionPool.execute(nql);
@@ -381,7 +379,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
             // 添加ID列表
             String idListStr = idList.stream().map(id -> "'" + id + "'").collect(Collectors.joining(", "));
             // 根据Nebula Graph查询规范，必须添加LIMIT子句
-            String ngql = String.format("MATCH (v) WHERE id(v) IN [%s] RETURN v LIMIT 1000", idListStr);
+            String ngql = NebulaUtil.buildMatchVertices(idListStr);
             log.info("Execute NGQL: {}", ngql);
 
             ResultSet resultSet = sessionPool.execute(ngql);
@@ -418,14 +416,13 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
     @Override
     public GraphData expand(String vertexId, int depth) throws GraphException {
         // 使用 MATCH 匹配从起点出发的所有可达路径，返回点、边、关系
-        String ngql = String.format("MATCH p=(v)-[r*1..%d]-(v2) WHERE id(v) == \"%s\" RETURN p", depth, vertexId);
+        String ngql = NebulaUtil.buildExpandPath(vertexId, depth);
         return query(ngql);
     }
 
     @Override
     public GraphData findPath(String startVertexId, String endVertexId, int maxDepth) throws GraphException {
-        String ngql = String.format("FIND SHORTEST PATH FROM \"%s\" TO \"%s\" OVER * UPTO %d STEPS",
-                startVertexId, endVertexId, maxDepth);
+        String ngql = NebulaUtil.buildShortestPath(startVertexId, endVertexId, maxDepth);
         return query(ngql);
     }
 
@@ -434,7 +431,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
         GraphSummary summary = new GraphSummary();
         try {
             // 提交STATS作业
-            String submitStatsJob = "SUBMIT JOB STATS";
+            String submitStatsJob = NebulaUtil.buildSubmitJobStats();
             ResultSet submitResult = sessionPool.execute(submitStatsJob);
             if (!submitResult.isSucceeded()) {
                 log.error("Failed to submit STATS job, errorCode: {}, errorMessage: {}",
@@ -447,7 +444,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
             long jobId = submitResult.rowValues(0).get(0).asLong();
 
             // 轮询检查作业状态，直到完成
-            String showJob = "SHOW JOB " + jobId;
+            String showJob = NebulaUtil.buildShowJob(jobId);
             ResultSet jobResult = null;
             int retryCount = 0;
             // 最多重试30次，每次间隔100ms，总共3秒
@@ -477,7 +474,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
             }
 
             // 获取统计信息
-            String showStats = "SHOW STATS";
+            String showStats = NebulaUtil.buildShowStats();
             ResultSet statsResult = sessionPool.execute(showStats);
             if (!statsResult.isSucceeded()) {
                 log.error("Failed to show stats, errorCode: {}, errorMessage: {}",
@@ -523,7 +520,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
 
     @Override
     public long countVertices(String label) throws GraphException {
-        String nql = String.format("MATCH (v:%s) RETURN count(v) AS count;", label);
+        String nql = NebulaUtil.buildCountVertex(label);
         try {
             ResultSet resultSet = sessionPool.execute(nql);
             if (resultSet.isSucceeded() && resultSet.rowsSize() > 0) {
@@ -537,7 +534,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
 
     @Override
     public long countEdges(String label) throws GraphException {
-        String nql = String.format("MATCH ()-[e:%s]->() RETURN count(e) AS count;", label);
+        String nql = NebulaUtil.buildCountEdge(label);
         try {
             ResultSet resultSet = sessionPool.execute(nql);
             if (resultSet.isSucceeded() && resultSet.rowsSize() > 0) {

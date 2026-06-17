@@ -4,6 +4,7 @@ import com.chenpp.graph.core.GraphOperations;
 import com.chenpp.graph.core.constant.GraphConstants;
 import com.chenpp.graph.core.exception.GraphException;
 import com.chenpp.graph.core.model.GraphConf;
+import com.chenpp.graph.core.schema.DataType;
 import com.chenpp.graph.core.schema.Graph;
 import com.chenpp.graph.core.schema.GraphEntity;
 import com.chenpp.graph.core.schema.GraphIndex;
@@ -30,6 +31,7 @@ import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -44,7 +46,6 @@ import java.util.stream.Stream;
 @Slf4j
 public class NebulaGraphOperations implements GraphOperations {
 
-    private NGQLBuilder ngqlBuilder = new NGQLBuilder(ZoneOffset.of("+8"));
     private NebulaConf nebulaConf;
 
     public NebulaGraphOperations(NebulaConf nebulaConf) {
@@ -70,7 +71,7 @@ public class NebulaGraphOperations implements GraphOperations {
         int maxRetries = 30;
         for (int i = 0; i < maxRetries; i++) {
             try {
-                String useSpace = ngqlBuilder.buildUseSpace(spaceName);
+                String useSpace = NebulaUtil.buildUseSpace(spaceName);
                 NebulaPool nebulaPool = NebulaClientFactory.getNebulaPool(nebulaConf);
                 try (Session session = nebulaPool.getSession(nebulaConf.getUsername(), nebulaConf.getPassword(), false)) {
                     ResultSet rs = session.execute(useSpace);
@@ -107,7 +108,7 @@ public class NebulaGraphOperations implements GraphOperations {
     @Override
     public List<Graph> listGraphs(GraphConf graphConf) {
         log.info("Listing graphs");
-        String nql = "SHOW SPACES";
+        String nql = NebulaUtil.buildShowSpaces();
         ResultSet resultSet = execute(nebulaConf, nql);
         if (!resultSet.isSucceeded()) {
             log.error("List graph failed, errorCode: {}, errorMessage: {}",
@@ -133,7 +134,7 @@ public class NebulaGraphOperations implements GraphOperations {
             createGraph(graphConf);
         }
 
-        String useSpace = ngqlBuilder.buildUseSpace(nebulaConf.getSpace());
+        String useSpace = NebulaUtil.buildUseSpace(nebulaConf.getSpace());
 
         try (Session session = nebulaPool.getSession(nebulaConf.getUsername(), nebulaConf.getPassword(), false)) {
             ResultSet rs = session.execute(useSpace);
@@ -179,7 +180,7 @@ public class NebulaGraphOperations implements GraphOperations {
 
         log.info("Begin alter graph schema for: {}", graphConf.getGraphCode());
         NebulaPool nebulaPool = NebulaClientFactory.getNebulaPool(nebulaConf);
-        String useSpace = ngqlBuilder.buildUseSpace(nebulaConf.getSpace());
+        String useSpace = NebulaUtil.buildUseSpace(nebulaConf.getSpace());
 
         try (Session session = nebulaPool.getSession(nebulaConf.getUsername(), nebulaConf.getPassword(), false)) {
             ResultSet rs = session.execute(useSpace);
@@ -321,7 +322,7 @@ public class NebulaGraphOperations implements GraphOperations {
 
         NebulaPool nebulaPool = NebulaClientFactory.getNebulaPool(this.nebulaConf);
 
-        String useSpace = ngqlBuilder.buildUseSpace(graphConf.getGraphCode());
+        String useSpace = NebulaUtil.buildUseSpace(graphConf.getGraphCode());
 
         try (Session session = nebulaPool.getSession(this.nebulaConf.getUsername(), this.nebulaConf.getPassword(), false)) {
             ResultSet rs = session.execute(useSpace);
@@ -462,7 +463,7 @@ public class NebulaGraphOperations implements GraphOperations {
     }
 
     public List<GraphRelation> showEdges(Session session) throws GraphException {
-        String nql = "SHOW EDGES";
+        String nql = NebulaUtil.buildShowEdges();
 
         ResultSet rs;
         try {
@@ -544,7 +545,7 @@ public class NebulaGraphOperations implements GraphOperations {
                 NebulaIndex nebulaIndex = nebulaIndexBuilder.build();
 
                 // 使用NGQLBuilder构建创建索引的NGQL语句
-                String nql = ngqlBuilder.buildCreateIndex(nebulaIndex);
+                String nql = NebulaUtil.buildCreateIndex(nebulaIndex);
                 log.info("Execute create index NGQL: {}", nql);
                 log.info("Index details: indexType={}, indexName={}, typeName={}, propNameList={}",
                         nebulaIndex.getIndexType(), nebulaIndex.getIndexName(),
@@ -574,7 +575,7 @@ public class NebulaGraphOperations implements GraphOperations {
      */
     private void rebuildIndex(SchemaType schemaType, String indexName, Session session) {
         try {
-            String rebuildNql = ngqlBuilder.buildRebuildIndex(schemaType, indexName);
+            String rebuildNql = NebulaUtil.buildRebuildIndex(schemaType, indexName);
             log.debug("Execute rebuild index NGQL: {}", rebuildNql);
             ResultSet rs = session.execute(rebuildNql);
             if (!rs.isSucceeded()) {
@@ -597,7 +598,7 @@ public class NebulaGraphOperations implements GraphOperations {
 
     public List<GraphIndex> showIndexes(Session session, String type) throws GraphException {
         String indexType = type.equalsIgnoreCase(GraphConstants.VERTEX) ? "TAG" : "EDGE";
-        String nql = String.format("SHOW %s INDEXES", indexType);
+        String nql = NebulaUtil.buildShowIndexes(SchemaType.valueOf(indexType));
 
         ResultSet rs;
         try {
@@ -635,7 +636,7 @@ public class NebulaGraphOperations implements GraphOperations {
 
 
     public NebulaTag describeTag(String tagName, Session session) throws GraphException {
-        String nql = ngqlBuilder.buildDescribeTag(tagName);
+        String nql = NebulaUtil.buildDescribeTag(tagName);
         ResultSet rs;
         try {
             rs = session.execute(nql);
@@ -662,7 +663,7 @@ public class NebulaGraphOperations implements GraphOperations {
     }
 
     public NebulaEdge describeEdge(String edgeName, Session session) throws GraphException {
-        String nql = ngqlBuilder.buildDescribeEdge(edgeName);
+        String nql = NebulaUtil.buildDescribeEdge(edgeName);
         ResultSet rs;
         try {
             rs = session.execute(nql);
