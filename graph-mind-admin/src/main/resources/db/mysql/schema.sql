@@ -104,7 +104,7 @@ CREATE TABLE `graph_property_def` (
                                       `entity_id` bigint(20) NOT NULL COMMENT '节点定义ID或边定义ID',
                                       `code` varchar(255) NOT NULL COMMENT '属性标识',
                                       `name` varchar(255) NOT NULL COMMENT '属性名',
-                                      `graph_type` varchar(50) NOT NULL COMMENT '属性类型',
+                                      `type` varchar(50) NOT NULL COMMENT '属性类型',
                                       `desc` text COMMENT '属性描述',
                                       `status` tinyint(4) DEFAULT '0' COMMENT '状态：0-未发布，1-已发布',
                                       `indexed` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否索引：1-是，0-否',
@@ -114,7 +114,7 @@ CREATE TABLE `graph_property_def` (
                                       PRIMARY KEY (`id`),
                                       KEY `idx_entity_id` (`entity_id`) USING BTREE,
                                       KEY `idx_property_type` (`property_type`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COMMENT='图属性定义表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='图属性定义表';
 
 -- ----------------------------
 
