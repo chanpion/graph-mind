@@ -106,18 +106,28 @@
                   :rules="analysisRules"
                   label-position="top"
               >
-                <!-- 顶点类型和属性 -->
-                <el-form-item label="顶点类型和属性" prop="pathEntity">
+                <!-- 起点顶点类型和属性 -->
+                <el-form-item label="起点类型和属性" prop="pathStartEntity">
                   <el-cascader
-                    v-model="analysisForm.pathEntity"
-                    placeholder="请选择顶点类型和属性"
+                    v-model="analysisForm.pathStartEntity"
+                    placeholder="请选择起点顶点类型和属性"
                     style="width: 100%"
                     :options="entityOptions"
                   />
                 </el-form-item>
-                
+
                 <el-form-item label="起点值" prop="sourceValue">
                   <el-input v-model="analysisForm.sourceValue" placeholder="请输入起点值"/>
+                </el-form-item>
+
+                <!-- 终点顶点类型和属性 -->
+                <el-form-item label="终点类型和属性" prop="pathEndEntity">
+                  <el-cascader
+                    v-model="analysisForm.pathEndEntity"
+                    placeholder="请选择终点顶点类型和属性"
+                    style="width: 100%"
+                    :options="entityOptions"
+                  />
                 </el-form-item>
 
                 <el-form-item label="终点值" prop="targetValue">
@@ -434,7 +444,9 @@ const analysisForm = reactive({
   resolution: 1.0,
   weakly: true,
   targetEntity: [], // 修改为数组以适应级联选择（K层展开用）
-  pathEntity: [], // 路径查询共用顶点类型和属性
+  pathEntity: [], // 路径查询共用顶点类型和属性 (已废弃)
+  pathStartEntity: [], // 路径查询起点类型和属性
+  pathEndEntity: [], // 路径查询终点类型和属性
   entityProperty: '',
   queryValue: '',
   maxPaths: 1000,
@@ -456,10 +468,12 @@ const entityOptions = computed(() => {
   return vertexTypes.value.map(entity => ({
     value: entity.label,
     label: entity.label,
-    children: entity.properties ? entity.properties.map(prop => ({
-      value: prop.code,
-      label: prop.code
-    })) : []
+    children: (entity.properties && entity.properties.length > 0)
+      ? entity.properties.map(prop => ({
+          value: prop.code || prop.name,
+          label: prop.name || prop.code
+        }))
+      : [{ value: '_none', label: '（无属性）' }]
   }))
 })
 
@@ -491,9 +505,11 @@ const isExecuteButtonDisabled = computed(() => {
 
 // 计算路径查询按钮是否禁用
 const isPathQueryButtonDisabled = computed(() => {
-  return !(analysisForm.pathEntity && 
-           analysisForm.pathEntity.length === 2 && 
+  return !(analysisForm.pathStartEntity &&
+           analysisForm.pathStartEntity.length === 2 &&
            analysisForm.sourceValue &&
+           analysisForm.pathEndEntity &&
+           analysisForm.pathEndEntity.length === 2 &&
            analysisForm.targetValue);
 })
 
@@ -529,8 +545,11 @@ const analysisRules = {
   queryValue: [
     {required: true, message: '请输入查询值', trigger: 'blur'}
   ],
-  pathEntity: [
-    {required: true, message: '请选择顶点类型和属性', trigger: 'change', type: 'array', min: 2}
+  pathStartEntity: [
+    {required: true, message: '请选择起点类型和属性', trigger: 'change', type: 'array', min: 2}
+  ],
+  pathEndEntity: [
+    {required: true, message: '请选择终点类型和属性', trigger: 'change', type: 'array', min: 2}
   ],
   sourceValue: [
     {required: true, message: '请输入起点值', trigger: 'blur'}
@@ -555,8 +574,11 @@ const kLayerExpandRules = {
 
 // 路径查询专用验证规则
 const pathQueryRules = {
-  pathEntity: [
-    {required: true, message: '请选择顶点类型和属性', trigger: 'change', type: 'array', min: 2}
+  pathStartEntity: [
+    {required: true, message: '请选择起点类型和属性', trigger: 'change', type: 'array', min: 2}
+  ],
+  pathEndEntity: [
+    {required: true, message: '请选择终点类型和属性', trigger: 'change', type: 'array', min: 2}
   ],
   sourceValue: [
     {required: true, message: '请输入起点值', trigger: 'blur'}
@@ -673,16 +695,18 @@ const executePathQuery = async () => {
 
   try {
     // 手动验证路径查询需要的字段
-    const isValid = analysisForm.pathEntity && 
-                   analysisForm.pathEntity.length === 2 && 
+    const isValid = analysisForm.pathStartEntity &&
+                   analysisForm.pathStartEntity.length === 2 &&
                    analysisForm.sourceValue &&
+                   analysisForm.pathEndEntity &&
+                   analysisForm.pathEndEntity.length === 2 &&
                    analysisForm.targetValue;
-    
+
     if (!isValid) {
       ElMessage.error('请填写所有必填字段');
       return;
     }
-    
+
     analysisLoading.value = true
     analysisResult.value = null
 
@@ -700,11 +724,11 @@ const executePathQuery = async () => {
         analysisForm.maxLength, // 最大路径长度
         pathParams,
         {
-          startLabel: analysisForm.pathEntity[0],
-          startProp: analysisForm.pathEntity[1],
+          startLabel: analysisForm.pathStartEntity[0],
+          startProp: analysisForm.pathStartEntity[1],
           startValue: analysisForm.sourceValue,
-          endLabel: analysisForm.pathEntity[0],
-          endProp: analysisForm.pathEntity[1],
+          endLabel: analysisForm.pathEndEntity[0],
+          endProp: analysisForm.pathEndEntity[1],
           endValue: analysisForm.targetValue
         }
       )
@@ -775,7 +799,12 @@ const fetchGraphSchema = async () => {
     edgeTypes.value = graphSchema.value.relations
 
     if (graphSchema.value.entities.length > 0) {
-      analysisForm.targetEntity = [graphSchema.value.entities[0].label]
+      const firstEntity = graphSchema.value.entities[0]
+      analysisForm.targetEntity = [firstEntity.label]
+      // 如果有属性，添加第一个属性
+      if (firstEntity.properties && firstEntity.properties.length > 0) {
+        analysisForm.targetEntity.push(firstEntity.properties[0].code)
+      }
     }
   } catch (error) {
     ElMessage.error('获取图schema失败: ' + (error.message || '未知错误'))
@@ -862,11 +891,11 @@ const executeAnalysis = async () => {
             analysisForm.maxLength,
             fpParams,
             {
-              startLabel: analysisForm.pathEntity[0],
-              startProp: analysisForm.pathEntity[1],
+              startLabel: analysisForm.pathStartEntity[0],
+              startProp: analysisForm.pathStartEntity[1],
               startValue: analysisForm.sourceValue,
-              endLabel: analysisForm.pathEntity[0],
-              endProp: analysisForm.pathEntity[1],
+              endLabel: analysisForm.pathEndEntity[0],
+              endProp: analysisForm.pathEndEntity[1],
               endValue: analysisForm.targetValue
             }
           );

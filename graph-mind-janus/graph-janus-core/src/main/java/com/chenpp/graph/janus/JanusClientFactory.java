@@ -62,7 +62,7 @@ public class JanusClientFactory {
         if (graph != null && graph.isOpen()) {
             return graph;
         }
-        
+
         Configuration configuration;
         try {
             String backend = janusConf.getStorageBackend();
@@ -74,7 +74,7 @@ public class JanusClientFactory {
                     throw new GraphException("Not supported backend: " + backend);
                 }
             };
-            
+
             graph = JanusGraphFactory.open(configuration);
             JANUS_GRAPH_MAP.put(key, graph);
             log.info("Created new JanusGraph instance for key: {}", key);
@@ -136,7 +136,7 @@ public class JanusClientFactory {
         configuration.setProperty(STORAGE_BACKEND.toStringWithoutRoot(), "cql");
         configuration.setProperty(STORAGE_HOSTS.toStringWithoutRoot(), cassandraConf.getHostname());
         configuration.setProperty(STORAGE_PORT.toStringWithoutRoot(), cassandraConf.getPort());
-        String keyspace = cassandraConf.getKeyspace();
+        String keyspace = janusConf.getGraphCode();
         if (Objects.equals(keyspace, JanusConstants.DEFAULT_GRAPH_CODE)) {
             keyspace = "\"default\"";
         }

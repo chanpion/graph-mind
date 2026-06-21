@@ -161,11 +161,11 @@
                   </el-descriptions>
                 </div>
 
-                <div class="detail-section" v-if="selectedElement.properties && Object.keys(selectedElement.properties).length > 0">
+                <div class="detail-section" v-if="displayProperties && Object.keys(displayProperties).length > 0">
                   <h4>属性</h4>
                   <div class="property-list">
                     <div
-                      v-for="(value, key) in selectedElement.properties"
+                      v-for="(value, key) in displayProperties"
                       :key="key"
                       class="property-item"
                     >
@@ -269,6 +269,14 @@ const d3GraphRef = ref(null)
 
 const detailDrawerVisible = ref(false)
 const selectedElement = ref(null)
+
+// 详情面板显示的属性（排除 id）
+const displayProperties = computed(() => {
+  if (!selectedElement.value?.properties) return {}
+  const props = { ...selectedElement.value.properties }
+  delete props.id
+  return props
+})
 
 // 扩展/折叠相关
 const originalGraphData = ref(null)
@@ -737,7 +745,6 @@ const transformApiResponseToGraphData = (apiResponse) => {
         id: v.uid || v.id,
         label: v.label,
         properties: {
-          ...(v.id !== undefined && v.id !== v.uid ? { id: v.id } : {}),
           ...(v.uid !== undefined ? { uid: v.uid } : {}),
           ...(v.properties || {})
         }
@@ -748,7 +755,10 @@ const transformApiResponseToGraphData = (apiResponse) => {
           source: e.startUid,
           target: e.endUid,
           label: e.label,
-          properties: e.properties || {}
+          properties: {
+            ...(e.uid !== undefined ? { uid: e.uid } : {}),
+            ...(e.properties || {})
+          }
         }))
         .filter(e => e.source && e.target)
     }

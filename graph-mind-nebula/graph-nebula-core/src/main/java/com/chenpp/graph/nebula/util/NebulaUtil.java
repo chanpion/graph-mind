@@ -101,9 +101,6 @@ public class NebulaUtil {
         return "DROP EDGE IF EXISTS " + edgeTypeName;
     }
 
-    /**
-     * 构建 ALTER EDGE ADD 语句，为已有边类型添加新属性
-     */
     public static String buildAlterEdgeAdd(GraphRelation relation) {
         String properties = relation.getProperties().stream()
                 .map(prop -> prop.getCode() + " " + convertToNebulaDataType(prop.getDataType()))
@@ -228,6 +225,14 @@ public class NebulaUtil {
             if ("null".equalsIgnoreCase(str) || "NULL".equals(str)) {
                 return "NULL";
             }
+            // 检查日期格式 (yyyy-MM-dd)
+            if (str.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                return "DATE(\"" + str + "\")";
+            }
+            // 检查日期时间格式 (yyyy-MM-ddTHH:mm:ss)
+            if (str.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}")) {
+                return "DATETIME(\"" + str + "\")";
+            }
             try {
                 if (str.contains(".")) {
                     return String.valueOf(Double.parseDouble(str));
@@ -261,7 +266,7 @@ public class NebulaUtil {
             return "STRING";
         }
         return switch (dataType) {
-            case Integer, Long -> "INT64";
+            case Integer, Int, Long -> "INT64";
             case Float, Double -> "DOUBLE";
             case Boolean -> "BOOL";
             case String -> "STRING";
@@ -285,12 +290,6 @@ public class NebulaUtil {
             default -> DataType.String;
         };
     }
-
-    public static void createUniqueIndex(NebulaConf nebulaConf, GraphIndex index) {
-        // deprecated: 仅保留空实现
-    }
-
-    // ========== 解析方法 ==========
 
     public static GraphVertex parseVertex(Node node) {
         GraphVertex graphVertex = new GraphVertex();
