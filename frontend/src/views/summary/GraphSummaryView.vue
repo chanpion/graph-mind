@@ -54,31 +54,35 @@
             </el-col>
           </el-row>
 
-          <!-- 节点标签统计 -->
-          <el-card class="detail-card" shadow="never">
-            <template #header>
-              <div class="detail-header">
-                <span>节点标签统计</span>
-              </div>
-            </template>
-            <el-table :data="vertexLabelStats" class="full-width-table">
-              <el-table-column prop="label" label="标签名称" />
-              <el-table-column prop="count" label="节点数" />
-            </el-table>
-          </el-card>
-
-          <!-- 边类型统计 -->
-          <el-card class="detail-card" shadow="never">
-            <template #header>
-              <div class="detail-header">
-                <span>边类型统计</span>
-              </div>
-            </template>
-            <el-table :data="edgeLabelStats" class="full-width-table">
-              <el-table-column prop="label" label="边类型" />
-              <el-table-column prop="count" label="边数" />
-            </el-table>
-          </el-card>
+          <!-- 节点标签统计 & 边类型统计 左右结构 -->
+          <el-row :gutter="20" class="detail-stats">
+            <el-col :span="12">
+              <el-card class="detail-card" shadow="never">
+                <template #header>
+                  <div class="detail-header">
+                    <span>节点类型统计</span>
+                  </div>
+                </template>
+                <el-table :data="vertexLabelStats" class="full-width-table">
+                  <el-table-column prop="label" label="类型名称" />
+                  <el-table-column prop="count" label="节点数" />
+                </el-table>
+              </el-card>
+            </el-col>
+            <el-col :span="12">
+              <el-card class="detail-card" shadow="never">
+                <template #header>
+                  <div class="detail-header">
+                    <span>边类型统计</span>
+                  </div>
+                </template>
+                <el-table :data="edgeLabelStats" class="full-width-table">
+                  <el-table-column prop="label" label="边类型" />
+                  <el-table-column prop="count" label="边数" />
+                </el-table>
+              </el-card>
+            </el-col>
+          </el-row>
         </div>
       </div>
     </el-card>
@@ -239,8 +243,12 @@ watch(() => graphsStore.currentGraph, (newGraph) => {
   color: var(--el-text-color-secondary);
 }
 
-.detail-card {
+.detail-stats {
   margin-bottom: 20px;
+}
+
+.detail-card {
+  height: 100%;
 }
 
 .detail-header {

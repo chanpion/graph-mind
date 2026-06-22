@@ -18,5 +18,6 @@ public class SchemaImportDTO {
     private String mode = "merge";
 
     private List<GraphVertexDef> vertices;
+
     private List<GraphEdgeDef> edges;
 }

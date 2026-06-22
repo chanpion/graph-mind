@@ -247,16 +247,16 @@ const highlightSyntax = () => {
 
   let highlighted = text
 
-  // 高亮关键字
+  // 高亮关键字（保留原始大小写）
   keywords.forEach(keyword => {
     const regex = new RegExp(`\\b${keyword}\\b`, 'gi')
-    highlighted = highlighted.replace(regex, `<span class="keyword">${keyword}</span>`)
+    highlighted = highlighted.replace(regex, match => `<span class="keyword">${match}</span>`)
   })
 
-  // 高亮函数
+  // 高亮函数（保留原始大小写）
   functions.forEach(func => {
     const regex = new RegExp(`\\b${func}\\b`, 'gi')
-    highlighted = highlighted.replace(regex, `<span class="function">${func}</span>`)
+    highlighted = highlighted.replace(regex, match => `<span class="function">${match}</span>`)
   })
 
   // 高亮字符串

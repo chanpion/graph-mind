@@ -550,7 +550,7 @@ async function handleFileChange(event) {
     const text = await file.text()
     const data = JSON.parse(text)
     if (!data.vertices && !data.edges) {
-      ElMessage.error('文件格式错误，缺少 nodes 或 edges 字段')
+      ElMessage.error('文件格式错误，缺少 vertices 或 edges 字段')
       return
     }
     importData.value = data
@@ -566,7 +566,7 @@ async function handleImportMerge() {
   try {
     await graphApi.importSchema(currentGraphId.value, {
       mode: 'merge',
-      nodes: importData.value.vertices,
+      vertices: importData.value.vertices,
       edges: importData.value.edges
     })
     ElMessage.success('导入成功')
@@ -586,7 +586,7 @@ async function handleImportClean() {
   try {
     await graphApi.importSchema(currentGraphId.value, {
       mode: 'replace',
-      nodes: importData.value.vertices,
+      vertices: importData.value.vertices,
       edges: importData.value.edges
     })
     ElMessage.success('导入成功（已覆盖）')
@@ -615,7 +615,7 @@ async function handleExport() {
       exportedAt: new Date().toISOString(),
       graphId: currentGraphId.value,
       graphCode: data.graphCode,
-      nodes: data.vertices || [],
+      vertices: data.vertices || [],
       edges: data.edges || []
     }
     const now = new Date()
