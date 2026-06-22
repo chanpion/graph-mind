@@ -13,6 +13,8 @@ import org.neo4j.driver.Driver;
 import org.neo4j.driver.GraphDatabase;
 import org.neo4j.driver.Record;
 import org.neo4j.driver.Result;
+import org.neo4j.driver.Session;
+import org.neo4j.driver.SessionConfig;
 import org.neo4j.driver.Value;
 import org.neo4j.driver.internal.InternalPath;
 import org.neo4j.driver.internal.types.InternalTypeSystem;
@@ -24,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 
 /**
  * @author April.Chen
@@ -64,6 +67,44 @@ public class Neo4jUtil {
         }
         sb.append(")");
         return sb.toString();
+    }
+
+    public static boolean isEnterpriseEdition(Driver driver) {
+        try (Session session = driver.session()) {
+            Result result = session.run("CALL dbms.components() YIELD edition RETURN edition");
+            if (result.hasNext()) {
+                String edition = result.next().get(0).asString();
+                return "enterprise".equalsIgnoreCase(edition);
+            }
+        } catch (Exception e) {
+            log.error("Not enterprise edition: {}", e.getMessage());
+        }
+        return false;
+    }
+
+    public static String getDefaultDatabaseName(Driver driver) {
+        try (Session session = driver.session()) {
+            Result dbResult = session.run("SHOW DEFAULT DATABASE");
+            if (dbResult.hasNext()) {
+                String name = dbResult.next().get("name").asString();
+                if (name != null && !name.isEmpty()) {
+                    return name;
+                }
+            }
+        }
+        return "neo4j";
+    }
+
+    public static String resolveDatabase(Driver driver, String graphCode) {
+        if (graphCode != null && !graphCode.isEmpty()) {
+            try (Session session = driver.session(SessionConfig.builder().withDatabase(graphCode).build())) {
+                session.run("RETURN 1").consume();
+                return graphCode;
+            } catch (Exception e) {
+                log.debug("Database '{}' not available, using default: {}", graphCode, e.getMessage());
+            }
+        }
+        return getDefaultDatabaseName(driver);
     }
 
     public static String buildPropertiesClause(Map<String, Object> properties) {
@@ -164,6 +205,38 @@ public class Neo4jUtil {
         }
         return JSON.parseObject(JSON.toJSONString(obj), new TypeReference<>() {
         });
+    }
+
+    public static String safeGetString(Record record, String key) {
+        try {
+            Value value = record.get(key);
+            if (value == null || value.isNull()) {
+                return null;
+            }
+            return value.asString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public static <T> List<T> safeGetList(Record record, String key, Function<Value, T> converter) {
+        try {
+            Value value = record.get(key);
+            if (value == null || value.isNull()) {
+                return null;
+            }
+            return value.asList(converter);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public static String safeGetSingleFromList(Record record, String key) {
+        List<String> list = safeGetList(record, key, Value::asString);
+        if (list != null && !list.isEmpty()) {
+            return list.get(0);
+        }
+        return null;
     }
 
     private static String getNodePropertyAsString(Node node, String propertyName) {

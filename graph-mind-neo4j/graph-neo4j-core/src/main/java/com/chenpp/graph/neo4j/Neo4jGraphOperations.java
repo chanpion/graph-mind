@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 /**
  * @author April.Chen
@@ -44,7 +43,7 @@ public class Neo4jGraphOperations implements GraphOperations {
 
     @Override
     public void createGraph(GraphConf graphConf) throws GraphException {
-        if (!isEnterpriseEdition()) {
+        if (!Neo4jUtil.isEnterpriseEdition(driver)) {
             throw new GraphException(ErrorCode.UNSUPPORTED_OPERATION, "Neo4j 社区版不支持多数据库操作");
         }
 
@@ -62,7 +61,7 @@ public class Neo4jGraphOperations implements GraphOperations {
     public void dropGraph(GraphConf graphConf) throws GraphException {
         log.info("Dropping graph in Neo4j: {}", graphConf.getGraphCode());
 
-        if (!isEnterpriseEdition()) {
+        if (!Neo4jUtil.isEnterpriseEdition(driver)) {
             throw new GraphException(ErrorCode.UNSUPPORTED_OPERATION, "Neo4j 社区版不支持多数据库操作");
         }
 
@@ -74,23 +73,6 @@ public class Neo4jGraphOperations implements GraphOperations {
             log.error("Failed to drop database in Neo4j: {}", database, e);
             throw new GraphException("Failed to drop database in Neo4j: " + database, e);
         }
-    }
-
-    /**
-     * 是否企业版（企业版 vs 社区版）
-     * 通过 dbms.components() 查询 Neo4j 版本类型
-     */
-    private boolean isEnterpriseEdition() {
-        try (Session session = driver.session()) {
-            Result result = session.run("CALL dbms.components() YIELD edition RETURN edition");
-            if (result.hasNext()) {
-                String edition = result.next().get(0).asString();
-                return "enterprise".equalsIgnoreCase(edition);
-            }
-        } catch (Exception e) {
-            log.error("Not enterprise edition: {}", e.getMessage());
-        }
-        return false;
     }
 
     @Override
@@ -118,22 +100,6 @@ public class Neo4jGraphOperations implements GraphOperations {
         return result;
     }
 
-    /**
-     * 获取 Neo4j 默认数据库名称
-     */
-    private String getDefaultDatabaseName() {
-        try (Session session = driver.session()) {
-            Result dbResult = session.run("SHOW DEFAULT DATABASE");
-            if (dbResult.hasNext()) {
-                String name = dbResult.next().get("name").asString();
-                if (name != null && !name.isEmpty()) {
-                    return name;
-                }
-            }
-        }
-        return "neo4j";
-    }
-
     @Override
     public void applySchema(GraphConf graphConf, GraphSchema graphSchema) {
         log.info("Applying schema to graph: {}", graphConf.getGraphCode());
@@ -145,7 +111,7 @@ public class Neo4jGraphOperations implements GraphOperations {
     @Override
     public GraphSchema getPublishedSchema(GraphConf graphConf) throws GraphException {
         GraphSchema schema = new GraphSchema();
-        String database = resolveDatabase(graphConf.getGraphCode());
+        String database = Neo4jUtil.resolveDatabase(driver, graphConf.getGraphCode());
 
         try {
             List<GraphEntity> entities = getNodeLabels(database);
@@ -164,28 +130,10 @@ public class Neo4jGraphOperations implements GraphOperations {
         return schema;
     }
 
-    /**
-     * 解析要使用的数据库名称
-     * 企业版：优先使用 graphCode 指定的多数据库
-     * 社区版：使用默认数据库
-     */
-    private String resolveDatabase(String graphCode) {
-        if (graphCode != null && !graphCode.isEmpty()) {
-            try (Session session = driver.session(SessionConfig.builder().withDatabase(graphCode).build())) {
-                session.run("RETURN 1").consume();
-                return graphCode;
-            } catch (Exception e) {
-                log.debug("Database '{}' not available, using default: {}", graphCode, e.getMessage());
-            }
-        }
-        return getDefaultDatabaseName();
-    }
-
     public List<GraphEntity> getNodeLabels(String database) throws GraphException {
         Map<String, GraphEntity> entityMap = new LinkedHashMap<>();
 
         try (Session session = driver.session(SessionConfig.builder().withDatabase(database).build())) {
-            // 获取所有节点标签
             Result labelsResult = session.run("CALL db.labels()");
             while (labelsResult.hasNext()) {
                 String label = labelsResult.next().get(0).asString();
@@ -196,37 +144,19 @@ public class Neo4jGraphOperations implements GraphOperations {
             Result propsResult = session.run("CALL db.schema.nodeTypeProperties()");
             while (propsResult.hasNext()) {
                 Record record = propsResult.next();
-                List<String> nodeLabels = safeGetList(record, "nodeLabels", Value::asString);
+                List<String> nodeLabels = Neo4jUtil.safeGetList(record, "nodeLabels", Value::asString);
                 if (nodeLabels == null || nodeLabels.isEmpty()) {
                     continue;
                 }
-
                 String label = nodeLabels.get(0);
                 GraphEntity entity = entityMap.get(label);
                 if (entity == null) {
                     continue;
                 }
-
-                String propertyName = safeGetString(record, "propertyName");
-                if (StringUtils.isBlank(propertyName)) {
-                    continue;
+                GraphProperty prop = parseProperty(record);
+                if (prop != null) {
+                    entity.getProperties().add(prop);
                 }
-
-                String typeStr = safeGetSingleFromList(record, "propertyTypes");
-                DataType dataType = DataType.instanceOf(typeStr);
-                if (dataType == null) {
-                    dataType = DataType.String;
-                }
-
-                GraphProperty prop = new GraphProperty();
-                prop.setCode(propertyName);
-                prop.setName(propertyName);
-                prop.setDataType(dataType);
-
-                if (entity.getProperties() == null) {
-                    entity.setProperties(new ArrayList<>());
-                }
-                entity.getProperties().add(prop);
             }
         } catch (Exception e) {
             log.error("Failed to get node labels from Neo4j", e);
@@ -250,30 +180,17 @@ public class Neo4jGraphOperations implements GraphOperations {
             Result propsResult = session.run("CALL db.schema.relTypeProperties()");
             while (propsResult.hasNext()) {
                 Record record = propsResult.next();
-                String rawRelType = safeGetString(record, "relType");
+                String rawRelType = Neo4jUtil.safeGetString(record, "relType");
                 if (rawRelType == null) {
                     continue;
                 }
 
                 String relType = rawRelType.replaceAll("[:`]", "");
                 GraphRelation relation = relationMap.get(relType);
-                String propertyName = safeGetString(record, "propertyName");
-                if (StringUtils.isBlank(propertyName)) {
-                    continue;
+                GraphProperty prop = parseProperty(record);
+                if (prop != null) {
+                    relation.getProperties().add(prop);
                 }
-
-                String typeStr = safeGetSingleFromList(record, "propertyTypes");
-                DataType dataType = DataType.instanceOf(typeStr);
-                if (dataType == null) {
-                    dataType = DataType.String;
-                }
-
-                GraphProperty prop = new GraphProperty();
-                prop.setCode(propertyName);
-                prop.setName(propertyName);
-                prop.setDataType(dataType);
-
-                relation.getProperties().add(prop);
             }
 
             inferEdgeEndpoints(session, relationMap);
@@ -285,11 +202,32 @@ public class Neo4jGraphOperations implements GraphOperations {
         return new ArrayList<>(relationMap.values());
     }
 
+    private GraphProperty parseProperty(Record record) {
+        String propertyName = Neo4jUtil.safeGetString(record, "propertyName");
+        if (StringUtils.isBlank(propertyName)) {
+            return null;
+        }
+
+        String typeStr = Neo4jUtil.safeGetSingleFromList(record, "propertyTypes");
+        DataType dataType = DataType.instanceOf(typeStr);
+        if (dataType == null) {
+            dataType = DataType.String;
+        }
+
+        GraphProperty prop = new GraphProperty();
+        prop.setCode(propertyName);
+        prop.setName(propertyName);
+        prop.setDataType(dataType);
+        return prop;
+    }
+
     /**
      * 从实际数据中采样推断边的起点/终点节点标签
      */
     private void inferEdgeEndpoints(Session session, Map<String, GraphRelation> relationMap) {
-        if (relationMap.isEmpty()) return;
+        if (relationMap.isEmpty()) {
+            return;
+        }
 
         for (String relType : relationMap.keySet()) {
             String sampleCypher = String.format(
@@ -349,37 +287,5 @@ public class Neo4jGraphOperations implements GraphOperations {
         } catch (Exception e) {
             log.error("Failed to drop index: {}", indexName, e);
         }
-    }
-
-    private static String safeGetString(Record record, String key) {
-        try {
-            Value value = record.get(key);
-            if (value == null || value.isNull()) {
-                return null;
-            }
-            return value.asString();
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private static <T> List<T> safeGetList(Record record, String key, Function<Value, T> converter) {
-        try {
-            Value value = record.get(key);
-            if (value == null || value.isNull()) {
-                return null;
-            }
-            return value.asList(converter);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private static String safeGetSingleFromList(Record record, String key) {
-        List<String> list = safeGetList(record, key, Value::asString);
-        if (list != null && !list.isEmpty()) {
-            return list.get(0);
-        }
-        return null;
     }
 }

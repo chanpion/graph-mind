@@ -70,20 +70,16 @@ public class Neo4jClientFactory {
         return driver;
     }
 
-
-    /**
-     * 关闭并清理所有缓存的驱动程序
-     */
     public static void closeAllDrivers() {
-        CACHE.values().forEach(driver -> {
+        CACHE.forEach((key, driver) -> {
             try {
                 driver.close();
-                log.info("Closed Neo4j driver");
+                CACHE.remove(key);
+                log.info("Closed Neo4j driver for: {}", key);
             } catch (Exception e) {
                 log.warn("Error closing Neo4j driver", e);
             }
         });
-        CACHE.clear();
         log.info("Cleared Neo4j driver cache");
     }
 }
