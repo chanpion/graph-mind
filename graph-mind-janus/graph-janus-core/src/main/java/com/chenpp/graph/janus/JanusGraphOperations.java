@@ -202,6 +202,17 @@ public class JanusGraphOperations implements GraphOperations {
             if (!vertexLabel.isPartitioned() && !vertexLabel.isStatic()) {
                 GraphEntity entity = new GraphEntity();
                 entity.setLabel(vertexLabel.name());
+
+                List<GraphProperty> properties = new ArrayList<>();
+                for (PropertyKey pk : vertexLabel.mappedProperties()) {
+                    GraphProperty prop = new GraphProperty();
+                    prop.setCode(pk.name());
+                    prop.setName(pk.name());
+                    prop.setDataType(DataType.instanceOf(pk.dataType().getSimpleName()));
+                    properties.add(prop);
+                }
+                entity.setProperties(properties);
+
                 entities.add(entity);
             }
         }
@@ -229,6 +240,17 @@ public class JanusGraphOperations implements GraphOperations {
                     relation.setEndLabel(inLabel.name());
                 }
             }
+
+            List<GraphProperty> properties = new ArrayList<>();
+            for (PropertyKey pk : edgeLabel.mappedProperties()) {
+                GraphProperty prop = new GraphProperty();
+                prop.setCode(pk.name());
+                prop.setName(pk.name());
+                prop.setDataType(DataType.instanceOf(pk.dataType().getSimpleName()));
+                properties.add(prop);
+            }
+            relation.setProperties(properties);
+
             relations.add(relation);
         }
 

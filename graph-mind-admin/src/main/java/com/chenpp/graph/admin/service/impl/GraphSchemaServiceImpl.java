@@ -270,7 +270,7 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
                 index.setLabel(vertex.getLabel());
                 index.setProperty(p.getCode());
                 index.setType(IndexType.COMPOSITE.code());
-                index.setSchemaType("vertex");
+                index.setSchemaType(GraphConstants.VERTEX);
                 index.setPropertyNames(Collections.singletonList(p.getCode()));
                 index.setName(String.format("idx_%s_%s_%s", graphInfo.getCode(), vertex.getLabel(), p.getCode()));
                 indexes.add(index);
@@ -283,7 +283,7 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
                 index.setLabel(edge.getLabel());
                 index.setProperty(p.getCode());
                 index.setType(IndexType.COMPOSITE.code());
-                index.setSchemaType("edge");
+                index.setSchemaType(GraphConstants.EDGE);
                 index.setPropertyNames(Collections.singletonList(p.getCode()));
                 index.setName(String.format("idx_%s_%s_%s", graphInfo.getCode(), edge.getLabel(), p.getCode()));
                 indexes.add(index);

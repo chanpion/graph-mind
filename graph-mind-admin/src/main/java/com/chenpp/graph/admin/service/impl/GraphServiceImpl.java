@@ -16,6 +16,7 @@ import com.chenpp.graph.admin.service.GraphEdgeDefService;
 import com.chenpp.graph.admin.service.GraphPropertyDefService;
 import com.chenpp.graph.admin.service.GraphService;
 import com.chenpp.graph.admin.service.GraphVertexDefService;
+import com.chenpp.graph.admin.enums.GraphTypeEnum;
 import com.chenpp.graph.admin.util.GraphClientFactory;
 import com.chenpp.graph.core.GraphClient;
 import com.chenpp.graph.core.GraphOperations;
@@ -170,7 +171,7 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, GraphInfo> implement
         graphInfo.setConnectionId(connectionId);
 
         // 对于 JanusGraph，无法发现已有图（架构不支持），直接返回
-        if ("janus".equalsIgnoreCase(connection.getGraphType())) {
+        if (GraphTypeEnum.janus.name().equalsIgnoreCase(connection.getGraphType())) {
             log.debug("JanusGraph does not support listing existing graphs, skipping discovery");
             return result;
         }
@@ -267,7 +268,7 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, GraphInfo> implement
         }
 
         // JanusGraph 不支持按图名独立获取 schema，跳过
-        if ("janus".equalsIgnoreCase(connection.getGraphType())) {
+        if (GraphTypeEnum.janus.name().equalsIgnoreCase(connection.getGraphType())) {
             log.debug("JanusGraph does not support fetching schema stats per graph, skipping");
             return;
         }

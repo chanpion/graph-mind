@@ -63,6 +63,5 @@ public interface GraphOperations {
      * @param alterSchema 包含增量变更的schema（仅含需要变更的实体/关系及其新属性）
      */
     default void alterSchema(GraphConf graphConf, GraphSchema alterSchema) {
-        // 默认无操作，子类按需覆盖
     }
 }

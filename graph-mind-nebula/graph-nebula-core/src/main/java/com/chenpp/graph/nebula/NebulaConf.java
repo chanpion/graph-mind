@@ -18,7 +18,6 @@ public class NebulaConf extends GraphConf {
     private int port;
     private String username;
     private String password;
-    private String space;
     /**
      * partition_num 表示数据分片数量。默认值为 100。建议为硬盘数量的 5 倍。
      */

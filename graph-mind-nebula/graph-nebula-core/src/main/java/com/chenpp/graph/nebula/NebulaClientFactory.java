@@ -77,14 +77,14 @@ public class NebulaClientFactory {
             boolean initResult = pool.init(addresses, nebulaPoolConfig);
             if (!initResult) {
                 log.error("Pool init failed for hosts: {}", nebulaConf.getHosts());
-                pool = null;
+                throw new GraphException("Nebula pool init failed for " + nebulaConf.getHosts());
             } else {
                 log.info("Successfully initialized NebulaPool for hosts: {}", nebulaConf.getHosts());
                 CACHE_NEBULA_POOL.put(key, pool);
             }
         } catch (Exception e) {
             log.error("Init nebula session error for hosts: {}", nebulaConf.getHosts(), e);
-            pool = null;
+            throw new GraphException("Failed to init Nebula pool for " + nebulaConf.getHosts(), e);
         }
         return pool;
     }

@@ -1,12 +1,14 @@
 package com.chenpp.graph.neo4j;
 
 import com.chenpp.graph.core.GraphDataOperations;
+import com.chenpp.graph.core.constant.GraphConstants;
 import com.chenpp.graph.core.exception.ErrorCode;
 import com.chenpp.graph.core.exception.GraphException;
 import com.chenpp.graph.core.model.GraphData;
 import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphSummary;
 import com.chenpp.graph.core.model.GraphVertex;
+import com.chenpp.graph.core.model.PathQuery;
 import com.chenpp.graph.neo4j.util.Neo4jUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -104,7 +106,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
         String cypher = String.format("MATCH (n:%s) WHERE n.uid = $uid OR elementId(n) = $uid DETACH DELETE n", vertex.getLabel());
         try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
             int deleted = session.executeWrite(tx -> {
-                Result result = tx.run(cypher, Map.of("uid", vertex.getUid()));
+                Result result = tx.run(cypher, Map.of(GraphConstants.UID, vertex.getUid()));
                 return result.consume().counters().nodesDeleted();
             });
             return deleted > 0;
@@ -185,7 +187,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
         log.info("Deleting edge with label: {}, uid: {}", edge.getLabel(), edge.getUid());
         try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
             String cypher = String.format("MATCH ()-[r:%s]->() WHERE r.uid=$uid OR elementId(r)=$uid DELETE r", edge.getLabel());
-            Map<String, Object> parameters = Map.of("uid", edge.getUid());
+            Map<String, Object> parameters = Map.of(GraphConstants.UID, edge.getUid());
             int count = session.executeWrite(tx -> tx.run(cypher, parameters).consume().counters().relationshipsDeleted());
             return count > 0;
         } catch (Exception e) {
@@ -224,6 +226,23 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
     }
 
     @Override
+    public GraphData expand(String label, String property, String value, int depth, int limit) throws GraphException {
+        log.info("Expanding by property: label={}, {}={}, depth={}, limit={}", label, property, value, depth, limit);
+        String cypher = String.format(
+                "MATCH p = (n:`%s` {`%s`: $value})-[*1..%d]-(m) RETURN p LIMIT %d",
+                label, property, depth, limit);
+        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+            return session.executeRead(tx -> {
+                Result result = tx.run(cypher, Values.parameters("value", value));
+                return Neo4jUtil.parseResult(result);
+            });
+        } catch (Exception e) {
+            log.error("Failed to expand by property: label={}, {}={}", label, property, value, e);
+            throw new GraphException("Failed to expand by property", e);
+        }
+    }
+
+    @Override
     public GraphData findPath(String startVertexId, String endVertexId, int maxDepth) throws GraphException {
         log.info("Finding path from: {} to: {}, maxDepth: {}", startVertexId, endVertexId, maxDepth);
         String cypher = String.format(
@@ -236,6 +255,28 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
         } catch (Exception e) {
             log.error("Failed to find path from {} to {}", startVertexId, endVertexId, e);
             throw new GraphException("Failed to find path from " + startVertexId + " to " + endVertexId, e);
+        }
+    }
+
+    @Override
+    public GraphData findPath(PathQuery pathQuery) throws GraphException {
+        PathQuery.Condition start = pathQuery.getStartProperty();
+        PathQuery.Condition end = pathQuery.getEndProperty();
+        log.info("Finding path: start={}:{}=\"{}\", end={}:{}=\"{}\", maxDepth={}",
+                start.getLabel(), start.getProperty(), start.getValue(),
+                end.getLabel(), end.getProperty(), end.getValue(), pathQuery.getMaxDepth());
+        String cypher = String.format(
+                "MATCH p = (a:`%s` {`%s`: $startVal})-[*1..%d]-(b:`%s` {`%s`: $endVal}) RETURN p LIMIT %d",
+                start.getLabel(), start.getProperty(), pathQuery.getMaxDepth(),
+                end.getLabel(), end.getProperty(), pathQuery.getLimit());
+        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+            return session.executeRead(tx -> {
+                Result result = tx.run(cypher, Values.parameters("startVal", start.getValue(), "endVal", end.getValue()));
+                return Neo4jUtil.parseResult(result);
+            });
+        } catch (Exception e) {
+            log.error("Failed to find path by property condition", e);
+            throw new GraphException("Failed to find path by property condition", e);
         }
     }
 

@@ -151,8 +151,8 @@ export const graphApi = {
   },
 
   /** 查找路径 — 支持按 label+property+value 查找起点/终点 */
-  findPath(request) {
-    return request.post('/api/graphs/path', request)
+  findPath(params) {
+    return request.post('/api/graphs/path', params)
   },
 
   /** 获取图统计 */

@@ -7,6 +7,7 @@ import com.chenpp.graph.admin.model.GraphEdgeDef;
 import com.chenpp.graph.admin.model.GraphPropertyDef;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
 import com.chenpp.graph.admin.service.GraphPropertyDefService;
+import com.chenpp.graph.core.constant.GraphConstants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,7 +42,7 @@ public class GraphEdgeDefServiceImpl extends ServiceImpl<GraphEdgeDefDao, GraphE
             List<Long> edgeDefIds = edgeDefs.stream().map(GraphEdgeDef::getId).collect(Collectors.toList());
             QueryWrapper<GraphPropertyDef> propertyQueryWrapper = new QueryWrapper<>();
             propertyQueryWrapper.in("entity_id", edgeDefIds);
-            propertyQueryWrapper.eq("property_type", "edge");
+            propertyQueryWrapper.eq("property_type", GraphConstants.EDGE);
             if (status != null) {
                 propertyQueryWrapper.eq("status", status);
             }
@@ -66,7 +67,7 @@ public class GraphEdgeDefServiceImpl extends ServiceImpl<GraphEdgeDefDao, GraphE
             // 保存边属性
             for (GraphPropertyDef property : edgeDef.getProperties()) {
                 property.setEntityId(edgeDef.getId());
-                property.setPropertyType("edge");
+                property.setPropertyType(GraphConstants.EDGE);
                 property.setGraphId(edgeDef.getGraphId());
                 if (property.getCode() == null || property.getCode().isEmpty()) {
                     property.setCode(property.getName());
@@ -86,14 +87,14 @@ public class GraphEdgeDefServiceImpl extends ServiceImpl<GraphEdgeDefDao, GraphE
         if (updated) {
             QueryWrapper<GraphPropertyDef> deleteWrapper = new QueryWrapper<>();
             deleteWrapper.eq("entity_id", edgeDef.getId());
-            deleteWrapper.eq("property_type", "edge");
+            deleteWrapper.eq("property_type", GraphConstants.EDGE);
             graphPropertyDefService.remove(deleteWrapper);
 
             // 重新保存边属性
             if (edgeDef.getProperties() != null) {
                 for (GraphPropertyDef property : edgeDef.getProperties()) {
                     property.setEntityId(edgeDef.getId());
-                    property.setPropertyType("edge");
+                    property.setPropertyType(GraphConstants.EDGE);
                     property.setGraphId(edgeDef.getGraphId());
                     graphPropertyDefService.save(property);
                 }
@@ -109,7 +110,7 @@ public class GraphEdgeDefServiceImpl extends ServiceImpl<GraphEdgeDefDao, GraphE
         // 删除边属性
         QueryWrapper<GraphPropertyDef> deleteWrapper = new QueryWrapper<>();
         deleteWrapper.eq("entity_id", id);
-        deleteWrapper.eq("property_type", "edge");
+        deleteWrapper.eq("property_type", GraphConstants.EDGE);
         graphPropertyDefService.remove(deleteWrapper);
 
         // 删除边定义

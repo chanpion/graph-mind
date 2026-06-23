@@ -5,6 +5,7 @@ import com.chenpp.graph.core.model.GraphData;
 import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphVertex;
 import com.chenpp.graph.core.model.GraphSummary;
+import com.chenpp.graph.core.model.PathQuery;
 
 import java.util.Collection;
 
@@ -107,6 +108,19 @@ public interface GraphDataOperations {
     GraphData expand(String vertexId, int depth) throws GraphException;
 
     /**
+     * 根据标签和属性值展开邻居（从匹配的顶点出发，深度遍历邻居）
+     *
+     * @param label    顶点标签
+     * @param property 属性名
+     * @param value    属性值
+     * @param depth    展开深度
+     * @param limit    最大返回数
+     * @return GraphData 包含展开结果的图数据
+     * @throws GraphException 查询异常
+     */
+    GraphData expand(String label, String property, String value, int depth, int limit) throws GraphException;
+
+    /**
      * 查找两个节点之间的路径
      *
      * @param startVertexId 起始节点ID
@@ -116,6 +130,15 @@ public interface GraphDataOperations {
      * @throws GraphException 查询异常
      */
     GraphData findPath(String startVertexId, String endVertexId, int maxDepth) throws GraphException;
+
+    /**
+     * 根据属性条件查找两点间的所有路径
+     *
+     * @param pathQuery 路径查询条件
+     * @return GraphData 包含路径信息的图数据
+     * @throws GraphException 查询异常
+     */
+    GraphData findPath(PathQuery pathQuery) throws GraphException;
 
     /**
      * 获取图数据统计信息

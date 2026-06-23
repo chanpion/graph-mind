@@ -7,6 +7,7 @@ import com.chenpp.graph.admin.model.GraphVertexDef;
 import com.chenpp.graph.admin.model.GraphPropertyDef;
 import com.chenpp.graph.admin.service.GraphVertexDefService;
 import com.chenpp.graph.admin.service.GraphPropertyDefService;
+import com.chenpp.graph.core.constant.GraphConstants;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,7 +43,7 @@ public class GraphVertexDefServiceImpl extends ServiceImpl<GraphVertexDefDao, Gr
             List<Long> vertexDefIds = vertexDefs.stream().map(GraphVertexDef::getId).collect(Collectors.toList());
             QueryWrapper<GraphPropertyDef> propertyQueryWrapper = new QueryWrapper<>();
             propertyQueryWrapper.in("entity_id", vertexDefIds);
-            propertyQueryWrapper.eq("property_type", "vertex");
+            propertyQueryWrapper.eq("property_type", GraphConstants.VERTEX);
             if (status != null) {
                 propertyQueryWrapper.eq("status", status);
             }
@@ -68,7 +69,7 @@ public class GraphVertexDefServiceImpl extends ServiceImpl<GraphVertexDefDao, Gr
             for (GraphPropertyDef property : vertexDef.getProperties()) {
                 property.setGraphId(vertexDef.getGraphId());
                 property.setEntityId(vertexDef.getId());
-                property.setPropertyType("vertex");
+                property.setPropertyType(GraphConstants.VERTEX);
                 if (property.getCode() == null || property.getCode().isEmpty()) {
                     property.setCode(property.getName());
                 }
@@ -96,7 +97,7 @@ public class GraphVertexDefServiceImpl extends ServiceImpl<GraphVertexDefDao, Gr
             // 删除原有的属性
             QueryWrapper<GraphPropertyDef> deleteWrapper = new QueryWrapper<>();
             deleteWrapper.eq("entity_id", vertexDef.getId());
-            deleteWrapper.eq("property_type", "vertex");
+            deleteWrapper.eq("property_type", GraphConstants.VERTEX);
             graphPropertyDefService.remove(deleteWrapper);
 
             // 重新保存节点属性
@@ -104,7 +105,7 @@ public class GraphVertexDefServiceImpl extends ServiceImpl<GraphVertexDefDao, Gr
                 for (GraphPropertyDef property : vertexDef.getProperties()) {
                     property.setGraphId(vertexDef.getGraphId());
                     property.setEntityId(vertexDef.getId());
-                    property.setPropertyType("vertex");
+                    property.setPropertyType(GraphConstants.VERTEX);
                     if (property.getCode() == null || property.getCode().isEmpty()) {
                         property.setCode(property.getName());
                     }
@@ -121,7 +122,7 @@ public class GraphVertexDefServiceImpl extends ServiceImpl<GraphVertexDefDao, Gr
     public boolean deleteVertexDefWithProperties(Long id) {
         QueryWrapper<GraphPropertyDef> deleteWrapper = new QueryWrapper<>();
         deleteWrapper.eq("entity_id", id);
-        deleteWrapper.eq("property_type", "vertex");
+        deleteWrapper.eq("property_type", GraphConstants.VERTEX);
         graphPropertyDefService.remove(deleteWrapper);
 
         return this.removeById(id);

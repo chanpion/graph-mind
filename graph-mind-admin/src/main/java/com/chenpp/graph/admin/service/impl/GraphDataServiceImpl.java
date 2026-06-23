@@ -20,6 +20,7 @@ import com.chenpp.graph.admin.service.GraphService;
 import com.chenpp.graph.admin.util.GraphClientFactory;
 import com.chenpp.graph.core.GraphClient;
 import com.chenpp.graph.core.GraphDataOperations;
+import com.chenpp.graph.core.constant.GraphConstants;
 import com.chenpp.graph.core.model.GraphConf;
 import com.chenpp.graph.core.model.GraphData;
 import com.chenpp.graph.core.model.GraphEdge;
@@ -110,7 +111,7 @@ public class GraphDataServiceImpl implements GraphDataService {
 
             QueryWrapper<GraphPropertyDef> propQuery = new QueryWrapper<GraphPropertyDef>()
                     .eq("entity_id", vertexTypeId)
-                    .eq("property_type", "vertex");
+                    .eq("property_type", GraphConstants.VERTEX);
             List<GraphPropertyDef> propDefs = propertyDefService.list(propQuery);
             Set<String> vertexSchemaPropertyCodes = propDefs.stream()
                     .map(GraphPropertyDef::getCode)
@@ -132,7 +133,7 @@ public class GraphDataServiceImpl implements GraphDataService {
             for (Map<String, String> dataRow : dataList) {
                 try {
                     GraphVertex vertex = new GraphVertex();
-                    vertex.setUid(dataRow.get("uid"));
+                    vertex.setUid(dataRow.get(GraphConstants.UID));
                     vertex.setLabel(dataRow.get("label"));
 
                     Map<String, Object> properties = new HashMap<>();
@@ -262,7 +263,7 @@ public class GraphDataServiceImpl implements GraphDataService {
 
             QueryWrapper<GraphPropertyDef> edgePropQuery = new QueryWrapper<GraphPropertyDef>()
                     .eq("entity_id", edgeTypeId)
-                    .eq("property_type", "edge");
+                    .eq("property_type", GraphConstants.EDGE);
             Set<String> edgeSchemaPropertyCodes = propertyDefService.list(edgePropQuery).stream()
                     .map(GraphPropertyDef::getCode)
                     .collect(Collectors.toSet());
@@ -280,7 +281,7 @@ public class GraphDataServiceImpl implements GraphDataService {
             for (Map<String, String> dataRow : dataList) {
                 try {
                     GraphEdge edge = new GraphEdge();
-                    edge.setUid(dataRow.get("uid"));
+                    edge.setUid(dataRow.get(GraphConstants.UID));
                     edge.setLabel(edgeDef.getLabel());
                     edge.setStartLabel(edgeDef.getStartLabel());
                     edge.setEndLabel(edgeDef.getEndLabel());
@@ -447,11 +448,11 @@ public class GraphDataServiceImpl implements GraphDataService {
             }
             vertex.setProperties(properties);
             // uid 可能在前端数据顶层或 properties 中
-            if (properties.containsKey("uid")) {
-                vertex.setUid(properties.get("uid").toString());
-            } else if (data.containsKey("uid")) {
-                vertex.setUid(data.get("uid").toString());
-                properties.put("uid", data.get("uid").toString());
+            if (properties.containsKey(GraphConstants.UID)) {
+                vertex.setUid(properties.get(GraphConstants.UID).toString());
+            } else if (data.containsKey(GraphConstants.UID)) {
+                vertex.setUid(data.get(GraphConstants.UID).toString());
+                properties.put(GraphConstants.UID, data.get(GraphConstants.UID).toString());
             }
 
             ops.addVertex(vertex);
@@ -497,11 +498,11 @@ public class GraphDataServiceImpl implements GraphDataService {
             }
             edge.setProperties(properties);
             // uid 可能在前端数据顶层或 properties 中
-            if (properties.containsKey("uid")) {
-                edge.setUid(properties.get("uid").toString());
-            } else if (data.containsKey("uid")) {
-                edge.setUid(data.get("uid").toString());
-                properties.put("uid", data.get("uid").toString());
+            if (properties.containsKey(GraphConstants.UID)) {
+                edge.setUid(properties.get(GraphConstants.UID).toString());
+            } else if (data.containsKey(GraphConstants.UID)) {
+                edge.setUid(data.get(GraphConstants.UID).toString());
+                properties.put(GraphConstants.UID, data.get(GraphConstants.UID).toString());
             }
             // startUid/endUid 可能在前端数据顶层或 properties 中
             if (data.containsKey("startUid")) {
@@ -570,10 +571,10 @@ public class GraphDataServiceImpl implements GraphDataService {
                 }
             }
             vertex.setProperties(properties);
-            if (properties.containsKey("uid")) {
-                vertex.setUid(properties.get("uid").toString());
-            } else if (data.containsKey("uid")) {
-                vertex.setUid(data.get("uid").toString());
+            if (properties.containsKey(GraphConstants.UID)) {
+                vertex.setUid(properties.get(GraphConstants.UID).toString());
+            } else if (data.containsKey(GraphConstants.UID)) {
+                vertex.setUid(data.get(GraphConstants.UID).toString());
             }
 
             ops.updateVertex(vertex);
@@ -981,7 +982,7 @@ public class GraphDataServiceImpl implements GraphDataService {
     private Map<String, Object> edgeToMap(GraphEdge edge) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", edge.getId());
-        map.put("uid", edge.getUid());
+        map.put(GraphConstants.UID, edge.getUid());
         map.put("label", edge.getLabel());
         map.put("startUid", edge.getStartUid());
         map.put("startLabel", edge.getStartLabel());

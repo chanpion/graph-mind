@@ -1,14 +1,17 @@
 package com.chenpp.graph.nebula.util;
 
+import com.chenpp.graph.core.constant.GraphConstants;
 import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphVertex;
 import com.chenpp.graph.core.schema.DataType;
 import com.chenpp.graph.core.schema.GraphEntity;
 import com.chenpp.graph.core.schema.GraphIndex;
+import com.chenpp.graph.core.schema.GraphProperty;
 import com.chenpp.graph.core.schema.GraphRelation;
 import com.chenpp.graph.nebula.NebulaConf;
 import com.chenpp.graph.nebula.schema.NebulaDataType;
 import com.chenpp.graph.nebula.schema.NebulaIndex;
+import com.chenpp.graph.nebula.schema.NebulaProperty;
 import com.chenpp.graph.nebula.schema.SchemaType;
 import com.vesoft.nebula.client.graph.data.Node;
 import com.vesoft.nebula.client.graph.data.Relationship;
@@ -30,7 +33,7 @@ public class NebulaUtil {
     // ========== Space 操作 ==========
 
     public static String buildCreateSpace(NebulaConf nebulaConf) {
-        return "CREATE SPACE IF NOT EXISTS " + nebulaConf.getSpace() + " (PARTITION_NUM = " + nebulaConf.getPartitionNum() + ", REPLICA_FACTOR = " + nebulaConf.getReplicaFactor() + ", VID_TYPE = FIXED_STRING(" + nebulaConf.getVidFixedStrLength() + "))";
+        return "CREATE SPACE IF NOT EXISTS " + nebulaConf.getGraphCode() + " (PARTITION_NUM = " + nebulaConf.getPartitionNum() + ", REPLICA_FACTOR = " + nebulaConf.getReplicaFactor() + ", VID_TYPE = FIXED_STRING(" + nebulaConf.getVidFixedStrLength() + "))";
     }
 
     public static String buildDropSpace(String spaceName) {
@@ -299,6 +302,14 @@ public class NebulaUtil {
         };
     }
 
+    public static GraphProperty toGraphProperty(NebulaProperty nebulaProp) {
+        GraphProperty property = new GraphProperty();
+        property.setCode(nebulaProp.getName());
+        property.setName(nebulaProp.getName());
+        property.setDataType(NebulaUtil.convertToDataType(nebulaProp.getDataType()));
+        return property;
+    }
+
     public static GraphVertex parseVertex(Node node) {
         GraphVertex graphVertex = new GraphVertex();
         try {
@@ -335,8 +346,8 @@ public class NebulaUtil {
                 edgeProps.forEach((key, value) -> properties.put(key, parseValueWrapper(value)));
             }
             graphEdge.setProperties(properties);
-            if (properties.get("uid") != null) {
-                graphEdge.setUid(properties.get("uid").toString());
+            if (properties.get(GraphConstants.UID) != null) {
+                graphEdge.setUid(properties.get(GraphConstants.UID).toString());
             } else {
                 graphEdge.setUid(srcId + "->" + dstId + "@" + edgeName);
             }

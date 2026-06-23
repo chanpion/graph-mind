@@ -55,7 +55,7 @@ public class GraphClientFactory {
                 nebulaConf.setPort(graphConf.getPort());
                 nebulaConf.setUsername(graphConf.getUsername());
                 nebulaConf.setPassword(graphConf.getPassword());
-                nebulaConf.setSpace(graphConf.getGraphCode());
+                nebulaConf.setGraphCode(graphConf.getGraphCode());
                 return new NebulaClient(nebulaConf);
             case janus:
                 JanusConf janusConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), JanusConf.class);

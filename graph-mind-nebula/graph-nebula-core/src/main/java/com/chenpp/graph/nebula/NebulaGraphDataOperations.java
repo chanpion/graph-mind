@@ -7,6 +7,7 @@ import com.chenpp.graph.core.model.GraphData;
 import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphSummary;
 import com.chenpp.graph.core.model.GraphVertex;
+import com.chenpp.graph.core.model.PathQuery;
 import com.chenpp.graph.nebula.util.NebulaUtil;
 import com.vesoft.nebula.client.graph.SessionPool;
 import com.vesoft.nebula.client.graph.data.PathWrapper;
@@ -421,8 +422,35 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
     }
 
     @Override
+    public GraphData expand(String label, String property, String value, int depth, int limit) throws GraphException {
+        String ngql = String.format(
+                "LOOKUP ON %s WHERE %s.%s == '%s' YIELD id(vertex) AS src"
+                + " | GO 1 TO %d STEPS FROM $-.src OVER * BIDIRECT YIELD $^ AS v1, $$ AS v2, edge AS e"
+                + " | LIMIT %d",
+                label, label, property, value, depth, limit);
+        log.debug("Executing expand by property: {}", ngql);
+        return query(ngql);
+    }
+
+    @Override
     public GraphData findPath(String startVertexId, String endVertexId, int maxDepth) throws GraphException {
         String ngql = NebulaUtil.buildShortestPath(startVertexId, endVertexId, maxDepth);
+        return query(ngql);
+    }
+
+    @Override
+    public GraphData findPath(PathQuery pathQuery) throws GraphException {
+        PathQuery.Condition start = pathQuery.getStartProperty();
+        PathQuery.Condition end = pathQuery.getEndProperty();
+        String ngql = String.format(
+                "LOOKUP ON %s WHERE %s.%s == '%s' YIELD id(vertex) AS src_id"
+                + " | LOOKUP ON %s WHERE %s.%s == '%s' YIELD $-.src_id AS src_id, id(vertex) AS dst_id"
+                + " | FIND ALL PATH FROM src_id TO dst_id OVER * UPTO %d STEPS YIELD PATH AS p"
+                + " | LIMIT %d",
+                start.getLabel(), start.getLabel(), start.getProperty(), start.getValue(),
+                end.getLabel(), end.getLabel(), end.getProperty(), end.getValue(),
+                pathQuery.getMaxDepth(), pathQuery.getLimit());
+        log.debug("Executing findPath by property: {}", ngql);
         return query(ngql);
     }
 

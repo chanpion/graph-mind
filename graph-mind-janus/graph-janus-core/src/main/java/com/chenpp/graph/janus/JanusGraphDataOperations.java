@@ -7,6 +7,7 @@ import com.chenpp.graph.core.model.GraphData;
 import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphSummary;
 import com.chenpp.graph.core.model.GraphVertex;
+import com.chenpp.graph.core.model.PathQuery;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import lombok.extern.slf4j.Slf4j;
@@ -603,8 +604,8 @@ public class JanusGraphDataOperations implements GraphDataOperations {
     private String getVertexUid(Vertex vertex) {
         // 尝试直接从属性读取
         try {
-            if (vertex.property("uid").isPresent()) {
-                Object uid = vertex.property("uid").value();
+            if (vertex.property(GraphConstants.UID).isPresent()) {
+                Object uid = vertex.property(GraphConstants.UID).value();
                 if (uid != null && !uid.toString().isEmpty()) {
                     return uid.toString();
                 }
@@ -618,8 +619,8 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             Iterator<Vertex> refreshed = graph.vertices(vertex.id());
             if (refreshed.hasNext()) {
                 Vertex freshVertex = refreshed.next();
-                if (freshVertex.property("uid").isPresent() && !freshVertex.property("uid").value().toString().isEmpty()) {
-                    return freshVertex.property("uid").value().toString();
+                if (freshVertex.property(GraphConstants.UID).isPresent() && !freshVertex.property(GraphConstants.UID).value().toString().isEmpty()) {
+                    return freshVertex.property(GraphConstants.UID).value().toString();
                 }
             }
         } catch (Exception e) {
@@ -644,7 +645,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
 
         try (JanusGraphTransaction tx = graph.newTransaction()) {
             // 查询顶点
-            Iterator<JanusGraphVertex> vertices = tx.query().has("uid", Contain.IN, vertexIds).vertices().iterator();
+            Iterator<JanusGraphVertex> vertices = tx.query().has(GraphConstants.UID, Contain.IN, vertexIds).vertices().iterator();
             while (vertices.hasNext()) {
                 JanusGraphVertex vertex = vertices.next();
                 GraphVertex graphVertex = parseVertex(vertex);
@@ -708,10 +709,36 @@ public class JanusGraphDataOperations implements GraphDataOperations {
     }
 
     @Override
+    public GraphData expand(String label, String property, String value, int depth, int limit) throws GraphException {
+        String gremlinQuery = String.format(
+                "g.V().hasLabel('%s').has('%s', '%s').repeat(bothE().bothV().simplePath()).times(%d).path().limit(%d)",
+                label, property, value, depth, limit);
+        log.debug("Executing expand by property query: {}", gremlinQuery);
+        return query(gremlinQuery);
+    }
+
+    @Override
     public GraphData findPath(String startVertexId, String endVertexId, int maxDepth) throws GraphException {
         String gremlinQuery = String.format("g.V().has('%s', '%s').repeat(bothE().bothV().simplePath()).until(has('%s', '%s')).limit(1).path()",
                 GraphConstants.UID, startVertexId, GraphConstants.UID, endVertexId);
         log.debug("Executing findPath query: {}", gremlinQuery);
+        return query(gremlinQuery);
+    }
+
+    @Override
+    public GraphData findPath(PathQuery pathQuery) throws GraphException {
+        PathQuery.Condition start = pathQuery.getStartProperty();
+        PathQuery.Condition end = pathQuery.getEndProperty();
+        String gremlinQuery = String.format(
+                "g.V().hasLabel('%s').has('%s', '%s')"
+                + ".repeat(outE().inV().simplePath())"
+                + ".until(hasLabel('%s').has('%s', '%s').or().loops().is(%d))"
+                + ".hasLabel('%s').has('%s', '%s')"
+                + ".path().by(valueMap()).by(valueMap()).limit(%d)",
+                start.getLabel(), start.getProperty(), start.getValue(),
+                end.getLabel(), end.getProperty(), end.getValue(), pathQuery.getMaxDepth(),
+                end.getLabel(), end.getProperty(), end.getValue(), pathQuery.getLimit());
+        log.debug("Executing findPath by property query: {}", gremlinQuery);
         return query(gremlinQuery);
     }
 
@@ -726,7 +753,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
 
         // 获取UID，优先使用uid属性，否则使用内部ID
         if (vertex.property(GraphConstants.UID).isPresent()) {
-            graphVertex.setUid(vertex.property("uid").value().toString());
+            graphVertex.setUid(vertex.property(GraphConstants.UID).value().toString());
         } else {
             graphVertex.setUid(vertex.id().toString());
         }
@@ -738,7 +765,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         // 获取其他属性
         Map<String, Object> properties = new HashMap<>();
         vertex.keys().forEach(key -> {
-            if (vertex.property(key).isPresent() && !"uid".equals(key)) {
+            if (vertex.property(key).isPresent() && !GraphConstants.UID.equals(key)) {
                 properties.put(key, vertex.property(key).value());
             }
         });
@@ -757,8 +784,8 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         GraphEdge graphEdge = new GraphEdge();
 
         // 获取UID，优先使用uid属性，否则使用内部ID
-        if (edge.property("uid").isPresent()) {
-            graphEdge.setUid((String) edge.property("uid").value());
+        if (edge.property(GraphConstants.UID).isPresent()) {
+            graphEdge.setUid((String) edge.property(GraphConstants.UID).value());
         } else {
             graphEdge.setUid(edge.id().toString());
         }
@@ -770,18 +797,18 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         JanusGraphVertex outVertex = edge.outVertex();
         JanusGraphVertex inVertex = edge.inVertex();
 
-        if (outVertex.property("uid").isPresent()) {
-            graphEdge.setStartUid((String) outVertex.property("uid").value());
+        if (outVertex.property(GraphConstants.UID).isPresent()) {
+            graphEdge.setStartUid((String) outVertex.property(GraphConstants.UID).value());
         }
 
-        if (inVertex.property("uid").isPresent()) {
-            graphEdge.setEndUid((String) inVertex.property("uid").value());
+        if (inVertex.property(GraphConstants.UID).isPresent()) {
+            graphEdge.setEndUid((String) inVertex.property(GraphConstants.UID).value());
         }
 
         // 获取其他属性
         Map<String, Object> properties = new HashMap<>();
         edge.keys().forEach(key -> {
-            if (edge.property(key).isPresent() && !"uid".equals(key)) {
+            if (edge.property(key).isPresent() && !GraphConstants.UID.equals(key)) {
                 properties.put(key, edge.property(key).value());
             }
         });

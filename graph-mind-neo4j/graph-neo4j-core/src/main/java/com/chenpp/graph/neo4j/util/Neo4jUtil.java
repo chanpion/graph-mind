@@ -2,6 +2,7 @@ package com.chenpp.graph.neo4j.util;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.TypeReference;
+import com.chenpp.graph.core.constant.GraphConstants;
 import com.chenpp.graph.core.exception.GraphException;
 import com.chenpp.graph.core.model.GraphData;
 import com.chenpp.graph.core.model.GraphEdge;
@@ -153,7 +154,7 @@ public class Neo4jUtil {
         }
 
         GraphVertex vertex = new GraphVertex();
-        String uid = getNodePropertyAsString(node, "uid");
+        String uid = getNodePropertyAsString(node, GraphConstants.UID);
         if (StringUtils.isBlank(uid)) {
             uid = node.elementId();
         }
@@ -173,7 +174,7 @@ public class Neo4jUtil {
 
         GraphEdge edge = new GraphEdge();
 
-        String uid = getRelationshipPropertyAsString(relationship, "uid");
+        String uid = getRelationshipPropertyAsString(relationship, GraphConstants.UID);
         if (StringUtils.isBlank(uid)) {
             uid = relationship.elementId();
         }

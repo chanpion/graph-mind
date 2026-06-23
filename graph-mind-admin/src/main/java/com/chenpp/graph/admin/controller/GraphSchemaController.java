@@ -81,7 +81,7 @@ public class GraphSchemaController {
                 for (GraphVertexDef vd : vertexDefs) {
                     if (vd.getLabel() != null && discoveredProps.containsKey(vd.getLabel())) {
                         List<GraphPropertyDef> existing = vd.getProperties() != null
-                                ? vd.getProperties() : new ArrayList<>();
+                                ? new ArrayList<>(vd.getProperties()) : new ArrayList<>();
                         Set<String> existingCodes = existing.stream()
                                 .map(GraphPropertyDef::getCode)
                                 .filter(Objects::nonNull)
@@ -96,7 +96,7 @@ public class GraphSchemaController {
                 }
             }
         } catch (Exception e) {
-            log.warn("从图数据库发现节点类型失败: {}", e.getMessage());
+            log.warn("从图数据库发现节点类型失败", e);
         }
 
         return Result.success(vertexDefs);
@@ -183,7 +183,7 @@ public class GraphSchemaController {
                         .collect(Collectors.toMap(GraphEdgeDef::getLabel, GraphEdgeDef::getProperties));
                 for (GraphEdgeDef ed : edgeDefs) {
                     if (ed.getLabel() != null && discoveredProps.containsKey(ed.getLabel())) {
-                        List<GraphPropertyDef> existing = ed.getProperties() != null ? ed.getProperties() : new ArrayList<>();
+                        List<GraphPropertyDef> existing = ed.getProperties() != null ? new ArrayList<>(ed.getProperties()) : new ArrayList<>();
                         Set<String> existingCodes = existing.stream()
                                 .map(GraphPropertyDef::getCode)
                                 .collect(Collectors.toSet());
@@ -197,7 +197,7 @@ public class GraphSchemaController {
                 }
             }
         } catch (Exception e) {
-            log.warn("从图数据库发现边类型失败: {}", e.getMessage());
+            log.warn("从图数据库发现边类型失败", e);
         }
 
         return Result.success(edgeDefs);

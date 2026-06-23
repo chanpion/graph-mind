@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * 图查询控制器
@@ -31,10 +32,20 @@ public class GraphQueryController {
     private GraphQueryService graphQueryService;
 
     @PostMapping("/query")
-    public Result<GraphData> query(@RequestBody GraphQueryRequest request) {
+    public Result<GraphData> query(
+            @RequestBody(required = false) GraphQueryRequest request,
+            @RequestParam(required = false) Long graphId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode) {
+        if (request == null) {
+            request = new GraphQueryRequest();
+        }
         if (request.getQuery() == null || request.getQuery().isEmpty()) {
             return Result.error("查询语句不能为空");
         }
+        if (request.getGraphId() == null) request.setGraphId(graphId);
+        if (request.getConnectionId() == null) request.setConnectionId(connectionId);
+        if (request.getGraphCode() == null) request.setGraphCode(graphCode);
 
         GraphData graphData = graphQueryService.query(request);
         return Result.success(graphData);

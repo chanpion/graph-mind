@@ -51,8 +51,6 @@ public class NebulaTest {
         nebulaConf.setUsername("root");
         nebulaConf.setPassword("nebula");
         nebulaConf.setGraphCode(graphCode);
-        nebulaConf.setSpace(graphCode);
-//        nebulaConf.setSpace("cpp_test_2503");
 //        nebulaConf.setGraphCode("cpp_test_2503");
 
 
@@ -83,7 +81,6 @@ public class NebulaTest {
         newSpaceConf.setUsername(nebulaConf.getUsername());
         newSpaceConf.setPassword(nebulaConf.getPassword());
         newSpaceConf.setGraphCode(graphCode);
-        newSpaceConf.setSpace(graphCode);
         newSpaceConf.setPartitionNum(1);
         newSpaceConf.setReplicaFactor(1);
         newSpaceConf.setVidFixedStrLength(32);
@@ -91,12 +88,12 @@ public class NebulaTest {
         try {
             // 创建space
             nebulaClient.opsForGraph().createGraph(newSpaceConf);
-            System.out.println("创建space成功: " + newSpaceConf.getSpace());
+            System.out.println("创建space成功: " + newSpaceConf.getGraphCode());
 
             // 验证space是否创建成功
             List<Graph> spaces = nebulaClient.opsForGraph().listGraphs(nebulaConf);
             boolean spaceExists = spaces.stream()
-                    .anyMatch(graph -> graph.getCode().equals(newSpaceConf.getSpace()));
+                    .anyMatch(graph -> graph.getCode().equals(newSpaceConf.getGraphCode()));
 
             if (spaceExists) {
                 System.out.println("验证space创建成功");
