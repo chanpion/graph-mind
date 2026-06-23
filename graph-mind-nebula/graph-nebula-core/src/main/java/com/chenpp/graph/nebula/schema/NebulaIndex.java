@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author April.Chen
@@ -31,4 +32,10 @@ public class NebulaIndex {
      * 索引目标类型属性名列表，如果是变长字符串类型，需要处理成 propname(len) 格式
      */
     private List<String> propNameList;
+
+    /**
+     * 属性类型映射，key为属性名，value为属性类型（STRING, FIXED_STRING, INT64等）
+     * 用于在创建索引时为字符串类型添加长度参数
+     */
+    private Map<String, String> propTypeMap;
 }

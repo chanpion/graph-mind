@@ -435,14 +435,14 @@ async function expandNeighbors() {
   }
 
   try {
-    const params = {
-      label: selectedElement.value.label
-    }
+    const label = selectedElement.value.label
+    let connectionId = null
+    let graphCode = null
     if (graphsStore.currentGraphId < 0 && graphsStore.currentGraph) {
-      params.connectionId = graphsStore.currentGraph.connectionId
-      params.graphCode = graphsStore.currentGraph.code
+      connectionId = graphsStore.currentGraph.connectionId
+      graphCode = graphsStore.currentGraph.code
     }
-    const response = await graphApi.expandVertex(graphsStore.currentGraphId, vertexId, depth, params)
+    const response = await graphApi.expandVertex(graphsStore.currentGraphId, vertexId, depth, connectionId, graphCode, label)
 
     const newData = transformApiResponseToGraphData(response) || { nodes: [], edges: [] }
 

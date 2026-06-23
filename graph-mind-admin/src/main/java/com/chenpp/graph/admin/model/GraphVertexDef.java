@@ -20,7 +20,7 @@ public class GraphVertexDef {
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    /**
+    /**“
      * 图ID
      */
     private Long graphId;

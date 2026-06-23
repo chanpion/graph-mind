@@ -546,6 +546,36 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
         return 0L;
     }
 
+    @Override
+    public GraphVertex findVertex(String label, String property, String value) throws GraphException {
+        try {
+            String nql = NebulaUtil.buildFindVertexByProperty(label, property, value);
+            log.info("Execute NGQL: {}", nql);
+
+            ResultSet resultSet = sessionPool.execute(nql);
+            if (!resultSet.isSucceeded()) {
+                log.warn("Failed to find vertex by property, errorCode: {}, errorMessage: {}",
+                        resultSet.getErrorCode(), resultSet.getErrorMessage());
+                return null;
+            }
+
+            for (int i = 0; i < resultSet.rowsSize(); i++) {
+                ResultSet.Record record = resultSet.rowValues(i);
+                for (ValueWrapper valueWrapper : record.values()) {
+                    if (valueWrapper.isVertex()) {
+                        return NebulaUtil.parseVertex(valueWrapper.asNode());
+                    }
+                }
+            }
+
+            return null;
+        } catch (Exception e) {
+            log.warn("Failed to find vertex by property: label={}, property={}, value={}, error={}",
+                    label, property, value, e.getMessage());
+            return null;
+        }
+    }
+
     private String edgeKey(GraphEdge edge) {
         if (edge.getUid() != null) {
             return edge.getUid();

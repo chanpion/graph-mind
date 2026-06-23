@@ -266,11 +266,11 @@ register('delete', '/api/graph/data/edge', async (config, params) => {
 })
 
 // ====== 查询分析 ======
-register('post', '/api/graphs/:graphId/query', async (config, params) => {
-  return mockExecuteQuery(null, params.graphId, config.data?.cypher || '')
+register('post', '/api/graphs/query', async (config, params) => {
+  return mockExecuteQuery(null, params.graphId, config.data?.query || '')
 })
 
-register('post', '/api/graphs/:graphId/expand', async () => {
+register('post', '/api/graphs/expand', async (config) => {
   await mockDelay(400)
   return mockSuccess({
     vertices: [
@@ -283,7 +283,7 @@ register('post', '/api/graphs/:graphId/expand', async () => {
   })
 })
 
-register('post', '/api/graphs/:graphId/path', async () => {
+register('post', '/api/graphs/path', async () => {
   await mockDelay(500)
   return mockSuccess({
     paths: [
@@ -297,7 +297,7 @@ register('post', '/api/graphs/:graphId/path', async () => {
   })
 })
 
-register('get', '/api/graphs/:graphId/summary', async () => {
+register('get', '/api/graphs/summary', async () => {
   return mockGetDataStats()
 })
 

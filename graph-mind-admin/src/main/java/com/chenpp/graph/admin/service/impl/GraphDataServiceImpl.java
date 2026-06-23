@@ -116,6 +116,9 @@ public class GraphDataServiceImpl implements GraphDataService {
                     .map(GraphPropertyDef::getCode)
                     .collect(Collectors.toSet());
 
+            Map<String, String> propTypeMap = propDefs.stream()
+                    .collect(Collectors.toMap(GraphPropertyDef::getCode, GraphPropertyDef::getType));
+
             result.setTotalCount(dataList.size());
 
             GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
@@ -136,7 +139,8 @@ public class GraphDataServiceImpl implements GraphDataService {
 
                     dataRow.forEach((key, value) -> {
                         if (vertexSchemaPropertyCodes.contains(key)) {
-                            properties.put(key, value);
+                            Object convertedValue = convertValueByType(value, propTypeMap.get(key));
+                            properties.put(key, convertedValue);
                         }
                     });
                     vertex.setProperties(properties);
@@ -997,5 +1001,44 @@ public class GraphDataServiceImpl implements GraphDataService {
             return "";
         }
         return value.replace("\\", "\\\\").replace("'", "\\'");
+    }
+
+    /**
+     * 根据属性类型转换值
+     *
+     * @param value    字符串值
+     * @param dataType 属性类型
+     * @return 转换后的值
+     */
+    private Object convertValueByType(String value, String dataType) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+
+        if (dataType == null) {
+            return value;
+        }
+
+        String normalizedType = dataType.trim().toUpperCase();
+
+        try {
+            switch (normalizedType) {
+                case "INTEGER", "INT", "LONG", "INT64" -> {
+                    return Long.parseLong(value.trim());
+                }
+                case "FLOAT", "DOUBLE" -> {
+                    return Double.parseDouble(value.trim());
+                }
+                case "BOOLEAN", "BOOL"-> {
+                    return Boolean.parseBoolean(value.trim());
+                }
+                default -> {
+                    return value;
+                }
+            }
+        } catch (NumberFormatException e) {
+            log.warn("Failed to convert value '{}' to type '{}', using original string value", value, dataType);
+            return value;
+        }
     }
 }

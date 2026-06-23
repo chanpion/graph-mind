@@ -62,11 +62,31 @@ public enum DataType {
     Array;
 
     public static DataType instanceOf(String type) {
+        if (type == null || type.trim().isEmpty()) {
+            return null;
+        }
+        
+        String normalizedType = type.trim();
+        
+        // 先尝试直接匹配枚举名称
         for (DataType value : values()) {
-            if (value.name().equalsIgnoreCase(type)) {
+            if (value.name().equalsIgnoreCase(normalizedType)) {
                 return value;
             }
         }
-        return null;
+        
+        // 支持中文类型名称映射
+        return switch (normalizedType) {
+            case "整型", "整数", "int64", "int32" -> Integer;
+            case "短整型", "short" -> Short;
+            case "长整型", "long" -> Long;
+            case "字符串", "string", "text", "varchar" -> String;
+            case "浮点数", "float" -> Float;
+            case "双精度", "double" -> Double;
+            case "布尔", "boolean", "bool" -> Boolean;
+            case "日期", "date", "datetime", "timestamp" -> Date;
+            case "数组", "array" -> Array;
+            default -> null;
+        };
     }
 }

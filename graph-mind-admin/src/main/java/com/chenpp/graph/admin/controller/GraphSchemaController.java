@@ -62,13 +62,11 @@ public class GraphSchemaController {
         try {
             List<GraphVertexDef> discovered = graphSchemaService.discoverVertexDefs(graphId, connectionId, graphCode);
             if (discovered != null && !discovered.isEmpty()) {
-                // 按 label 建立本地类型索引
                 Set<String> localLabels = vertexDefs.stream()
                         .map(GraphVertexDef::getLabel)
-                        .filter(Objects::nonNull)
                         .collect(Collectors.toSet());
 
-                // 补充本地缺失的类型（图库原有的，平台未创建）
+                // 补充图库原有的，平台未创建的类型
                 for (GraphVertexDef d : discovered) {
                     if (d.getLabel() != null && !localLabels.contains(d.getLabel())) {
                         vertexDefs.add(d);
@@ -130,11 +128,9 @@ public class GraphSchemaController {
             @RequestBody GraphVertexDef vertexDef) {
         boolean success;
         if (vertexId != null && vertexId > 0) {
-            // 更新已有记录
             vertexDef.setId(vertexId);
             success = vertexDefService.updateVertexDefWithProperties(vertexDef);
         } else {
-            // 新增记录（前端传来的是虚拟id或空id）
             vertexDef.setId(null);
             success = vertexDefService.saveVertexDefWithProperties(vertexDef);
         }
@@ -147,9 +143,6 @@ public class GraphSchemaController {
         return Result.error(vertexId != null && vertexId > 0 ? "更新节点定义失败" : "新增节点定义失败");
     }
 
-    /**
-     * 删除节点定义
-     */
     @DeleteMapping("/vertex")
     public Result<String> deleteVertexDef(@RequestParam Long graphId, @RequestParam Long vertexId) {
         boolean success = vertexDefService.deleteVertexDefWithProperties(vertexId);
@@ -172,13 +165,11 @@ public class GraphSchemaController {
         try {
             List<GraphEdgeDef> discovered = graphSchemaService.discoverEdgeDefs(graphId, connectionId, graphCode);
             if (discovered != null && !discovered.isEmpty()) {
-                // 按 label 建立本地类型索引
                 Set<String> localLabels = edgeDefs.stream()
                         .map(GraphEdgeDef::getLabel)
-                        .filter(Objects::nonNull)
                         .collect(Collectors.toSet());
 
-                // 补充本地缺失的类型（图库原有的，平台未创建）
+                // 补充图库原有的，平台未创建的类型
                 for (GraphEdgeDef d : discovered) {
                     if (d.getLabel() != null && !localLabels.contains(d.getLabel())) {
                         edgeDefs.add(d);
@@ -192,11 +183,9 @@ public class GraphSchemaController {
                         .collect(Collectors.toMap(GraphEdgeDef::getLabel, GraphEdgeDef::getProperties));
                 for (GraphEdgeDef ed : edgeDefs) {
                     if (ed.getLabel() != null && discoveredProps.containsKey(ed.getLabel())) {
-                        List<GraphPropertyDef> existing = ed.getProperties() != null
-                                ? ed.getProperties() : new ArrayList<>();
+                        List<GraphPropertyDef> existing = ed.getProperties() != null ? ed.getProperties() : new ArrayList<>();
                         Set<String> existingCodes = existing.stream()
                                 .map(GraphPropertyDef::getCode)
-                                .filter(Objects::nonNull)
                                 .collect(Collectors.toSet());
                         for (GraphPropertyDef p : discoveredProps.get(ed.getLabel())) {
                             if (p.getCode() != null && !existingCodes.contains(p.getCode())) {
@@ -214,9 +203,6 @@ public class GraphSchemaController {
         return Result.success(edgeDefs);
     }
 
-    /**
-     * 新增边定义
-     */
     @PostMapping("/edges")
     public Result<String> addEdgeDef(@RequestParam Long graphId, @RequestBody GraphEdgeDef edgeDef) {
         edgeDef.setGraphId(graphId);
@@ -228,9 +214,6 @@ public class GraphSchemaController {
         return Result.error("新增边定义失败");
     }
 
-    /**
-     * 更新边定义
-     */
     @PutMapping("/edge")
     public Result<String> updateEdgeDef(@RequestParam Long graphId, @RequestParam Long edgeId, @RequestBody GraphEdgeDef edgeDef) {
         edgeDef.setId(edgeId);
@@ -243,9 +226,6 @@ public class GraphSchemaController {
         return Result.error("更新边定义失败");
     }
 
-    /**
-     * 删除边定义
-     */
     @DeleteMapping("/edge")
     public Result<String> deleteEdgeDef(@RequestParam Long graphId, @RequestParam Long edgeId) {
         boolean success = edgeDefService.deleteEdgeDefWithProperties(edgeId);
@@ -255,9 +235,6 @@ public class GraphSchemaController {
         return Result.error("删除边定义失败");
     }
 
-    /**
-     * 发布图Schema到图数据库
-     */
     @PostMapping("/publish")
     public Result<String> publishSchema(@RequestParam Long graphId) {
         try {
@@ -274,17 +251,11 @@ public class GraphSchemaController {
         return Result.success(graphSchemaService.getGraphSchema(graphId));
     }
 
-    /**
-     * 导出图Schema
-     */
     @GetMapping("/export")
     public Result<SchemaExportDTO> exportSchema(@RequestParam Long graphId) {
         return Result.success(graphSchemaService.exportSchema(graphId));
     }
 
-    /**
-     * 导入图Schema
-     */
     @PostMapping("/import")
     public Result<String> importSchema(@RequestParam Long graphId, @RequestBody SchemaImportDTO importDTO) {
         graphSchemaService.importSchema(graphId, importDTO);

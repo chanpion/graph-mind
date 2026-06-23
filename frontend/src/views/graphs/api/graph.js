@@ -133,28 +133,31 @@ export const graphApi = {
   // ====== 查询与分析 ======
 
   /** 执行查询 */
-  queryGraph(graphId, cypher, params) {
-    return request.post(`/api/graphs/${graphId}/query`, { cypher }, { params })
+  queryGraph(graphId, query, params) {
+    return request.post('/api/graphs/query', { query }, { params: { graphId, ...params } })
   },
 
   /** 展开节点 */
-  expandVertex(graphId, vertexId, depth = 1, params, extraBody = {}) {
-    return request.post(`/api/graphs/${graphId}/expand`, { vertexId, depth, ...extraBody }, { params })
+  expandVertex(graphId, vertexId, depth = 1, connectionId, graphCode, label, property) {
+    return request.post('/api/graphs/expand', {
+      graphId,
+      vertexId,
+      depth,
+      label,
+      property,
+      connectionId,
+      graphCode
+    })
   },
 
   /** 查找路径 — 支持按 label+property+value 查找起点/终点 */
-  findPath(graphId, startVertexId, endVertexId, maxDepth = 5, params, extraBody = {}) {
-    return request.post(`/api/graphs/${graphId}/path`, {
-      startVertexId,
-      endVertexId,
-      maxDepth,
-      ...extraBody
-    }, { params })
+  findPath(request) {
+    return request.post('/api/graphs/path', request)
   },
 
   /** 获取图统计 */
   getGraphSummary(graphId, params) {
-    return request.get(`/api/graphs/${graphId}/summary`, { params })
+    return request.get('/api/graphs/summary', { params: { graphId, ...params } })
   },
 
   // ====== Schema 导入导出 ======

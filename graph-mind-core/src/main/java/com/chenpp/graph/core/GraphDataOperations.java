@@ -142,4 +142,15 @@ public interface GraphDataOperations {
      * @throws GraphException 查询异常
      */
     long countEdges(String label) throws GraphException;
+
+    /**
+     * 根据节点类型、属性、属性值查询节点数据
+     *
+     * @param label     节点类型标签
+     * @param property  属性名
+     * @param value     属性值
+     * @return 匹配的节点，如果未找到返回null
+     * @throws GraphException 查询异常
+     */
+    GraphVertex findVertex(String label, String property, String value) throws GraphException;
 }

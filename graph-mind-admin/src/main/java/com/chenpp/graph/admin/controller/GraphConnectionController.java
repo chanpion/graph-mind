@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDateTime;
 
 /**
- * 图数据库连接管理控制器
+ * 图数据库连接管理API
  *
  * @author April.Chen
  * @date 2025/8/1 16:05

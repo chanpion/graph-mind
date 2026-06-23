@@ -20,8 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 图数据管理控制器
- * 处理图数据的增删改查和导入相关接口
+ * 图数据管理API
  *
  * @author April.Chen
  * @date 2025/8/11 11:00

@@ -190,6 +190,14 @@ public class NebulaUtil {
         return String.format("MATCH ()-[e:%s]->() RETURN count(e) AS count;", label);
     }
 
+    /**
+     * 根据标签、属性名和属性值构建查找顶点的NGQL语句
+     */
+    public static String buildFindVertexByProperty(String label, String property, String value) {
+        String escapedValue = value.replace("'", "\\'");
+        return String.format("MATCH (n:`%s`) WHERE n.`%s`.`%s` == '%s' RETURN n", label, label, property, escapedValue);
+    }
+
     // ========== 统计作业 ==========
 
     public static String buildSubmitJobStats() {
