@@ -318,4 +318,24 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
             throw new GraphException("Failed to count edges", e);
         }
     }
+
+    @Override
+    public GraphVertex findVertex(String label, String property, String value) throws GraphException {
+        String cypher = String.format("MATCH (n:`%s`) WHERE n.`%s` = $value OR n.uid = $value RETURN n LIMIT 1", label, property);
+        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+            return session.executeRead(tx -> {
+                Result result = tx.run(cypher, Map.of("value", value));
+                if (result.hasNext()) {
+                    Record record = result.next();
+                    Node node = record.get(0).asNode();
+                    return Neo4jUtil.parseVertex(node);
+                }
+                return null;
+            });
+        } catch (Exception e) {
+            log.warn("Failed to find vertex by property: label={}, property={}, value={}, error={}",
+                    label, property, value, e.getMessage());
+            return null;
+        }
+    }
 }

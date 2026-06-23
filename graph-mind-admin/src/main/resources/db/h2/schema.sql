@@ -108,7 +108,7 @@ CREATE TABLE graph_property_def (
   entity_id BIGINT NOT NULL COMMENT '节点定义ID或边定义ID',
   code VARCHAR(255) NOT NULL COMMENT '属性标识',
   name VARCHAR(255) NOT NULL COMMENT '属性名',
-  graph_type VARCHAR(50) NOT NULL COMMENT '属性类型',
+  type VARCHAR(50) NOT NULL COMMENT '属性类型',
   `desc` TEXT COMMENT '属性描述',
   status TINYINT DEFAULT 0 COMMENT '状态：0-未发布，1-已发布',
   indexed TINYINT NOT NULL DEFAULT 0 COMMENT '是否索引：1-是，0-否',

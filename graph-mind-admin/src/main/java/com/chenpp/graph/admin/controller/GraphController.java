@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 图管理控制器
+ * 图管理API
  *
  * @author April.Chen
  * @date 2025/8/1 17:00

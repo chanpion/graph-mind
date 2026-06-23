@@ -876,4 +876,42 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             }
         }
     }
+
+    @Override
+    public GraphVertex findVertex(String label, String property, String value) throws GraphException {
+        JanusGraphTransaction tx = null;
+        try {
+            tx = graph.newTransaction();
+
+            // 使用 Gremlin 查询，先按 uid 查找
+            List<Vertex> vertices = tx.traversal().V().has(GraphConstants.UID, value).hasLabel(label).toList();
+            if (CollectionUtils.isNotEmpty(vertices)) {
+                JanusGraphVertex vertex = (JanusGraphVertex) vertices.get(0);
+                tx.commit();
+                return parseVertex(vertex);
+            }
+
+            // 按 label + property + value 查找
+            List<Vertex>  labelVertices = tx.traversal().V().hasLabel(label).has(property, value).toList();
+            if (CollectionUtils.isNotEmpty(labelVertices)) {
+                JanusGraphVertex vertex = (JanusGraphVertex) labelVertices.get(0);
+                tx.commit();
+                return parseVertex(vertex);
+            }
+
+            tx.commit();
+            return null;
+        } catch (Exception e) {
+            log.warn("Failed to find vertex by property: label={}, property={}, value={}, error={}",
+                    label, property, value, e.getMessage());
+            if (tx != null && tx.isOpen()) {
+                tx.rollback();
+            }
+            return null;
+        } finally {
+            if (tx != null && tx.isOpen()) {
+                tx.close();
+            }
+        }
+    }
 }

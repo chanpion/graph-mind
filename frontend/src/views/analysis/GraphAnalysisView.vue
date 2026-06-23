@@ -712,26 +712,23 @@ const executePathQuery = async () => {
 
     try {
       // 调用后端API进行路径查询
-      const pathParams = {}
-      if (graphsStore.currentGraphId < 0 && graphsStore.currentGraph) {
-        pathParams.connectionId = graphsStore.currentGraph.connectionId
-        pathParams.graphCode = graphsStore.currentGraph.code
+      const pathRequest = {
+        graphId: graphsStore.currentGraphId,
+        startVertexId: '', // 起始顶点ID（空，走属性查找）
+        endVertexId: '', // 终点顶点ID（空，走属性查找）
+        maxDepth: analysisForm.maxLength, // 最大路径长度
+        startValue: analysisForm.sourceValue,
+        startLabel: analysisForm.pathStartEntity[0],
+        startProp: analysisForm.pathStartEntity[1],
+        endValue: analysisForm.targetValue,
+        endLabel: analysisForm.pathEndEntity[0],
+        endProp: analysisForm.pathEndEntity[1]
       }
-      const apiResponse = await graphApi.findPath(
-        graphsStore.currentGraphId,
-        '', // startVertexId（空，走属性查找）
-        '', // endVertexId（空，走属性查找）
-        analysisForm.maxLength, // 最大路径长度
-        pathParams,
-        {
-          startLabel: analysisForm.pathStartEntity[0],
-          startProp: analysisForm.pathStartEntity[1],
-          startValue: analysisForm.sourceValue,
-          endLabel: analysisForm.pathEndEntity[0],
-          endProp: analysisForm.pathEndEntity[1],
-          endValue: analysisForm.targetValue
-        }
-      )
+      if (graphsStore.currentGraphId < 0 && graphsStore.currentGraph) {
+        pathRequest.connectionId = graphsStore.currentGraph.connectionId
+        pathRequest.graphCode = graphsStore.currentGraph.code
+      }
+      const apiResponse = await graphApi.findPath(pathRequest)
 
       // 转换API响应数据为图数据
       const transformedData = transformApiResponseToGraphData(apiResponse)
@@ -860,45 +857,42 @@ const executeAnalysis = async () => {
           // K层展开：调用 expandVertex API
           const targetEntityType = analysisForm.targetEntity[0];
           const targetEntityProp = analysisForm.targetEntity[1];
-          const opParams = {}
+          let connectionId = null
+          let graphCode = null
           if (graphsStore.currentGraphId < 0 && graphsStore.currentGraph) {
-            opParams.connectionId = graphsStore.currentGraph.connectionId
-            opParams.graphCode = graphsStore.currentGraph.code
+            connectionId = graphsStore.currentGraph.connectionId
+            graphCode = graphsStore.currentGraph.code
           }
           apiResponse = await graphApi.expandVertex(
             graphsStore.currentGraphId,
             analysisForm.queryValue, // 使用查询值作为顶点ID
             analysisForm.layers,
-            opParams,
-            {
-              label: targetEntityType,
-              property: targetEntityProp
-            }
+            connectionId,
+            graphCode,
+            targetEntityType,
+            targetEntityProp
           );
           break
 
         case 'shortestPath':
           // 最短路径：调用 findPath API
-          const fpParams = {}
-          if (graphsStore.currentGraphId < 0 && graphsStore.currentGraph) {
-            fpParams.connectionId = graphsStore.currentGraph.connectionId
-            fpParams.graphCode = graphsStore.currentGraph.code
+          const pathRequest = {
+            graphId: graphsStore.currentGraphId,
+            startVertexId: '',
+            endVertexId: '',
+            maxDepth: analysisForm.maxLength,
+            startValue: analysisForm.sourceValue,
+            startLabel: analysisForm.pathStartEntity[0],
+            startProp: analysisForm.pathStartEntity[1],
+            endValue: analysisForm.targetValue,
+            endLabel: analysisForm.pathEndEntity[0],
+            endProp: analysisForm.pathEndEntity[1]
           }
-          apiResponse = await graphApi.findPath(
-            graphsStore.currentGraphId,
-            '',
-            '',
-            analysisForm.maxLength,
-            fpParams,
-            {
-              startLabel: analysisForm.pathStartEntity[0],
-              startProp: analysisForm.pathStartEntity[1],
-              startValue: analysisForm.sourceValue,
-              endLabel: analysisForm.pathEndEntity[0],
-              endProp: analysisForm.pathEndEntity[1],
-              endValue: analysisForm.targetValue
-            }
-          );
+          if (graphsStore.currentGraphId < 0 && graphsStore.currentGraph) {
+            pathRequest.connectionId = graphsStore.currentGraph.connectionId
+            pathRequest.graphCode = graphsStore.currentGraph.code
+          }
+          apiResponse = await graphApi.findPath(pathRequest);
           break
 
         case 'pageRank':
