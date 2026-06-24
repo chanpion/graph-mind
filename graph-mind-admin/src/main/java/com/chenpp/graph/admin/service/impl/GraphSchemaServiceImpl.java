@@ -35,7 +35,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -71,44 +70,32 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
     @Resource
     private TransactionTemplate transactionTemplate;
 
+
     @Override
-    public GraphSchema discoverSchema(Long connectionId, String graphCode) {
+    public GraphSchema discoverSchema(Long connectionId, String graphCode, Long graphId) {
+        if (graphId != null && graphId > 0) {
+            GraphInfo graphInfo = graphService.getById(graphId);
+            if (graphInfo == null) {
+                throw new GraphException("图不存在");
+            }
+            graphCode = graphInfo.getCode();
+            connectionId = graphInfo.getConnectionId();
+        }
         GraphConnection connection = connectionService.getById(connectionId);
         if (connection == null) {
             throw new GraphException("图数据库连接不存在");
         }
+
         GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graphCode);
         GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
         GraphOperations graphOperations = graphClient.opsForGraph();
         return graphOperations.getPublishedSchema(graphConf);
     }
 
-    @Override
-    public GraphSchema discoverSchema(Long graphId) {
-        GraphInfo graphInfo = graphService.getById(graphId);
-        if (graphInfo == null) {
-            throw new GraphException("图不存在");
-        }
-        // 获取图数据库连接信息
-        GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
-        if (connection == null) {
-            throw new GraphException("图数据库连接不存在");
-        }
-
-        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
-        GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
-        GraphOperations graphOperations = graphClient.opsForGraph();
-        return graphOperations.getPublishedSchema(graphConf);
-    }
 
     @Override
     public List<GraphVertexDef> discoverVertexDefs(Long graphId, Long connectionId, String graphCode) {
-        GraphSchema schema;
-        if (connectionId != null && graphCode != null) {
-            schema = discoverSchema(connectionId, graphCode);
-        } else {
-            schema = discoverSchema(graphId);
-        }
+        GraphSchema schema = discoverSchema(connectionId, graphCode, graphId);
         if (schema == null || schema.getEntities() == null || schema.getEntities().isEmpty()) {
             return new ArrayList<>();
         }
@@ -132,12 +119,7 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
 
     @Override
     public List<GraphEdgeDef> discoverEdgeDefs(Long graphId, Long connectionId, String graphCode) {
-        GraphSchema schema;
-        if (connectionId != null && graphCode != null) {
-            schema = discoverSchema(connectionId, graphCode);
-        } else {
-            schema = discoverSchema(graphId);
-        }
+        GraphSchema schema = discoverSchema(connectionId, graphCode, graphId);
         if (schema == null || schema.getRelations() == null || schema.getRelations().isEmpty()) {
             return new ArrayList<>();
         }
@@ -164,12 +146,7 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
 
     @Override
     public void mergeDiscoveredVertexProperties(List<GraphVertexDef> vertexDefs, Long graphId, Long connectionId, String graphCode) {
-        GraphSchema schema;
-        if (connectionId != null && graphCode != null) {
-            schema = discoverSchema(connectionId, graphCode);
-        } else {
-            schema = discoverSchema(graphId);
-        }
+        GraphSchema schema = discoverSchema(connectionId, graphCode, graphId);
         if (schema == null || schema.getEntities() == null) {
             return;
         }
@@ -193,12 +170,7 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
 
     @Override
     public void mergeDiscoveredEdgeProperties(List<GraphEdgeDef> edgeDefs, Long graphId, Long connectionId, String graphCode) {
-        GraphSchema schema;
-        if (connectionId != null && graphCode != null) {
-            schema = discoverSchema(connectionId, graphCode);
-        } else {
-            schema = discoverSchema(graphId);
-        }
+        GraphSchema schema = discoverSchema(connectionId, graphCode, graphId);
         if (schema == null || schema.getRelations() == null) {
             return;
         }
@@ -243,10 +215,20 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         GraphSchema graphSchema = new GraphSchema();
         graphSchema.setGraphCode(graphInfo.getCode());
 
+        List<GraphIndex> indexes = new ArrayList<>();
+
         List<GraphEntity> entities = vertices.stream().map(vertex -> {
             GraphEntity entity = new GraphEntity();
             entity.setLabel(vertex.getLabel());
-            entity.setProperties(transformGraphProperty(vertex.getProperties()));
+            List<GraphProperty> properties = transformGraphProperty(vertex.getProperties());
+            properties.forEach(p -> {
+                if (p.getIndexed()) {
+                    GraphIndex index = transformGraphIndex(graphInfo.getCode(), entity.getLabel(), GraphConstants.VERTEX, p);
+                    indexes.add(index);
+                }
+            });
+
+            entity.setProperties(properties);
             return entity;
         }).toList();
 
@@ -255,48 +237,23 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             relation.setLabel(edge.getLabel());
             relation.setStartLabel(edge.getStartLabel());
             relation.setEndLabel(edge.getEndLabel());
-            relation.setProperties(transformGraphProperty(edge.getProperties()));
             relation.setMultiple(edge.getMultiple());
+            List<GraphProperty> properties = transformGraphProperty(edge.getProperties());
+            properties.forEach(p -> {
+                if (p.getIndexed()) {
+                    GraphIndex index = transformGraphIndex(graphInfo.getCode(), edge.getLabel(), GraphConstants.EDGE, p);
+                    indexes.add(index);
+                }
+            });
+
+            relation.setProperties(properties);
+
             return relation;
         }).toList();
         graphSchema.setEntities(entities);
         graphSchema.setRelations(relations);
-
-
-        List<GraphIndex> indexes = new ArrayList<>();
-        vertices.forEach(vertex -> vertex.getProperties().forEach(p -> {
-            if (p.getIndexed()) {
-                GraphIndex index = new GraphIndex();
-                index.setLabel(vertex.getLabel());
-                index.setProperty(p.getCode());
-                index.setType(IndexType.COMPOSITE.code());
-                index.setSchemaType(GraphConstants.VERTEX);
-                index.setPropertyNames(Collections.singletonList(p.getCode()));
-                index.setName(String.format("idx_%s_%s_%s", graphInfo.getCode(), vertex.getLabel(), p.getCode()));
-                indexes.add(index);
-            }
-        }));
-
-        edges.forEach(edge -> edge.getProperties().forEach(p -> {
-            if (p.getIndexed()) {
-                GraphIndex index = new GraphIndex();
-                index.setLabel(edge.getLabel());
-                index.setProperty(p.getCode());
-                index.setType(IndexType.COMPOSITE.code());
-                index.setSchemaType(GraphConstants.EDGE);
-                index.setPropertyNames(Collections.singletonList(p.getCode()));
-                index.setName(String.format("idx_%s_%s_%s", graphInfo.getCode(), edge.getLabel(), p.getCode()));
-                indexes.add(index);
-            }
-        }));
-
         graphSchema.setIndexes(indexes);
         return graphSchema;
-    }
-
-    @Override
-    public void publishSchema(Long graphId) {
-        publishSchema(graphId, null, null);
     }
 
     @Override
@@ -322,7 +279,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
         } else {
             graphInfo = null;
-            // Discovered graph（graphId < 0），使用 connectionId + graphCode
             if (connectionId == null || graphCode == null) {
                 log.warn("Discovered graph 需要 connectionId 和 graphCode，跳过发布Schema");
                 return;
@@ -395,7 +351,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             }
         }
 
-        // 将索引分为新实体索引（在 applySchema 中创建）和变更实体索引（在 alterSchema 之后创建）
         Set<String> newEntityLabels = newEntities.stream()
                 .map(GraphEntity::getLabel)
                 .collect(Collectors.toSet());
@@ -437,11 +392,13 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             graphOperations.alterSchema(graphConf, alterSchema);
         }
         // 变更实体的索引在 alterSchema 之后创建，确保属性已存在
+        // 等待500ms让图数据库完成schema变更的内部处理，避免索引创建时属性尚未就绪
         if (!alterEntityIndexes.isEmpty()) {
             try {
                 Thread.sleep(500);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+                log.warn("Schema发布等待被中断", e);
             }
         }
         if (!alterEntityIndexes.isEmpty()) {
@@ -486,7 +443,15 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             GraphProperty property = new GraphProperty();
             property.setName(prop.getName());
             property.setCode(prop.getCode());
-            property.setDataType(DataType.instanceOf(prop.getType()));
+            String typeStr = prop.getType();
+            DataType dataType = DataType.instanceOf(typeStr);
+            if (dataType == null) {
+                if (typeStr != null && !typeStr.isEmpty()) {
+                    log.warn("Failed to parse data type '{}' for property '{}', using String as default", typeStr, prop.getCode());
+                }
+                dataType = DataType.String; // 设置默认值，避免NPE
+            }
+            property.setDataType(dataType);
             property.setIndexed(prop.getIndexed());
             return property;
         }).collect(Collectors.toList());
@@ -560,7 +525,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         }
 
 
-        // 导入边定义
         if (importEdges != null) {
             for (GraphEdgeDef edge : importEdges) {
                 if (!replace) {
@@ -605,5 +569,71 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         log.info("已保存图到 MySQL，graphId={}", graphInfo.getId());
 
         return graphInfo.getId();
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public boolean deleteVertexDef(Long graphId, Long vertexId) {
+        log.info("删除节点定义: graphId={}, vertexId={}", graphId, vertexId);
+
+        GraphVertexDef vertexDef = graphVertexDefService.getById(vertexId);
+        if (vertexDef == null) {
+            log.warn("顶点定义不存在，vertexId={}", vertexId);
+            return false;
+        }
+
+        GraphInfo graphInfo = graphService.getById(graphId);
+        if (graphInfo != null && graphInfo.getConnectionId() != null) {
+            GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
+            if (connection != null) {
+                GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
+                GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+                GraphOperations graphOperations = graphClient.opsForGraph();
+
+                graphOperations.dropVertexLabel(graphInfo.getCode(), vertexDef.getLabel());
+                log.info("已在图数据库中删除顶点标签: {}", vertexDef.getLabel());
+            }
+        }
+
+        return graphVertexDefService.deleteVertexDefWithProperties(vertexId);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public boolean deleteEdgeDef(Long graphId, Long edgeId) {
+        log.info("删除边定义: graphId={}, edgeId={}", graphId, edgeId);
+
+        GraphEdgeDef edgeDef = graphEdgeDefService.getById(edgeId);
+        if (edgeDef == null) {
+            log.warn("边定义不存在，edgeId={}", edgeId);
+            return false;
+        }
+
+        GraphInfo graphInfo = graphService.getById(graphId);
+        if (graphInfo != null && graphInfo.getConnectionId() != null) {
+            GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
+            if (connection != null) {
+                GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
+                GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+                GraphOperations graphOperations = graphClient.opsForGraph();
+
+                graphOperations.dropEdgeLabel(graphInfo.getCode(), edgeDef.getLabel());
+                log.info("已在图数据库中删除边类型: {}", edgeDef.getLabel());
+            }
+        }
+
+        return graphEdgeDefService.deleteEdgeDefWithProperties(edgeId);
+    }
+
+    private GraphIndex transformGraphIndex(String graphCode, String label, String schemaType, GraphProperty property) {
+        GraphIndex index = new GraphIndex();
+        index.setLabel(label);
+        index.setProperty(property.getCode());
+        index.setType(IndexType.COMPOSITE.code());
+        index.setSchemaType(schemaType);
+        index.setPropertyNames(List.of(property.getCode()));
+        index.setName(String.format("idx_%s_%s_%s", graphCode, label, property.getCode()));
+        index.setProperties(List.of(property));
+        return index;
     }
 }

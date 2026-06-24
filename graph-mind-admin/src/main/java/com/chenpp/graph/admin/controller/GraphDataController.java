@@ -9,9 +9,9 @@ import com.chenpp.graph.admin.service.GraphDataService;
 import com.chenpp.graph.admin.service.GraphSchemaService;
 import com.chenpp.graph.core.exception.BusinessException;
 import com.chenpp.graph.core.exception.ErrorCode;
+import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphSummary;
 import com.chenpp.graph.core.model.GraphVertex;
-import com.chenpp.graph.core.model.GraphEdge;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -43,9 +43,14 @@ public class GraphDataController {
             @RequestParam(required = false) Long connectionId,
             @RequestParam(required = false) String graphCode,
             @RequestParam(required = false) String label,
-            @RequestPart("file") MultipartFile file,
-            @RequestPart("config") String config) {
-        ImportResult result = graphDataService.importVertexData(graphId, vertexTypeId, connectionId, graphCode, label, file, config);
+            @RequestPart("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return Result.error("CSV文件不能为空");
+        }
+        if (!((connectionId != null && graphCode != null && label != null) || (graphId != null && vertexTypeId != null))) {
+            return Result.error("需要提供 (graphId + vertexTypeId) 或 (connectionId + graphCode + label)");
+        }
+        ImportResult result = graphDataService.importVertexData(graphId, vertexTypeId, connectionId, graphCode, label, file);
         return Result.success(result);
     }
 
@@ -56,9 +61,14 @@ public class GraphDataController {
             @RequestParam(required = false) Long connectionId,
             @RequestParam(required = false) String graphCode,
             @RequestParam(required = false) String label,
-            @RequestPart("file") MultipartFile file,
-            @RequestPart("config") String config) {
-        ImportResult result = graphDataService.importEdgeData(graphId, edgeTypeId, connectionId, graphCode, label, file, config);
+            @RequestPart("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return Result.error("CSV文件不能为空");
+        }
+        if (!((connectionId != null && graphCode != null && label != null) || (graphId != null && edgeTypeId != null))) {
+            return Result.error("需要提供 (graphId + edgeTypeId) 或 (connectionId + graphCode + label)");
+        }
+        ImportResult result = graphDataService.importEdgeData(graphId, edgeTypeId, connectionId, graphCode, label, file);
         return Result.success(result);
     }
 
@@ -75,7 +85,6 @@ public class GraphDataController {
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
         String label = null;
-        // 对于发现的图（负ID），从 schema discovery 获取 label
         if (vertexTypeId != null && vertexTypeId < 0) {
             if (connectionId != null && graphCode != null) {
                 List<GraphVertexDef> vertexDefs = graphSchemaService.discoverVertexDefs(graphId, connectionId, graphCode);
@@ -100,7 +109,7 @@ public class GraphDataController {
      * 对于发现的图（edgeTypeId < 0），需通过 connectionId + graphCode 发现 label
      */
     @GetMapping("/edges")
-    public Result<PageResult<Map<String, Object>>> getEdgeDataList(
+    public Result<PageResult<GraphEdge>> getEdgeDataList(
             @RequestParam Long graphId,
             @RequestParam Long edgeTypeId,
             @RequestParam(required = false) Long connectionId,
@@ -108,7 +117,6 @@ public class GraphDataController {
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
         String label = null;
-        // 对于发现的图（负ID），从 schema discovery 获取 label
         if (edgeTypeId != null && edgeTypeId < 0) {
             if (connectionId != null && graphCode != null) {
                 List<GraphEdgeDef> edgeDefs = graphSchemaService.discoverEdgeDefs(graphId, connectionId, graphCode);
@@ -124,23 +132,7 @@ public class GraphDataController {
             }
         }
 
-        PageResult<Map<String, Object>> data = graphDataService.queryEdgeDataList(graphId, edgeTypeId, label, page, size, connectionId, graphCode);
-        return Result.success(data);
-    }
-
-    @GetMapping("/vertex")
-    public Result<GraphVertex> getVertexData(
-            @RequestParam Long graphId,
-            @RequestParam String vertexId) {
-        GraphVertex data = graphDataService.getVertexData(graphId, vertexId);
-        return Result.success(data);
-    }
-
-    @GetMapping("/edge")
-    public Result<GraphEdge> getEdgeData(
-            @RequestParam Long graphId,
-            @RequestParam String edgeId) {
-        GraphEdge data = graphDataService.getEdgeData(graphId, edgeId);
+        PageResult<GraphEdge> data = graphDataService.queryEdgeDataList(graphId, edgeTypeId, label, page, size, connectionId, graphCode);
         return Result.success(data);
     }
 
@@ -214,26 +206,6 @@ public class GraphDataController {
         return Result.success(true);
     }
 
-    /**
-     * 批量删除顶点
-     */
-    @DeleteMapping("/vertices")
-    public Result<Boolean> deleteVertices(
-            @RequestParam Long graphId,
-            @RequestParam(required = false) Long connectionId,
-            @RequestParam(required = false) String graphCode,
-            @RequestBody Map<String, Object> request) {
-        List<String> vertexIds = (List<String>) request.get("vertexIds");
-        if (vertexIds == null || vertexIds.isEmpty()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "顶点ID列表不能为空");
-        }
-        boolean result = graphDataService.deleteVertices(graphId, vertexIds, request.get("label").toString(), connectionId, graphCode);
-        if (!result) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "批量删除顶点失败");
-        }
-        return Result.success(true);
-    }
-
     @DeleteMapping("/edge")
     public Result<Boolean> deleteEdge(
             @RequestParam Long graphId,
@@ -244,26 +216,6 @@ public class GraphDataController {
         boolean result = graphDataService.deleteEdge(graphId, edgeId, label, connectionId, graphCode);
         if (!result) {
             throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "删除边失败");
-        }
-        return Result.success(true);
-    }
-
-    /**
-     * 批量删除边
-     */
-    @DeleteMapping("/edges")
-    public Result<Boolean> deleteEdges(
-            @RequestParam Long graphId,
-            @RequestParam(required = false) Long connectionId,
-            @RequestParam(required = false) String graphCode,
-            @RequestBody Map<String, Object> request) {
-        List<String> edgeIds = (List<String>) request.get("edgeIds");
-        if (edgeIds == null || edgeIds.isEmpty()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "边ID列表不能为空");
-        }
-        boolean result = graphDataService.deleteEdges(graphId, edgeIds, request.get("label").toString(), connectionId, graphCode);
-        if (!result) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "批量删除边失败");
         }
         return Result.success(true);
     }

@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -60,11 +59,9 @@ public class GraphEdgeDefServiceImpl extends ServiceImpl<GraphEdgeDefDao, GraphE
     @Transactional(rollbackFor = Exception.class)
     @Override
     public boolean saveEdgeDefWithProperties(GraphEdgeDef edgeDef) {
-        // 保存边定义
         boolean saved = this.save(edgeDef);
 
         if (saved && edgeDef.getProperties() != null) {
-            // 保存边属性
             for (GraphPropertyDef property : edgeDef.getProperties()) {
                 property.setEntityId(edgeDef.getId());
                 property.setPropertyType(GraphConstants.EDGE);
@@ -90,7 +87,6 @@ public class GraphEdgeDefServiceImpl extends ServiceImpl<GraphEdgeDefDao, GraphE
             deleteWrapper.eq("property_type", GraphConstants.EDGE);
             graphPropertyDefService.remove(deleteWrapper);
 
-            // 重新保存边属性
             if (edgeDef.getProperties() != null) {
                 for (GraphPropertyDef property : edgeDef.getProperties()) {
                     property.setEntityId(edgeDef.getId());
@@ -107,13 +103,10 @@ public class GraphEdgeDefServiceImpl extends ServiceImpl<GraphEdgeDefDao, GraphE
     @Transactional(rollbackFor = Exception.class)
     @Override
     public boolean deleteEdgeDefWithProperties(Long id) {
-        // 删除边属性
         QueryWrapper<GraphPropertyDef> deleteWrapper = new QueryWrapper<>();
         deleteWrapper.eq("entity_id", id);
         deleteWrapper.eq("property_type", GraphConstants.EDGE);
         graphPropertyDefService.remove(deleteWrapper);
-
-        // 删除边定义
         return this.removeById(id);
     }
 }

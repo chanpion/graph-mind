@@ -7,7 +7,6 @@ import com.chenpp.graph.admin.service.GraphConnectionService;
 import com.chenpp.graph.admin.service.GraphQueryService;
 import com.chenpp.graph.admin.service.GraphService;
 import com.chenpp.graph.admin.util.GraphClientFactory;
-import com.chenpp.graph.admin.enums.GraphTypeEnum;
 import com.chenpp.graph.core.GraphDataOperations;
 import com.chenpp.graph.core.constant.GraphConstants;
 import com.chenpp.graph.core.model.GraphConf;
@@ -99,25 +98,6 @@ public class GraphQueryServiceImpl implements GraphQueryService {
         throw new IllegalArgumentException("请提供起点和终点的查询条件（属性条件或顶点ID）");
     }
 
-    private String buildPathQueryByUid(String dbType, String startVertexId, String endVertexId, int maxDepth) {
-        if (GraphTypeEnum.nebula.name().equalsIgnoreCase(dbType)) {
-            return String.format("FIND ALL PATH FROM \"%s\" TO \"%s\" OVER * UPTO %d STEPS YIELD PATH AS p | LIMIT 10",
-                    escapeCypherValue(startVertexId), escapeCypherValue(endVertexId), maxDepth);
-        } else if (GraphTypeEnum.janus.name().equalsIgnoreCase(dbType)) {
-            return String.format(
-                    "g.V().has(\"%s\", \"%s\").repeat(outE().inV().simplePath())"
-                    + ".until(has(\"%s\", \"%s\").or().loops().is(%d))"
-                    + ".has(\"%s\", \"%s\")"
-                    + ".path().by(valueMap()).by(valueMap()).limit(10)",
-                    GraphConstants.UID, escapeGremlinValue(startVertexId),
-                    GraphConstants.UID, escapeGremlinValue(endVertexId), maxDepth,
-                    GraphConstants.UID, escapeGremlinValue(endVertexId));
-        } else {
-            return String.format("MATCH p = (a {" + GraphConstants.UID + ": '%s'})-[*1..%d]-(b {" + GraphConstants.UID + ": '%s'}) RETURN p LIMIT 10",
-                    escapeCypherValue(startVertexId), maxDepth, escapeCypherValue(endVertexId));
-        }
-    }
-
     @Override
     public GraphSummary getSummary(Long graphId, Long connectionId, String graphCode) {
         return resolveDataOps(graphId, connectionId, graphCode).getSummary();
@@ -129,17 +109,4 @@ public class GraphQueryServiceImpl implements GraphQueryService {
         return GraphClientFactory.createGraphClient(graphConf).opsForGraphData();
     }
 
-    private static String escapeCypherValue(String value) {
-        if (value == null) {
-            return "";
-        }
-        return value.replace("\\", "\\\\").replace("'", "\\'");
-    }
-
-    private static String escapeGremlinValue(String value) {
-        if (value == null) {
-            return "";
-        }
-        return value.replace("\\", "\\\\").replace("\"", "\\\"");
-    }
 }

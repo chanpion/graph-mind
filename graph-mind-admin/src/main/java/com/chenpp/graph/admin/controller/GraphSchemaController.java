@@ -110,7 +110,7 @@ public class GraphSchemaController {
         vertexDef.setGraphId(graphId);
         boolean success = vertexDefService.saveVertexDefWithProperties(vertexDef);
         if (success) {
-            graphSchemaService.publishSchema(graphId);
+            graphSchemaService.publishSchema(graphId, null, null);
             return Result.success("新增节点定义成功");
         }
         return Result.error("新增节点定义失败");
@@ -145,7 +145,7 @@ public class GraphSchemaController {
 
     @DeleteMapping("/vertex")
     public Result<String> deleteVertexDef(@RequestParam Long graphId, @RequestParam Long vertexId) {
-        boolean success = vertexDefService.deleteVertexDefWithProperties(vertexId);
+        boolean success = graphSchemaService.deleteVertexDef(graphId, vertexId);
         if (success) {
             return Result.success("删除节点定义成功");
         }
@@ -208,7 +208,7 @@ public class GraphSchemaController {
         edgeDef.setGraphId(graphId);
         boolean success = edgeDefService.saveEdgeDefWithProperties(edgeDef);
         if (success) {
-            graphSchemaService.publishSchema(graphId);
+            graphSchemaService.publishSchema(graphId, null, null);
             return Result.success("新增边定义成功");
         }
         return Result.error("新增边定义失败");
@@ -220,7 +220,7 @@ public class GraphSchemaController {
         edgeDef.setGraphId(graphId);
         boolean success = edgeDefService.updateEdgeDefWithProperties(edgeDef);
         if (success) {
-            graphSchemaService.publishSchema(graphId);
+            graphSchemaService.publishSchema(graphId, null, null);
             return Result.success("更新边定义成功");
         }
         return Result.error("更新边定义失败");
@@ -228,7 +228,7 @@ public class GraphSchemaController {
 
     @DeleteMapping("/edge")
     public Result<String> deleteEdgeDef(@RequestParam Long graphId, @RequestParam Long edgeId) {
-        boolean success = edgeDefService.deleteEdgeDefWithProperties(edgeId);
+        boolean success = graphSchemaService.deleteEdgeDef(graphId, edgeId);
         if (success) {
             return Result.success("删除边定义成功");
         }
@@ -238,17 +238,12 @@ public class GraphSchemaController {
     @PostMapping("/publish")
     public Result<String> publishSchema(@RequestParam Long graphId) {
         try {
-            graphSchemaService.publishSchema(graphId);
+            graphSchemaService.publishSchema(graphId, null, null);
             return Result.success("发布成功");
         } catch (Exception e) {
             log.error("发布图Schema失败，graphId={}", graphId, e);
             return Result.error(500, "发布Schema失败: " + e.getMessage(), null);
         }
-    }
-
-    @GetMapping("/schema")
-    public Result<GraphSchema> getSchema(@RequestParam Long graphId) {
-        return Result.success(graphSchemaService.getGraphSchema(graphId));
     }
 
     @GetMapping("/export")

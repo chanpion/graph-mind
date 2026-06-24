@@ -16,11 +16,6 @@ import java.util.List;
 public interface GraphSchemaService {
 
     /**
-     * 发布图Schema到图数据库
-     */
-    void publishSchema(Long graphId);
-
-    /**
      * 发布图Schema到图数据库（支持 discovered graph）
      */
     void publishSchema(Long graphId, Long connectionId, String graphCode);
@@ -33,12 +28,7 @@ public interface GraphSchemaService {
     /**
      * 从图数据库发现Schema（获取图数据库中实际的点边类型）
      */
-    GraphSchema discoverSchema(Long graphId);
-
-    /**
-     * 从图数据库发现Schema
-     */
-    GraphSchema discoverSchema(Long connectionId, String graphCode);
+    GraphSchema discoverSchema(Long connectionId, String graphCode, Long graphId);
 
     /**
      * 从图数据库发现节点定义列表，转换为 GraphVertexDef
@@ -74,4 +64,14 @@ public interface GraphSchemaService {
      * 在图数据库中创建图（不发布Schema）
      */
     Long createGraphInDatabase(GraphInfo graphInfo);
+
+    /**
+     * 删除节点定义（同时删除图数据库中的Schema）
+     */
+    boolean deleteVertexDef(Long graphId, Long vertexId);
+
+    /**
+     * 删除边定义（同时删除图数据库中的Schema）
+     */
+    boolean deleteEdgeDef(Long graphId, Long edgeId);
 }

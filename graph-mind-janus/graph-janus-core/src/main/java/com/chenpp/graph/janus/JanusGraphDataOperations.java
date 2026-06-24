@@ -71,7 +71,9 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             if (vertex.getProperties() != null) {
                 vertex.getProperties().forEach((key, value) -> {
                     if (value != null) {
-                        janusVertex.property(key, value);
+                        // 根据属性类型转换值
+                        Object convertedValue = convertPropertyValue(key, value);
+                        janusVertex.property(key, convertedValue);
                     }
                 });
             }
@@ -106,7 +108,9 @@ public class JanusGraphDataOperations implements GraphDataOperations {
                 if (vertex.getProperties() != null) {
                     vertex.getProperties().forEach((key, value) -> {
                         if (value != null) {
-                            janusVertex.property(key, value);
+                            // 根据属性类型转换值
+                            Object convertedValue = convertPropertyValue(key, value);
+                            janusVertex.property(key, convertedValue);
                         }
                     });
                 }
@@ -145,7 +149,9 @@ public class JanusGraphDataOperations implements GraphDataOperations {
                 if (vertex.getProperties() != null) {
                     vertex.getProperties().forEach((key, value) -> {
                         if (value != null) {
-                            janusVertex.property(key, value);
+                            // 根据属性类型转换值
+                            Object convertedValue = convertPropertyValue(key, value);
+                            janusVertex.property(key, convertedValue);
                         }
                     });
                 }
@@ -224,7 +230,9 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             if (edge.getProperties() != null) {
                 edge.getProperties().forEach((key, value) -> {
                     if (value != null) {
-                        janusEdge.property(key, value);
+                        // 根据属性类型转换值
+                        Object convertedValue = convertPropertyValue(key, value);
+                        janusEdge.property(key, convertedValue);
                     }
                 });
             }
@@ -271,7 +279,9 @@ public class JanusGraphDataOperations implements GraphDataOperations {
                 if (edge.getProperties() != null) {
                     edge.getProperties().forEach((key, value) -> {
                         if (value != null) {
-                            janusEdge.property(key, value);
+                            // 根据属性类型转换值
+                            Object convertedValue = convertPropertyValue(key, value);
+                            janusEdge.property(key, convertedValue);
                         }
                     });
                 }
@@ -306,7 +316,9 @@ public class JanusGraphDataOperations implements GraphDataOperations {
                 if (edge.getProperties() != null) {
                     edge.getProperties().forEach((key, value) -> {
                         if (value != null) {
-                            janusEdge.property(key, value);
+                            // 根据属性类型转换值
+                            Object convertedValue = convertPropertyValue(key, value);
+                            janusEdge.property(key, convertedValue);
                         }
                     });
                 }
@@ -943,5 +955,114 @@ public class JanusGraphDataOperations implements GraphDataOperations {
                 tx.close();
             }
         }
+    }
+
+    /**
+     * 获取属性的类型信息
+     * @param propertyName 属性名
+     * @return 属性的数据类型，如果不存在返回 null
+     */
+    private Class<?> getPropertyType(String propertyName) {
+        try {
+            org.janusgraph.core.PropertyKey propertyKey = graph.getPropertyKey(propertyName);
+            if (propertyKey != null) {
+                return propertyKey.dataType();
+            }
+        } catch (Exception e) {
+            log.debug("Failed to get property type for {}: {}", propertyName, e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * 根据属性类型转换值
+     * @param key 属性名
+     * @param value 原始值
+     * @return 转换后的值
+     */
+    private Object convertPropertyValue(String key, Object value) {
+        if (value == null) {
+            return null;
+        }
+
+        Class<?> propertyType = getPropertyType(key);
+        if (propertyType == null) {
+            return value;
+        }
+
+        // 如果值已经是目标类型，直接返回
+        if (propertyType.isInstance(value)) {
+            return value;
+        }
+
+        // 处理字符串值的类型转换
+        if (value instanceof String) {
+            String strValue = (String) value;
+            try {
+                if (propertyType == Date.class) {
+                    // 尝试多种日期时间格式解析
+                    return parseDate(strValue);
+                } else if (propertyType == Integer.class || propertyType == int.class) {
+                    return Integer.parseInt(strValue);
+                } else if (propertyType == Long.class || propertyType == long.class) {
+                    return Long.parseLong(strValue);
+                } else if (propertyType == Double.class || propertyType == double.class) {
+                    return Double.parseDouble(strValue);
+                } else if (propertyType == Float.class || propertyType == float.class) {
+                    return Float.parseFloat(strValue);
+                } else if (propertyType == Boolean.class || propertyType == boolean.class) {
+                    return parseBoolean(strValue);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to convert value '{}' to type {} for property {}: {}", 
+                        strValue, propertyType.getSimpleName(), key, e.getMessage());
+                return value;
+            }
+        }
+
+        return value;
+    }
+
+    /**
+     * 解析日期时间字符串，支持多种格式
+     */
+    private Date parseDate(String strValue) {
+        if (StringUtils.isBlank(strValue)) {
+            return null;
+        }
+
+        // 尝试多种日期时间格式
+        String[] patterns = {
+            "yyyy-MM-dd HH:mm:ss",
+            "yyyy-MM-dd'T'HH:mm:ss",
+            "yyyy-MM-dd",
+            "yyyy/MM/dd HH:mm:ss",
+            "yyyy/MM/dd"
+        };
+
+        for (String pattern : patterns) {
+            try {
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat(pattern);
+                sdf.setLenient(false);
+                return sdf.parse(strValue.trim());
+            } catch (java.text.ParseException e) {
+                // 继续尝试下一个格式
+            }
+        }
+
+        throw new IllegalArgumentException("Unable to parse date: " + strValue);
+    }
+
+    /**
+     * 解析布尔值，支持多种格式
+     */
+    private Boolean parseBoolean(String strValue) {
+        String lower = strValue.toLowerCase().trim();
+        if ("true".equals(lower) || "1".equals(lower) || "yes".equals(lower)) {
+            return true;
+        } else if ("false".equals(lower) || "0".equals(lower) || "no".equals(lower)) {
+            return false;
+        }
+        throw new IllegalArgumentException("Unable to parse boolean: " + strValue);
     }
 }

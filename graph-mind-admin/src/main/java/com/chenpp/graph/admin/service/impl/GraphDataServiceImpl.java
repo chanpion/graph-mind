@@ -1,7 +1,5 @@
 package com.chenpp.graph.admin.service.impl;
 
-import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.chenpp.graph.admin.enums.GraphTypeEnum;
 import com.chenpp.graph.admin.model.GraphInfo;
@@ -30,16 +28,23 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
+
 import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * 图数据服务实现类
@@ -50,11 +55,13 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@Transactional(rollbackFor = Exception.class)
 public class GraphDataServiceImpl implements GraphDataService {
 
     @Autowired
     private GraphService graphService;
+
+    @Autowired
+    private GraphConnectionService connectionService;
 
     @Autowired
     private GraphVertexDefService vertexDefService;
@@ -63,148 +70,241 @@ public class GraphDataServiceImpl implements GraphDataService {
     private GraphEdgeDefService edgeDefService;
 
     @Autowired
-    private GraphConnectionService connectionService;
-
-    @Autowired
     private GraphPropertyDefService propertyDefService;
 
+    private final Map<String, ReentrantLock> importLocks = new ConcurrentHashMap<>();
+
+    private static final int BATCH_SIZE = 100;
+
+    private ReentrantLock getImportLock(Long graphId, String graphCode) {
+        String key = graphId != null ? "graphId:" + graphId : "graphCode:" + graphCode;
+        return importLocks.computeIfAbsent(key, k -> new ReentrantLock());
+    }
+
+    private void releaseImportLock(Long graphId, String graphCode) {
+        String key = graphId != null ? "graphId:" + graphId : "graphCode:" + graphCode;
+        importLocks.remove(key);
+    }
+
     @Override
-    public ImportResult importVertexData(Long graphId, Long vertexTypeId, MultipartFile file, String config) {
+    public ImportResult importVertexData(Long graphId, Long vertexTypeId, Long connectionId, String graphCode, String label, MultipartFile file) {
         ImportResult result = new ImportResult();
         result.setTotalCount(0);
         result.setSuccessCount(0);
         result.setFailureCount(0);
         List<String> errorMessages = new ArrayList<>();
 
+        // 获取并发锁，防止同一图的并发导入
+        ReentrantLock importLock = getImportLock(graphId, graphCode);
+        boolean lockAcquired = false;
         try {
-            GraphInfo graphInfo = graphService.getById(graphId);
-            if (graphInfo == null) {
-                log.error("图不存在，graphId={}", graphId);
-                errorMessages.add("图不存在，graphId=" + graphId);
+            if (importLock.tryLock(30, java.util.concurrent.TimeUnit.SECONDS)) {
+                lockAcquired = true;
+                log.info("获取导入锁成功，graphId={}, graphCode={}", graphId, graphCode);
+            } else {
+                errorMessages.add("系统繁忙，请稍后再试");
                 result.setErrorMessages(errorMessages.toArray(new String[0]));
                 return result;
             }
 
-            GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
-            if (connection == null) {
-                log.error("图数据库连接不存在，connectionId={}", graphInfo.getConnectionId());
-                errorMessages.add("图数据库连接不存在，connectionId=" + graphInfo.getConnectionId());
-                result.setErrorMessages(errorMessages.toArray(new String[0]));
+            ImportContext context = prepareImportContext(graphId, vertexTypeId, connectionId, graphCode, label, true);
+            if (context.hasError()) {
+                result.setErrorMessages(context.getErrors().toArray(new String[0]));
                 return result;
             }
 
-            GraphVertexDef vertexDef = vertexDefService.getById(vertexTypeId);
-            if (vertexDef == null) {
-                log.error("顶点类型不存在，vertexTypeId={}", vertexTypeId);
-                errorMessages.add("顶点类型不存在，vertexTypeId=" + vertexTypeId);
-                result.setErrorMessages(errorMessages.toArray(new String[0]));
-                return result;
-            }
-
-            JSONObject configJson = JSON.parseObject(config);
-            String delimiter = configJson.getString("delimiter");
-            if (StringUtils.isBlank(delimiter)) {
-                delimiter = ",";
-            }
-
-            List<Map<String, String>> dataList = parseCsvFile(file, delimiter);
-
-            QueryWrapper<GraphPropertyDef> propQuery = new QueryWrapper<GraphPropertyDef>()
-                    .eq("entity_id", vertexTypeId)
-                    .eq("property_type", GraphConstants.VERTEX);
-            List<GraphPropertyDef> propDefs = propertyDefService.list(propQuery);
-            Set<String> vertexSchemaPropertyCodes = propDefs.stream()
-                    .map(GraphPropertyDef::getCode)
-                    .collect(Collectors.toSet());
-
-            Map<String, String> propTypeMap = propDefs.stream()
-                    .collect(Collectors.toMap(GraphPropertyDef::getCode, GraphPropertyDef::getType));
-
+            List<Map<String, String>> dataList = parseDataCsv(file);
             result.setTotalCount(dataList.size());
 
-            GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
-
-            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+            GraphClient graphClient = GraphClientFactory.createGraphClient(context.getGraphConf());
             GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
 
-            int successCount = 0;
-            int failureCount = 0;
-
-            for (Map<String, String> dataRow : dataList) {
-                try {
-                    GraphVertex vertex = new GraphVertex();
-                    vertex.setUid(dataRow.get(GraphConstants.UID));
-                    vertex.setLabel(dataRow.get("label"));
-
-                    Map<String, Object> properties = new HashMap<>();
-
-                    dataRow.forEach((key, value) -> {
-                        if (vertexSchemaPropertyCodes.contains(key)) {
-                            Object convertedValue = convertValueByType(value, propTypeMap.get(key));
-                            properties.put(key, convertedValue);
-                        }
-                    });
-                    vertex.setProperties(properties);
-                    graphDataOperations.addVertex(vertex);
-                    successCount++;
-                } catch (Exception e) {
-                    log.error("导入顶点数据失败: {}", e.getMessage(), e);
-                    failureCount++;
-                }
-            }
+            // 批量导入
+            int successCount = batchImportVertices(graphDataOperations, dataList, context.getLabel(), errorMessages);
 
             result.setSuccessCount(successCount);
-            result.setFailureCount(failureCount);
+            result.setFailureCount(dataList.size() - successCount);
             result.setErrorMessages(errorMessages.toArray(new String[0]));
 
-            log.info("导入顶点数据完成，总数={}，成功={}，失败={}", dataList.size(), successCount, failureCount);
+            log.info("导入顶点数据完成，总数={}，成功={}，失败={}", dataList.size(), successCount, dataList.size() - successCount);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("获取导入锁被中断", e);
+            errorMessages.add("导入操作被中断");
+            result.setErrorMessages(errorMessages.toArray(new String[0]));
         } catch (Exception e) {
             log.error("导入顶点数据失败", e);
             errorMessages.add("导入顶点数据失败: " + e.getMessage());
             result.setErrorMessages(errorMessages.toArray(new String[0]));
+        } finally {
+            if (lockAcquired) {
+                importLock.unlock();
+                releaseImportLock(graphId, graphCode);
+                log.info("释放导入锁，graphId={}, graphCode={}", graphId, graphCode);
+            }
         }
 
         return result;
     }
 
+    /**
+     * 批量导入顶点数据
+     */
+    private int batchImportVertices(GraphDataOperations graphDataOperations, List<Map<String, String>> dataList, String label, List<String> errorMessages) {
+        int successCount = 0;
+        List<GraphVertex> batch = new ArrayList<>(BATCH_SIZE);
+
+        for (int i = 0; i < dataList.size(); i++) {
+            Map<String, String> dataRow = dataList.get(i);
+            try {
+                GraphVertex vertex = new GraphVertex();
+                vertex.setUid(dataRow.get(GraphConstants.UID));
+                vertex.setLabel(label);
+
+                Map<String, Object> properties = new HashMap<>();
+                dataRow.forEach((key, value) -> {
+                    if (!GraphConstants.LABEL.equals(key)) {
+                        properties.put(key, value);
+                    }
+                });
+                vertex.setProperties(properties);
+                batch.add(vertex);
+
+                if (batch.size() >= BATCH_SIZE || i == dataList.size() - 1) {
+                    try {
+                        if (batch.size() > 1) {
+                            graphDataOperations.addVertices(batch);
+                            successCount += batch.size();
+                        } else {
+                            graphDataOperations.addVertex(batch.get(0));
+                            successCount++;
+                        }
+                    } catch (Exception batchEx) {
+                        log.warn("批量导入失败，尝试逐条插入: {}", batchEx.getMessage());
+                        for (int j = 0; j < batch.size(); j++) {
+                            GraphVertex v = batch.get(j);
+                            try {
+                                graphDataOperations.addVertex(v);
+                                successCount++;
+                            } catch (Exception singleEx) {
+                                int rowNum = (i - batch.size() + j + 2);
+                                log.error("导入顶点数据失败，第{}行: {}", rowNum, singleEx.getMessage(), singleEx);
+                                errorMessages.add(String.format("第%d行导入失败: %s", rowNum, singleEx.getMessage()));
+                            }
+                        }
+                    }
+                    batch.clear();
+                }
+            } catch (Exception e) {
+                log.error("导入顶点数据失败，第{}行: {}", i + 2, e.getMessage(), e);
+                errorMessages.add(String.format("第%d行导入失败: %s", i + 2, e.getMessage()));
+            }
+        }
+
+        return successCount;
+    }
 
     /**
-     * 解析CSV文件
-     *
-     * @param file      CSV文件
-     * @param delimiter 分隔符
-     * @return 解析后的数据列表
-     * @throws Exception 解析异常
+     * 导入上下文，用于复用导入逻辑
      */
-    private List<Map<String, String>> parseCsvFile(MultipartFile file, String delimiter) throws Exception {
-        List<Map<String, String>> dataList = new ArrayList<>();
-        byte[] rawBytes = file.getBytes();
+    private static class ImportContext {
+        private GraphConnection connection;
+        private String graphCode;
+        private String label;
+        private List<String> errors = new ArrayList<>();
 
-        // 先尝试 UTF-8 解析，若出现乱码则回退到 GBK
-        String content = new String(rawBytes, java.nio.charset.StandardCharsets.UTF_8);
-        if (containsGarbledChinese(content)) {
-            content = new String(rawBytes, java.nio.charset.Charset.forName("GBK"));
+        public ImportContext(GraphConnection connection, String graphCode, String label) {
+            this.connection = connection;
+            this.graphCode = graphCode;
+            this.label = label;
         }
 
-        try (BufferedReader reader = new BufferedReader(new java.io.StringReader(content))) {
-            String headerLine = reader.readLine();
-            if (headerLine == null) {
-                throw new IllegalArgumentException("CSV文件为空");
-            }
-
-            String[] headers = headerLine.split(delimiter);
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] values = line.split(delimiter);
-                Map<String, String> dataMap = new HashMap<>();
-                for (int i = 0; i < Math.min(headers.length, values.length); i++) {
-                    dataMap.put(headers[i].trim(), values[i].trim());
-                }
-                dataList.add(dataMap);
-            }
+        public boolean hasError() {
+            return !errors.isEmpty();
         }
-        return dataList;
+
+        public List<String> getErrors() {
+            return errors;
+        }
+
+        public GraphConnection getConnection() {
+            return connection;
+        }
+
+        public String getGraphCode() {
+            return graphCode;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+
+        public GraphConf getGraphConf() {
+            return GraphClientFactory.createGraphConf(connection, graphCode);
+        }
+
+        public void addError(String error) {
+            errors.add(error);
+        }
     }
+
+    /**
+     * 准备导入上下文
+     */
+    private ImportContext prepareImportContext(Long graphId, Long typeId, Long connectionId, String graphCode, String label, boolean isVertex) {
+        ImportContext context;
+
+        if (connectionId != null && graphCode != null && label != null) {
+            GraphConnection connection = connectionService.getById(connectionId);
+            if (connection == null) {
+                context = new ImportContext(null, null, null);
+                context.addError("图数据库连接不存在，connectionId=" + connectionId);
+                return context;
+            }
+            context = new ImportContext(connection, graphCode, label);
+        } else if (graphId != null && typeId != null) {
+            GraphInfo graphInfo = graphService.getById(graphId);
+            if (graphInfo == null) {
+                context = new ImportContext(null, null, null);
+                context.addError("图不存在，graphId=" + graphId);
+                return context;
+            }
+
+            GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
+            if (connection == null) {
+                context = new ImportContext(null, null, null);
+                context.addError("图数据库连接不存在，connectionId=" + graphInfo.getConnectionId());
+                return context;
+            }
+
+            String targetLabel;
+            if (isVertex) {
+                GraphVertexDef vertexDef = vertexDefService.getById(typeId);
+                if (vertexDef == null) {
+                    context = new ImportContext(null, null, null);
+                    context.addError("顶点类型不存在，vertexTypeId=" + typeId);
+                    return context;
+                }
+                targetLabel = vertexDef.getLabel();
+            } else {
+                GraphEdgeDef edgeDef = edgeDefService.getById(typeId);
+                if (edgeDef == null) {
+                    context = new ImportContext(null, null, null);
+                    context.addError("边类型不存在，edgeTypeId=" + typeId);
+                    return context;
+                }
+                targetLabel = edgeDef.getLabel();
+            }
+
+            context = new ImportContext(connection, graphInfo.getCode(), targetLabel);
+        } else {
+            context = new ImportContext(null, null, null);
+            context.addError("缺少必要参数，需要提供 (graphId + typeId) 或 (connectionId + graphCode + label)");
+        }
+
+        return context;
+    }
+
 
     /**
      * 检测字符串中是否包含中文乱码（出现非法 UTF-8 替换字符 U+FFFD）
@@ -225,96 +325,155 @@ public class GraphDataServiceImpl implements GraphDataService {
         return strangeCount > 3;
     }
 
+    private List<Map<String, String>> parseDataCsv(MultipartFile file) throws Exception {
+        List<Map<String, String>> dataList = new ArrayList<>();
+
+        byte[] rawBytes = file.getBytes();
+        String content = new String(rawBytes, StandardCharsets.UTF_8);
+        Charset charset = StandardCharsets.UTF_8;
+        if (containsGarbledChinese(content)) {
+            charset = Charset.forName("GBK");
+        }
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), charset));
+             CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.builder()
+                     .setHeader()
+                     .setSkipHeaderRecord(true)
+                     .setIgnoreHeaderCase(true)
+                     .setTrim(true)
+                     .build())) {
+
+            List<String> headers = csvParser.getHeaderNames();
+
+            for (CSVRecord record : csvParser) {
+                Map<String, String> dataMap = new HashMap<>();
+                for (String header : headers) {
+                    String value = record.get(header);
+                    dataMap.put(header, value != null ? value.trim() : null);
+                }
+                dataList.add(dataMap);
+            }
+        }
+
+        return dataList;
+    }
+
 
     @Override
-    public ImportResult importEdgeData(Long graphId, Long edgeTypeId, MultipartFile file, String config) {
+    public ImportResult importEdgeData(Long graphId, Long edgeTypeId, Long connectionId, String graphCode, String label, MultipartFile file) {
         ImportResult result = new ImportResult();
         result.setTotalCount(0);
         result.setSuccessCount(0);
         result.setFailureCount(0);
         List<String> errorMessages = new ArrayList<>();
 
+        ReentrantLock importLock = getImportLock(graphId, graphCode);
+        boolean lockAcquired = false;
         try {
-            GraphInfo graphInfo = graphService.getById(graphId);
-            if (graphInfo == null) {
-                log.error("图不存在，graphId={}", graphId);
-                errorMessages.add("图不存在，graphId=" + graphId);
+            if (importLock.tryLock(30, TimeUnit.SECONDS)) {
+                lockAcquired = true;
+            } else {
+                errorMessages.add("系统繁忙，请稍后再试");
                 result.setErrorMessages(errorMessages.toArray(new String[0]));
                 return result;
             }
 
-            GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
-            if (connection == null) {
-                log.error("图数据库连接不存在，connectionId={}", graphInfo.getConnectionId());
-                errorMessages.add("图数据库连接不存在，connectionId=" + graphInfo.getConnectionId());
-                result.setErrorMessages(errorMessages.toArray(new String[0]));
+            ImportContext context = prepareImportContext(graphId, edgeTypeId, connectionId, graphCode, label, false);
+            if (context.hasError()) {
+                result.setErrorMessages(context.getErrors().toArray(new String[0]));
                 return result;
             }
 
-
-            GraphEdgeDef edgeDef = edgeDefService.getById(edgeTypeId);
-            if (edgeDef == null) {
-                log.error("边类型不存在，edgeTypeId={}", edgeTypeId);
-                errorMessages.add("边类型不存在，edgeTypeId=" + edgeTypeId);
-                result.setErrorMessages(errorMessages.toArray(new String[0]));
-                return result;
-            }
-            List<Map<String, String>> dataList = parseCsvFile(file, ",");
-
-            QueryWrapper<GraphPropertyDef> edgePropQuery = new QueryWrapper<GraphPropertyDef>()
-                    .eq("entity_id", edgeTypeId)
-                    .eq("property_type", GraphConstants.EDGE);
-            Set<String> edgeSchemaPropertyCodes = propertyDefService.list(edgePropQuery).stream()
-                    .map(GraphPropertyDef::getCode)
-                    .collect(Collectors.toSet());
-
+            List<Map<String, String>> dataList = parseDataCsv(file);
             result.setTotalCount(dataList.size());
 
-            GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
-
-            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+            GraphClient graphClient = GraphClientFactory.createGraphClient(context.getGraphConf());
             GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
 
-            int successCount = 0;
-            int failureCount = 0;
-
-            for (Map<String, String> dataRow : dataList) {
-                try {
-                    GraphEdge edge = new GraphEdge();
-                    edge.setUid(dataRow.get(GraphConstants.UID));
-                    edge.setLabel(edgeDef.getLabel());
-                    edge.setStartLabel(edgeDef.getStartLabel());
-                    edge.setEndLabel(edgeDef.getEndLabel());
-                    edge.setStartUid(dataRow.getOrDefault("startUid", dataRow.get("source")));
-                    edge.setEndUid(dataRow.getOrDefault("endUid", dataRow.get("target")));
-
-                    Map<String, Object> properties = new HashMap<>();
-                    dataRow.forEach((col, value) -> {
-                        if (edgeSchemaPropertyCodes.contains(col)) {
-                            properties.put(col, value);
-                        }
-                    });
-                    edge.setProperties(properties);
-                    graphDataOperations.addEdge(edge);
-                    successCount++;
-                } catch (Exception e) {
-                    log.error("导入边数据失败: {}", e.getMessage(), e);
-                    failureCount++;
-                }
-            }
+            int successCount = batchImportEdges(graphDataOperations, dataList, context.getLabel(), errorMessages);
 
             result.setSuccessCount(successCount);
-            result.setFailureCount(failureCount);
+            result.setFailureCount(dataList.size() - successCount);
             result.setErrorMessages(errorMessages.toArray(new String[0]));
 
-            log.info("导入边数据完成，总数={}，成功={}，失败={}", dataList.size(), successCount, failureCount);
+            log.info("导入边数据完成，总数={}，成功={}，失败={}", dataList.size(), successCount, dataList.size() - successCount);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("获取导入锁被中断", e);
+            errorMessages.add("导入操作被中断");
+            result.setErrorMessages(errorMessages.toArray(new String[0]));
         } catch (Exception e) {
             log.error("导入边数据失败", e);
             errorMessages.add("导入边数据失败: " + e.getMessage());
             result.setErrorMessages(errorMessages.toArray(new String[0]));
+        } finally {
+            if (lockAcquired) {
+                importLock.unlock();
+                releaseImportLock(graphId, graphCode);
+            }
         }
 
         return result;
+    }
+
+    /**
+     * 批量导入边数据
+     */
+    private int batchImportEdges(GraphDataOperations graphDataOperations, List<Map<String, String>> dataList, String label, List<String> errorMessages) {
+        int successCount = 0;
+        List<GraphEdge> batch = new ArrayList<>(BATCH_SIZE);
+
+        for (int i = 0; i < dataList.size(); i++) {
+            Map<String, String> dataRow = dataList.get(i);
+            try {
+                GraphEdge edge = new GraphEdge();
+                edge.setUid(dataRow.get(GraphConstants.UID));
+                edge.setLabel(label);
+                edge.setStartUid(dataRow.getOrDefault("startUid", dataRow.get("source")));
+                edge.setEndUid(dataRow.getOrDefault("endUid", dataRow.get("target")));
+
+                Map<String, Object> properties = new HashMap<>();
+                dataRow.forEach((key, value) -> {
+                    if (!"startUid".equals(key) && !"endUid".equals(key) && !"source".equals(key)
+                            && !"target".equals(key) && !"label".equals(key)) {
+                        properties.put(key, value);
+                    }
+                });
+                edge.setProperties(properties);
+                batch.add(edge);
+
+                if (batch.size() >= BATCH_SIZE || i == dataList.size() - 1) {
+                    try {
+                        if (batch.size() > 1) {
+                            graphDataOperations.addEdges(batch);
+                            successCount += batch.size();
+                        } else {
+                            graphDataOperations.addEdge(batch.get(0));
+                            successCount++;
+                        }
+                    } catch (Exception batchEx) {
+                        log.warn("批量导入失败，尝试逐条插入: {}", batchEx.getMessage());
+                        for (int j = 0; j < batch.size(); j++) {
+                            GraphEdge e = batch.get(j);
+                            try {
+                                graphDataOperations.addEdge(e);
+                                successCount++;
+                            } catch (Exception singleEx) {
+                                int rowNum = (i - batch.size() + j + 2);
+                                log.error("导入边数据失败，第{}行: {}", rowNum, singleEx.getMessage(), singleEx);
+                                errorMessages.add(String.format("第%d行导入失败: %s", rowNum, singleEx.getMessage()));
+                            }
+                        }
+                    }
+                    batch.clear();
+                }
+            } catch (Exception e) {
+                log.error("导入边数据失败，第{}行: {}", i + 2, e.getMessage(), e);
+                errorMessages.add(String.format("第%d行导入失败: %s", i + 2, e.getMessage()));
+            }
+        }
+
+        return successCount;
     }
 
 
@@ -334,7 +493,7 @@ public class GraphDataServiceImpl implements GraphDataService {
 
             long total = ops.countVertices(label);
 
-            String query = buildLabelQuery(graphId, label, skip, size);
+            String query = buildLabelQuery(graphId, connectionId, label, skip, size);
             GraphData graphData = ops.query(query);
 
             List<GraphVertex> records = (graphData == null || graphData.getVertices() == null)
@@ -348,7 +507,7 @@ public class GraphDataServiceImpl implements GraphDataService {
         }
     }
 
-    public PageResult<Map<String, Object>> queryEdgeDataList(Long graphId, Long edgeTypeId, String label, Integer page, Integer size, Long connectionId, String graphCode) {
+    public PageResult<GraphEdge> queryEdgeDataList(Long graphId, Long edgeTypeId, String label, Integer page, Integer size, Long connectionId, String graphCode) {
         try {
             if (label == null) {
                 GraphEdgeDef edgeDef = edgeDefService.getById(edgeTypeId);
@@ -364,53 +523,12 @@ public class GraphDataServiceImpl implements GraphDataService {
 
             long total = ops.countEdges(label);
 
-            String query = buildEdgeLabelQuery(graphId, label, skip, size);
+            String query = buildEdgeLabelQuery(graphId, connectionId, label, skip, size);
             GraphData graphData = ops.query(query);
-
-            List<Map<String, Object>> records = new ArrayList<>();
-            if (graphData != null && graphData.getEdges() != null) {
-                for (GraphEdge edge : graphData.getEdges()) {
-                    records.add(edgeToMap(edge));
-                }
-            }
-            return new PageResult<>(records, total, page, size);
+            return new PageResult<>(graphData.getEdges(), total, page, size);
         } catch (Exception e) {
             log.error("查询边数据列表失败，graphId={}, edgeTypeId={}", graphId, edgeTypeId, e);
             return PageResult.empty(page, size);
-        }
-    }
-
-    @Override
-    public GraphVertex getVertexData(Long graphId, String vertexId) {
-        try {
-            GraphDataOperations ops = getGraphDataOperations(graphId);
-            String query = buildFindVertexQuery(graphId, vertexId);
-            GraphData graphData = ops.query(query);
-
-            if (graphData != null && graphData.getVertices() != null && !graphData.getVertices().isEmpty()) {
-                return graphData.getVertices().get(0);
-            }
-            return null;
-        } catch (Exception e) {
-            log.error("获取顶点数据详情失败，graphId={}, vertexId={}", graphId, vertexId, e);
-            return null;
-        }
-    }
-
-    @Override
-    public GraphEdge getEdgeData(Long graphId, String edgeId) {
-        try {
-            GraphDataOperations ops = getGraphDataOperations(graphId);
-            String query = buildFindEdgeQuery(graphId, edgeId);
-            GraphData graphData = ops.query(query);
-
-            if (graphData != null && graphData.getEdges() != null && !graphData.getEdges().isEmpty()) {
-                return graphData.getEdges().get(0);
-            }
-            return null;
-        } catch (Exception e) {
-            log.error("获取边数据详情失败，graphId={}, edgeId={}", graphId, edgeId, e);
-            return null;
         }
     }
 
@@ -422,41 +540,14 @@ public class GraphDataServiceImpl implements GraphDataService {
                 log.error("顶点类型不存在，vertexTypeId={}", vertexTypeId);
                 return false;
             }
-
             GraphDataOperations ops = getGraphDataOperations(graphId, connectionId, graphCode);
-
             GraphVertex vertex = new GraphVertex();
             vertex.setLabel(vertexDef.getLabel());
-
-            // 处理嵌套属性结构：前端发送 {label: "...", properties: {uid, name, ...}}
-            Map<String, Object> properties;
-            if (data.containsKey("properties") && data.get("properties") instanceof Map) {
-                properties = (Map<String, Object>) data.get("properties");
-            } else {
-                properties = new HashMap<>(data);
-                properties.remove("label");
-                properties.remove("properties");
-            }
-            // 根据属性定义进行类型转换
-            if (vertexDef.getProperties() != null) {
-                for (GraphPropertyDef propDef : vertexDef.getProperties()) {
-                    String code = propDef.getCode();
-                    if (properties.containsKey(code)) {
-                        properties.put(code, convertValueType(properties.get(code), propDef.getType()));
-                    }
-                }
-            }
+            Map<String, Object> properties = handleProperties(data, vertexDef.getProperties());
+            String uid = data.get(GraphConstants.UID).toString();
             vertex.setProperties(properties);
-            // uid 可能在前端数据顶层或 properties 中
-            if (properties.containsKey(GraphConstants.UID)) {
-                vertex.setUid(properties.get(GraphConstants.UID).toString());
-            } else if (data.containsKey(GraphConstants.UID)) {
-                vertex.setUid(data.get(GraphConstants.UID).toString());
-                properties.put(GraphConstants.UID, data.get(GraphConstants.UID).toString());
-            }
-
+            vertex.setUid(uid);
             ops.addVertex(vertex);
-            log.info("新增顶点成功，label={}, uid={}", vertexDef.getLabel(), vertex.getUid());
             return true;
         } catch (Exception e) {
             log.error("新增顶点数据失败，graphId={}, vertexTypeId={}", graphId, vertexTypeId, e);
@@ -472,58 +563,17 @@ public class GraphDataServiceImpl implements GraphDataService {
                 log.error("边类型不存在，edgeTypeId={}", edgeTypeId);
                 return false;
             }
-
             GraphDataOperations ops = getGraphDataOperations(graphId, connectionId, graphCode);
 
+            Map<String, Object> properties = handleProperties(data, edgeDef.getProperties());
+            String uid = data.get(GraphConstants.UID).toString();
             GraphEdge edge = new GraphEdge();
             edge.setLabel(edgeDef.getLabel());
-
-            // 处理嵌套属性结构：前端发送 {label, startUid, endUid, properties: {uid, ...}}
-            Map<String, Object> properties;
-            if (data.containsKey("properties") && data.get("properties") instanceof Map) {
-                properties = (Map<String, Object>) data.get("properties");
-            } else {
-                properties = new HashMap<>(data);
-                properties.remove("label");
-                properties.remove("properties");
-            }
-            // 根据属性定义进行类型转换
-            if (edgeDef.getProperties() != null) {
-                for (GraphPropertyDef propDef : edgeDef.getProperties()) {
-                    String code = propDef.getCode();
-                    if (properties.containsKey(code)) {
-                        properties.put(code, convertValueType(properties.get(code), propDef.getType()));
-                    }
-                }
-            }
+            edge.setUid(uid);
+            edge.setStartLabel(edgeDef.getStartLabel());
+            edge.setEndLabel(edgeDef.getEndLabel());
             edge.setProperties(properties);
-            // uid 可能在前端数据顶层或 properties 中
-            if (properties.containsKey(GraphConstants.UID)) {
-                edge.setUid(properties.get(GraphConstants.UID).toString());
-            } else if (data.containsKey(GraphConstants.UID)) {
-                edge.setUid(data.get(GraphConstants.UID).toString());
-                properties.put(GraphConstants.UID, data.get(GraphConstants.UID).toString());
-            }
-            // startUid/endUid 可能在前端数据顶层或 properties 中
-            if (data.containsKey("startUid")) {
-                edge.setStartUid(data.get("startUid").toString());
-            } else if (properties.containsKey("startUid")) {
-                edge.setStartUid(properties.get("startUid").toString());
-            }
-            if (data.containsKey("endUid")) {
-                edge.setEndUid(data.get("endUid").toString());
-            } else if (properties.containsKey("endUid")) {
-                edge.setEndUid(properties.get("endUid").toString());
-            }
-            if (data.containsKey("startLabel")) {
-                edge.setStartLabel(data.get("startLabel").toString());
-            }
-            if (data.containsKey("endLabel")) {
-                edge.setEndLabel(data.get("endLabel").toString());
-            }
-
             ops.addEdge(edge);
-            log.info("新增边成功，label={}, uid={}", edgeDef.getLabel(), edge.getUid());
             return true;
         } catch (Exception e) {
             log.error("新增边数据失败，graphId={}, edgeTypeId={}", graphId, edgeTypeId, e);
@@ -542,41 +592,24 @@ public class GraphDataServiceImpl implements GraphDataService {
                 vertex.setLabel(data.get("label").toString());
             }
 
-            // 根据 label 获取顶点定义，以获取属性类型信息
             String label = vertex.getLabel();
             List<GraphPropertyDef> propDefs = new ArrayList<>();
             if (label != null) {
                 GraphVertexDef vertexDef = vertexDefService.getOne(
-                    new QueryWrapper<GraphVertexDef>().eq("graph_id", graphId).eq("label", label)
+                        new QueryWrapper<GraphVertexDef>().eq("graph_id", graphId).eq("label", label)
                 );
                 if (vertexDef != null && vertexDef.getProperties() != null) {
                     propDefs = vertexDef.getProperties();
                 }
             }
 
-            // 处理嵌套属性结构
-            Map<String, Object> properties;
-            if (data.containsKey("properties") && data.get("properties") instanceof Map) {
-                properties = (Map<String, Object>) data.get("properties");
-            } else {
-                properties = new HashMap<>(data);
-                properties.remove("label");
-                properties.remove("properties");
-            }
-            // 根据属性定义进行类型转换
-            for (GraphPropertyDef propDef : propDefs) {
-                String code = propDef.getCode();
-                if (properties.containsKey(code)) {
-                    properties.put(code, convertValueType(properties.get(code), propDef.getType()));
-                }
-            }
+            Map<String, Object> properties = handleProperties(data, propDefs);
             vertex.setProperties(properties);
-            if (properties.containsKey(GraphConstants.UID)) {
-                vertex.setUid(properties.get(GraphConstants.UID).toString());
-            } else if (data.containsKey(GraphConstants.UID)) {
-                vertex.setUid(data.get(GraphConstants.UID).toString());
+            String uid = data.get(GraphConstants.UID).toString();
+            if (StringUtils.isBlank(uid)) {
+                uid = data.get(GraphConstants.UID).toString();
             }
-
+            vertex.setUid(uid);
             ops.updateVertex(vertex);
             log.info("更新顶点成功，vertexId={}", vertexId);
             return true;
@@ -637,12 +670,11 @@ public class GraphDataServiceImpl implements GraphDataService {
                 edge.setLabel(data.get("label").toString());
             }
 
-            // 根据 label 获取边定义，以获取属性类型信息
             String label = edge.getLabel();
             List<GraphPropertyDef> propDefs = new ArrayList<>();
             if (label != null) {
                 GraphEdgeDef edgeDef = edgeDefService.getOne(
-                    new QueryWrapper<GraphEdgeDef>().eq("graph_id", graphId).eq("label", label)
+                        new QueryWrapper<GraphEdgeDef>().eq("graph_id", graphId).eq("label", label)
                 );
                 if (edgeDef != null && edgeDef.getProperties() != null) {
                     propDefs = edgeDef.getProperties();
@@ -650,15 +682,7 @@ public class GraphDataServiceImpl implements GraphDataService {
             }
 
             // 处理嵌套属性结构
-            Map<String, Object> properties;
-            if (data.containsKey("properties") && data.get("properties") instanceof Map) {
-                properties = (Map<String, Object>) data.get("properties");
-            } else {
-                properties = new HashMap<>(data);
-                properties.remove("label");
-                properties.remove("properties");
-            }
-            // startUid/endUid 可能在前端数据顶层或 properties 中
+            Map<String, Object> properties = handleProperties(data, propDefs);
             if (data.containsKey("startUid")) {
                 edge.setStartUid(data.get("startUid").toString());
             } else if (properties.containsKey("startUid")) {
@@ -689,41 +713,15 @@ public class GraphDataServiceImpl implements GraphDataService {
 
     @Override
     public boolean deleteVertex(Long graphId, String vertexId, String label, Long connectionId, String graphCode) {
-        List<String> vertexIds = new ArrayList<>();
-        vertexIds.add(vertexId);
-        return deleteVertices(graphId, vertexIds, label, connectionId, graphCode);
-    }
-
-    @Override
-    public boolean deleteVertices(Long graphId, List<String> vertexIds, String label, Long connectionId, String graphCode) {
-        if (graphId == null || vertexIds == null || vertexIds.isEmpty()) {
+        if (graphId == null || vertexId == null) {
             return false;
         }
 
         try {
-            // 获取图信息（仅在 graphId > 0 时需要）
-            GraphConf graphConf;
-            if (graphId != null && graphId > 0) {
-                GraphInfo graphInfo = graphService.getById(graphId);
-                if (graphInfo == null) {
-                    log.error("图不存在，graphId={}", graphId);
-                    return false;
-                }
-                GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
-                if (connection == null) {
-                    log.error("图数据库连接不存在，connectionId={}", graphInfo.getConnectionId());
-                    return false;
-                }
-                graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
-            } else {
-                graphConf = GraphClientFactory.resolveGraphConf(graphId, connectionId, graphCode, graphService, connectionService);
-            }
-
-            // 创建图客户端并删除顶点
+            GraphConf graphConf = GraphClientFactory.resolveGraphConf(graphId, connectionId, graphCode, graphService, connectionService);
             GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
             GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
 
-            // 对于发现的图（graphId < 0），label 直接从请求参数获取，无需查数据库
             String vertexLabel = label;
             if (graphId > 0) {
                 GraphVertexDef vertexDef = vertexDefService.getOne(new QueryWrapper<GraphVertexDef>().eq("graph_id", graphId).eq("label", label));
@@ -735,55 +733,27 @@ public class GraphDataServiceImpl implements GraphDataService {
                 log.warn("顶点类型不存在，graphId={}, label={}", graphId, label);
                 return false;
             }
-            // 删除顶点
-            for (String vertexId : vertexIds) {
-                try {
-                    GraphVertex vertex = new GraphVertex();
-                    vertex.setUid(vertexId);
-                    vertex.setLabel(vertexLabel);
-                    graphDataOperations.deleteVertex(vertex);
-                    log.info("成功删除顶点，vertexId={}", vertexId);
-                } catch (Exception e) {
-                    log.error("删除顶点失败，vertexId={}", vertexId, e);
-                }
-            }
+
+            GraphVertex vertex = new GraphVertex();
+            vertex.setUid(vertexId);
+            vertex.setLabel(vertexLabel);
+            graphDataOperations.deleteVertex(vertex);
+            log.info("成功删除顶点，vertexId={}", vertexId);
             return true;
         } catch (Exception e) {
-            log.error("批量删除顶点失败，graphId={}", graphId, e);
+            log.error("删除顶点失败，graphId={}, vertexId={}", graphId, vertexId, e);
             return false;
         }
     }
 
     @Override
     public boolean deleteEdge(Long graphId, String edgeId, String label, Long connectionId, String graphCode) {
-        List<String> edgeIds = new ArrayList<>();
-        edgeIds.add(edgeId);
-        return deleteEdges(graphId, edgeIds, label, connectionId, graphCode);
-    }
-
-    @Override
-    public boolean deleteEdges(Long graphId, List<String> edgeIds, String label, Long connectionId, String graphCode) {
-        if (graphId == null || edgeIds == null || edgeIds.isEmpty()) {
+        if (graphId == null || edgeId == null) {
             return false;
         }
 
         try {
-            GraphConf graphConf;
-            if (graphId > 0) {
-                GraphInfo graphInfo = graphService.getById(graphId);
-                if (graphInfo == null) {
-                    log.error("图不存在，graphId={}", graphId);
-                    return false;
-                }
-                GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
-                if (connection == null) {
-                    log.error("图数据库连接不存在，connectionId={}", graphInfo.getConnectionId());
-                    return false;
-                }
-                graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
-            } else {
-                graphConf = GraphClientFactory.resolveGraphConf(graphId, connectionId, graphCode, graphService, connectionService);
-            }
+            GraphConf graphConf = GraphClientFactory.resolveGraphConf(graphId, connectionId, graphCode, graphService, connectionService);
 
             GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
             GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
@@ -800,56 +770,48 @@ public class GraphDataServiceImpl implements GraphDataService {
                 return false;
             }
 
-            for (String edgeId : edgeIds) {
+            GraphEdge edge = new GraphEdge();
+            edge.setUid(edgeId);
+            edge.setLabel(edgeLabel);
+
+            // 解析 edgeId，格式：startUid -> endUid @label 或 复合uid
+            if (edgeId.contains("->") && edgeId.contains("@")) {
+                int arrowIdx = edgeId.indexOf("->");
+                int atIdx = edgeId.indexOf("@");
+                if (atIdx > arrowIdx) {
+                    edge.setStartUid(edgeId.substring(0, arrowIdx));
+                    edge.setEndUid(edgeId.substring(arrowIdx + 2, atIdx));
+                }
+            } else if (edgeId.contains("->")) {
+                int arrowIdx = edgeId.indexOf("->");
+                edge.setStartUid(edgeId.substring(0, arrowIdx));
+                edge.setEndUid(edgeId.substring(arrowIdx + 2));
+            }
+
+            if (edge.getStartUid() == null || edge.getEndUid() == null) {
                 try {
-                    GraphEdge edge = new GraphEdge();
-                    edge.setUid(edgeId);
-                    edge.setLabel(edgeLabel);
-
-                    // 解析 edgeId，格式：startUid -> endUid @label 或 复合uid
-                    if (edgeId.contains("->") && edgeId.contains("@")) {
-                        int arrowIdx = edgeId.indexOf("->");
-                        int atIdx = edgeId.indexOf("@");
-                        if (atIdx > arrowIdx) {
-                            edge.setStartUid(edgeId.substring(0, arrowIdx));
-                            edge.setEndUid(edgeId.substring(arrowIdx + 2, atIdx));
-                        }
-                    } else if (edgeId.contains("->")) {
-                        // 格式：startUid->endUid
-                        int arrowIdx = edgeId.indexOf("->");
-                        edge.setStartUid(edgeId.substring(0, arrowIdx));
-                        edge.setEndUid(edgeId.substring(arrowIdx + 2));
+                    String query = String.format("MATCH ()-[e:%s]->() WHERE e.uid == '%s' OR id(e) == '%s' RETURN e", edgeLabel, edgeId, edgeId);
+                    GraphData graphData = graphDataOperations.query(query);
+                    if (graphData != null && graphData.getEdges() != null && !graphData.getEdges().isEmpty()) {
+                        GraphEdge foundEdge = graphData.getEdges().get(0);
+                        edge.setStartUid(foundEdge.getStartUid());
+                        edge.setEndUid(foundEdge.getEndUid());
                     }
-
-                    // 如果 startUid/endUid 仍未解析出来，查询边数据
-                    if (edge.getStartUid() == null || edge.getEndUid() == null) {
-                        try {
-                            String query = String.format("MATCH ()-[e:%s]->() WHERE e.uid == '%s' OR id(e) == '%s' RETURN e", edgeLabel, edgeId, edgeId);
-                            GraphData graphData = graphDataOperations.query(query);
-                            if (graphData != null && graphData.getEdges() != null && !graphData.getEdges().isEmpty()) {
-                                GraphEdge foundEdge = graphData.getEdges().get(0);
-                                edge.setStartUid(foundEdge.getStartUid());
-                                edge.setEndUid(foundEdge.getEndUid());
-                            }
-                        } catch (Exception qe) {
-                            log.warn("查询边数据失败，edgeId={}: {}", edgeId, qe.getMessage());
-                        }
-                    }
-
-                    if (edge.getStartUid() == null || edge.getEndUid() == null) {
-                        log.error("无法获取边的起点和终点信息，edgeId={}", edgeId);
-                        continue;
-                    }
-
-                    graphDataOperations.deleteEdge(edge);
-                    log.info("成功删除边，edgeId={}", edgeId);
-                } catch (Exception e) {
-                    log.error("删除边失败，edgeId={}", edgeId, e);
+                } catch (Exception qe) {
+                    log.warn("查询边数据失败，edgeId={}: {}", edgeId, qe.getMessage());
                 }
             }
+
+            if (edge.getStartUid() == null || edge.getEndUid() == null) {
+                log.error("无法获取边的起点和终点信息，edgeId={}", edgeId);
+                return false;
+            }
+
+            graphDataOperations.deleteEdge(edge);
+            log.info("成功删除边，edgeId={}", edgeId);
             return true;
         } catch (Exception e) {
-            log.error("批量删除边失败，graphId={}", graphId, e);
+            log.error("删除边失败，graphId={}, edgeId={}", graphId, edgeId, e);
             return false;
         }
     }
@@ -868,15 +830,6 @@ public class GraphDataServiceImpl implements GraphDataService {
             log.error("获取图统计信息失败，graphId={}", graphId, e);
             throw new RuntimeException("获取图统计信息失败: " + e.getMessage(), e);
         }
-    }
-
-    // ==================== 私有辅助方法 ====================
-
-    /**
-     * 获取图数据操作接口
-     */
-    private GraphDataOperations getGraphDataOperations(Long graphId) {
-        return getGraphDataOperations(graphId, null, null);
     }
 
     private GraphDataOperations getGraphDataOperations(Long graphId, Long connectionId, String graphCode) {
@@ -899,147 +852,44 @@ public class GraphDataServiceImpl implements GraphDataService {
     }
 
 
-    /**
-     * 构建按标签分页查询顶点的查询语句（根据数据库类型生成不同语法）
-     */
-    private String buildLabelQuery(Long graphId, String label, int skip, int size) {
-        if (isGremlinGraph(graphId)) {
-            return String.format("g.V().hasLabel(\"%s\").skip(%d).limit(%d)", label, skip, size);
-        }
-        if (isNebulaGraph(graphId)) {
-            return String.format("MATCH (n:`%s`) RETURN n SKIP %d LIMIT %d", label, skip, size);
-        }
-        return String.format("MATCH (n:`%s`) RETURN n SKIP %d LIMIT %d", label, skip, size);
-    }
-
-    /**
-     * 构建按标签分页查询边的查询语句
-     */
-    private String buildEdgeLabelQuery(Long graphId, String label, int skip, int size) {
-        if (isGremlinGraph(graphId)) {
-            return String.format("g.E().hasLabel(\"%s\").skip(%d).limit(%d)", label, skip, size);
-        }
-        if (isNebulaGraph(graphId)) {
-            return String.format("MATCH (a)-[r:`%s`]->(b) RETURN a, r, b SKIP %d LIMIT %d", label, skip, size);
-        }
-        return String.format("MATCH (a)-[r:`%s`]->(b) RETURN a, r, b SKIP %d LIMIT %d", label, skip, size);
-    }
-
-    /**
-     * 构建按 uid 查找顶点的查询语句
-     */
-    private String buildFindVertexQuery(Long graphId, String vertexId) {
-        if (isGremlinGraph(graphId)) {
-            return String.format("g.V().has(\"uid\", \"%s\")", escapeGremlinString(vertexId));
-        }
-        return String.format("MATCH (n {uid: '%s'}) RETURN n", escapeCypherString(vertexId));
-    }
-
-    /**
-     * 构建按 uid 查找边的查询语句
-     */
-    private String buildFindEdgeQuery(Long graphId, String edgeId) {
-        if (isGremlinGraph(graphId)) {
-            return String.format("g.E().has(\"uid\", \"%s\")", escapeGremlinString(edgeId));
-        }
-        return String.format("MATCH (a)-[r {uid: '%s'}]->(b) RETURN a, r, b", escapeCypherString(edgeId));
-    }
-
-    /**
-     * 判断图数据库是否使用Gremlin查询语言
-     */
-    private boolean isGremlinGraph(Long graphId) {
+    private String buildLabelQuery(Long graphId, Long connectionId, String label, int skip, int size) {
         GraphInfo graphInfo = graphService.getById(graphId);
+        GraphTypeEnum graphType = null;
         if (graphInfo == null) {
-            return false;
+            GraphConnection connection = connectionService.getById(connectionId);
+            graphType = connection.getGraphTypeEnum();
+        } else {
+            graphType = graphInfo.getGraphType();
         }
-        GraphConnection conn = connectionService.getById(graphInfo.getConnectionId());
-        return conn != null && conn.getGraphTypeEnum() == GraphTypeEnum.janus;
+
+        return switch (graphType) {
+            case janus -> String.format("g.V().hasLabel(\"%s\").skip(%d).limit(%d)", label, skip, size);
+            case nebula -> String.format("MATCH (n:`%s`) RETURN n SKIP %d LIMIT %d", label, skip, size);
+            case neo4j -> String.format("MATCH (n:`%s`) RETURN n SKIP %d LIMIT %d", label, skip, size);
+        };
     }
 
-    private boolean isNebulaGraph(Long graphId) {
+    private String buildEdgeLabelQuery(Long graphId, Long connectionId, String label, int skip, int size) {
         GraphInfo graphInfo = graphService.getById(graphId);
-        if (graphInfo == null) {
-            return false;
-        }
-        GraphConnection conn = connectionService.getById(graphInfo.getConnectionId());
-        return conn != null && conn.getGraphTypeEnum() == GraphTypeEnum.nebula;
+        return switch (graphInfo.getGraphType()) {
+            case janus -> String.format("g.E().hasLabel(\"%s\").skip(%d).limit(%d)", label, skip, size);
+            case nebula -> String.format("MATCH (a)-[r:`%s`]->(b) RETURN a, r, b SKIP %d LIMIT %d", label, skip, size);
+            case neo4j -> String.format("MATCH (a)-[r:`%s`]->(b) RETURN a, r, b SKIP %d LIMIT %d", label, skip, size);
+        };
     }
 
-    /**
-     * Gremlin字符串转义
-     */
-    private String escapeGremlinString(String str) {
-        if (str == null) {
-            return "";
-        }
-        return str.replace("\\", "\\\\").replace("\"", "\\\"");
-    }
 
-    /**
-     * 将 GraphEdge 转为 Map
-     */
-    private Map<String, Object> edgeToMap(GraphEdge edge) {
-        Map<String, Object> map = new HashMap<>();
-        map.put("id", edge.getId());
-        map.put(GraphConstants.UID, edge.getUid());
-        map.put("label", edge.getLabel());
-        map.put("startUid", edge.getStartUid());
-        map.put("startLabel", edge.getStartLabel());
-        map.put("endUid", edge.getEndUid());
-        map.put("endLabel", edge.getEndLabel());
-        if (edge.getProperties() != null) {
-            map.put("properties", edge.getProperties());
-        }
-        return map;
-    }
-
-    /**
-     * 转义 Cypher 字符串中的特殊字符（单引号）
-     */
-    private String escapeCypherString(String value) {
-        if (value == null) {
-            return "";
-        }
-        return value.replace("\\", "\\\\").replace("'", "\\'");
-    }
-
-    /**
-     * 根据属性类型转换值
-     *
-     * @param value    字符串值
-     * @param dataType 属性类型
-     * @return 转换后的值
-     */
-    private Object convertValueByType(String value, String dataType) {
-        if (value == null || value.trim().isEmpty()) {
-            return null;
-        }
-
-        if (dataType == null) {
-            return value;
-        }
-
-        String normalizedType = dataType.trim().toUpperCase();
-
-        try {
-            switch (normalizedType) {
-                case "INTEGER", "INT", "LONG", "INT64" -> {
-                    return Long.parseLong(value.trim());
-                }
-                case "FLOAT", "DOUBLE" -> {
-                    return Double.parseDouble(value.trim());
-                }
-                case "BOOLEAN", "BOOL"-> {
-                    return Boolean.parseBoolean(value.trim());
-                }
-                default -> {
-                    return value;
+    private Map<String, Object> handleProperties(Map<String, Object> data, List<GraphPropertyDef> propertyDefList) {
+        Map<String, Object> properties = (Map<String, Object>) data.get("properties");
+        if (propertyDefList != null) {
+            for (GraphPropertyDef propDef : propertyDefList) {
+                String code = propDef.getCode();
+                if (properties.containsKey(code)) {
+                    properties.put(code, convertValueType(properties.get(code), propDef.getType()));
                 }
             }
-        } catch (NumberFormatException e) {
-            log.warn("Failed to convert value '{}' to type '{}', using original string value", value, dataType);
-            return value;
         }
+        properties.put(GraphConstants.UID, data.get(GraphConstants.UID));
+        return properties;
     }
 }

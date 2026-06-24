@@ -9,6 +9,13 @@ import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphSummary;
 import com.chenpp.graph.core.model.GraphVertex;
 import com.chenpp.graph.core.model.PathQuery;
+import com.chenpp.graph.core.schema.DataType;
+import com.chenpp.graph.core.schema.GraphEntity;
+import com.chenpp.graph.core.schema.GraphProperty;
+import com.chenpp.graph.core.schema.GraphRelation;
+import com.chenpp.graph.nebula.schema.NebulaEdge;
+import com.chenpp.graph.nebula.schema.NebulaProperty;
+import com.chenpp.graph.nebula.schema.NebulaTag;
 import com.chenpp.graph.nebula.util.NebulaUtil;
 import com.vesoft.nebula.client.graph.SessionPool;
 import com.vesoft.nebula.client.graph.data.PathWrapper;
@@ -50,7 +57,10 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
             throw new GraphException(ErrorCode.BAD_REQUEST, "Vertex properties cannot be empty");
         }
         try {
-            String nql = NebulaUtil.buildInsertVertex(vertex);
+            // 获取该标签的属性类型映射
+            Map<String, DataType> propertyTypes = getTagPropertyTypes(vertex.getLabel());
+            
+            String nql = NebulaUtil.buildInsertVertex(vertex, propertyTypes);
             log.info("Execute NGQL: {}", nql);
 
             ResultSet resultSet = sessionPool.execute(nql);
@@ -76,8 +86,9 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
         // Nebula中更新顶点使用UPDATE语法
         try {
             String vid = vertex.getUid();
+            Map<String, DataType> propertyTypes = getTagPropertyTypes(vertex.getLabel());
             String setClause = vertex.getProperties().entrySet().stream()
-                    .map(entry -> entry.getKey() + " = " + NebulaUtil.formatValue(entry.getValue()))
+                    .map(entry -> entry.getKey() + " = " + NebulaUtil.formatValue(entry.getValue(), propertyTypes != null ? propertyTypes.get(entry.getKey()) : null))
                     .reduce((a, b) -> a + ", " + b)
                     .orElse("");
             String nql = NebulaUtil.buildUpdateVertex(vertex.getLabel(), vid, setClause);
@@ -118,9 +129,12 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                 }
                 // 获取属性键（假设同标签的顶点具有相同的属性结构）
                 String keys = String.join(",", vertexList.get(0).getProperties().keySet());
+                
+                // 获取该标签的属性类型映射
+                Map<String, DataType> propertyTypes = getTagPropertyTypes(label);
 
                 String valuesClause = vertexList.stream().map(vertex -> {
-                    String propValues = NebulaUtil.buildPropertyValuesClause(vertex.getProperties());
+                    String propValues = NebulaUtil.buildPropertyValuesClause(vertex.getProperties(), propertyTypes);
                     return String.format("\"%s\":(%s)", vertex.getUid(), propValues);
                 }).collect(Collectors.joining(","));
 
@@ -173,10 +187,13 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
     @Override
     public GraphEdge addEdge(GraphEdge edge) throws GraphException {
         try {
+            // 获取该边类型的属性类型映射
+            Map<String, DataType> propertyTypes = getEdgePropertyTypes(edge.getLabel());
+            
             // 构建插入边的NGQL语句
             // 语法: INSERT EDGE edge_type (prop1, prop2) VALUES src_vid -> dst_vid @rank: (val1, val2)
             String keys = String.join(",", edge.getProperties().keySet());
-            String propValues = NebulaUtil.buildPropertyValuesClause(edge.getProperties());
+            String propValues = NebulaUtil.buildPropertyValuesClause(edge.getProperties(), propertyTypes);
             String nql = NebulaUtil.buildInsertEdge(edge.getLabel(), keys, edge.getStartUid(), edge.getEndUid(), propValues);
 
 
@@ -223,11 +240,14 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                 if (firstEdge.getProperties() != null && !firstEdge.getProperties().isEmpty()) {
                     propKeys = String.join(", ", firstEdge.getProperties().keySet());
                 }
+                
+                // 获取该边类型的属性类型映射
+                Map<String, DataType> propertyTypes = getEdgePropertyTypes(label);
 
                 // 构建批量插入语句的值部分
                 StringBuilder valuesBuilder = new StringBuilder();
                 String valuesStr = edgeList.stream().map(edge -> {
-                    String propValues = NebulaUtil.buildPropertyValuesClause(edge.getProperties());
+                    String propValues = NebulaUtil.buildPropertyValuesClause(edge.getProperties(), propertyTypes);
                     return String.format("\"%s\" -> \"%s\":(%s)", edge.getStartUid(), edge.getEndUid(), propValues);
                 }).collect(Collectors.joining(", "));
                 valuesBuilder.append(valuesStr);
@@ -253,9 +273,12 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
     @Override
     public GraphEdge updateEdge(GraphEdge edge) throws GraphException {
         try {
+            // 获取该边类型的属性类型映射
+            Map<String, DataType> propertyTypes = getEdgePropertyTypes(edge.getLabel());
+            
             // 添加SET子句
             String setClause = edge.getProperties().entrySet().stream()
-                    .map(entry -> entry.getKey() + " = " + NebulaUtil.formatValue(entry.getValue()))
+                    .map(entry -> entry.getKey() + " = " + NebulaUtil.formatValue(entry.getValue(), propertyTypes != null ? propertyTypes.get(entry.getKey()) : null))
                     .reduce((a, b) -> a + ", " + b)
                     .orElse("");
 
@@ -632,6 +655,66 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
             return edge.getUid();
         }
         return edge.getStartUid() + "->" + edge.getEndUid() + "#" + edge.getLabel();
+    }
+
+    /**
+     * 获取指定标签的属性类型映射
+     * @param tagName 标签名称
+     * @return 属性名到数据类型的映射
+     */
+    private Map<String, DataType> getTagPropertyTypes(String tagName) {
+        try {
+            String nql = NebulaUtil.buildDescribeTag(tagName);
+            ResultSet resultSet = sessionPool.execute(nql);
+            if (!resultSet.isSucceeded()) {
+                log.warn("Failed to describe tag {}, errorCode: {}, errorMessage: {}", 
+                        tagName, resultSet.getErrorCode(), resultSet.getErrorMessage());
+                return null;
+            }
+
+            Map<String, DataType> propertyTypes = new HashMap<>();
+            for (int i = 0; i < resultSet.rowsSize(); i++) {
+                ResultSet.Record record = resultSet.rowValues(i);
+                String fieldName = record.get(0).asString();
+                String typeName = record.get(1).asString();
+                DataType dataType = DataType.instanceOf(typeName);
+                propertyTypes.put(fieldName, dataType);
+            }
+            return propertyTypes;
+        } catch (Exception e) {
+            log.warn("Failed to get tag property types for {}: {}", tagName, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 获取指定边类型的属性类型映射
+     * @param edgeName 边类型名称
+     * @return 属性名到数据类型的映射
+     */
+    private Map<String, DataType> getEdgePropertyTypes(String edgeName) {
+        try {
+            String nql = NebulaUtil.buildDescribeEdge(edgeName);
+            ResultSet resultSet = sessionPool.execute(nql);
+            if (!resultSet.isSucceeded()) {
+                log.warn("Failed to describe edge {}, errorCode: {}, errorMessage: {}", 
+                        edgeName, resultSet.getErrorCode(), resultSet.getErrorMessage());
+                return null;
+            }
+
+            Map<String, DataType> propertyTypes = new HashMap<>();
+            for (int i = 0; i < resultSet.rowsSize(); i++) {
+                ResultSet.Record record = resultSet.rowValues(i);
+                String fieldName = record.get(0).asString();
+                String typeName = record.get(1).asString();
+                DataType dataType = DataType.instanceOf(typeName);
+                propertyTypes.put(fieldName, dataType);
+            }
+            return propertyTypes;
+        } catch (Exception e) {
+            log.warn("Failed to get edge property types for {}: {}", edgeName, e.getMessage());
+            return null;
+        }
     }
 
 }

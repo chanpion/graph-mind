@@ -28,10 +28,9 @@ public interface GraphDataService {
      * @param graphCode    图编码（可选，配合 connectionId 使用）
      * @param label        标签名称（可选，配合 connectionId 使用）
      * @param file         CSV文件
-     * @param config       导入配置JSON（含 delimiter、hasHeader 等）
      * @return 导入结果
      */
-    ImportResult importVertexData(Long graphId, Long vertexTypeId, Long connectionId, String graphCode, String label, MultipartFile file, String config);
+    ImportResult importVertexData(Long graphId, Long vertexTypeId, Long connectionId, String graphCode, String label, MultipartFile file);
 
     /**
      * 导入边数据到图数据库
@@ -42,10 +41,9 @@ public interface GraphDataService {
      * @param graphCode    图编码（可选，配合 connectionId 使用）
      * @param label        标签名称（可选，配合 connectionId 使用）
      * @param file         CSV文件
-     * @param config       导入配置JSON（含 delimiter、hasHeader 等）
      * @return 导入结果
      */
-    ImportResult importEdgeData(Long graphId, Long edgeTypeId, Long connectionId, String graphCode, String label, MultipartFile file, String config);
+    ImportResult importEdgeData(Long graphId, Long edgeTypeId, Long connectionId, String graphCode, String label, MultipartFile file);
 
     /**
      * 查询节点数据列表
@@ -69,25 +67,7 @@ public interface GraphDataService {
      * @param size       每页大小
      * @return 分页边数据
      */
-    PageResult<Map<String, Object>> queryEdgeDataList(Long graphId, Long edgeTypeId, String label, Integer page, Integer size, Long connectionId, String graphCode);
-
-    /**
-     * 获取节点数据详情
-     *
-     * @param graphId 图ID
-     * @param vertexId  节点ID
-     * @return 节点数据详情
-     */
-    GraphVertex getVertexData(Long graphId, String vertexId);
-
-    /**
-     * 获取边数据详情
-     *
-     * @param graphId 图ID
-     * @param edgeId  边ID
-     * @return 边数据详情
-     */
-    GraphEdge getEdgeData(Long graphId, String edgeId);
+    PageResult<GraphEdge> queryEdgeDataList(Long graphId, Long edgeTypeId, String label, Integer page, Integer size, Long connectionId, String graphCode);
 
     /**
      * 新增节点数据
@@ -150,18 +130,6 @@ public interface GraphDataService {
     boolean deleteVertex(Long graphId, String vertexId, String label, Long connectionId, String graphCode);
 
     /**
-     * 批量删除图数据库中的节点
-     *
-     * @param graphId 图ID
-     * @param vertexIds 节点ID列表
-     * @param label   节点标签
-     * @param connectionId 连接ID（发现的图使用）
-     * @param graphCode   图代码（发现的图使用）
-     * @return 删除结果
-     */
-    boolean deleteVertices(Long graphId, List<String> vertexIds, String label, Long connectionId, String graphCode);
-
-    /**
      * 删除图数据库中的边
      *
      * @param graphId 图ID
@@ -173,18 +141,6 @@ public interface GraphDataService {
      */
     boolean deleteEdge(Long graphId, String edgeId, String label, Long connectionId, String graphCode);
 
-    /**
-     * 批量删除图数据库中的边
-     *
-     * @param graphId 图ID
-     * @param edgeIds 边ID列表
-     * @param label   边标签
-     * @param connectionId 连接ID（发现的图使用）
-     * @param graphCode   图代码（发现的图使用）
-     * @return 删除结果
-     */
-    boolean deleteEdges(Long graphId, List<String> edgeIds, String label, Long connectionId, String graphCode);
-    
     /**
      * 获取图统计信息
      *

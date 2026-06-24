@@ -55,15 +55,12 @@ public class GraphInfo {
     @TableField(exist = false)
     private Integer vertexCount;
 
-    /** 边数量（展示用，来自图数据库统计） */
     @TableField(exist = false)
     private Integer edgeCount;
 
-    /** 顶点类型数量（展示用，来自 graph_vertex_def 统计） */
     @TableField(exist = false)
     private Integer vertexTypeCount;
 
-    /** 边类型数量（展示用，来自 graph_edge_def 统计） */
     @TableField(exist = false)
     private Integer edgeTypeCount;
 
