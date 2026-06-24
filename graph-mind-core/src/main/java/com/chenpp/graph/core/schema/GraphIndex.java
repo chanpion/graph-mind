@@ -32,4 +32,6 @@ public class GraphIndex {
      * 属性标识列表
      */
     private List<String> propertyNames;
+
+    private List<GraphProperty> properties;
 }

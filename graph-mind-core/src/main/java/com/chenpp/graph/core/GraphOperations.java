@@ -64,4 +64,22 @@ public interface GraphOperations {
      */
     default void alterSchema(GraphConf graphConf, GraphSchema alterSchema) {
     }
+
+    /**
+     * 删除顶点标签（Tag）
+     *
+     * @param graphCode 图编码
+     * @param label     标签名称
+     */
+    default void dropVertexLabel(String graphCode, String label) {
+    }
+
+    /**
+     * 删除边类型（Edge）
+     *
+     * @param graphCode 图编码
+     * @param label     边类型名称
+     */
+    default void dropEdgeLabel(String graphCode, String label) {
+    }
 }

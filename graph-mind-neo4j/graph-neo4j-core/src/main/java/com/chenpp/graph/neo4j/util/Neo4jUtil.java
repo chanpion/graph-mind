@@ -7,6 +7,8 @@ import com.chenpp.graph.core.exception.GraphException;
 import com.chenpp.graph.core.model.GraphData;
 import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphVertex;
+import com.chenpp.graph.core.schema.DataType;
+import com.chenpp.graph.core.schema.GraphProperty;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.neo4j.driver.AuthTokens;
@@ -325,4 +327,24 @@ public class Neo4jUtil {
         }
         return graphData;
     }
+
+    public static GraphProperty parseProperty(Record record) {
+        String propertyName = Neo4jUtil.safeGetString(record, "propertyName");
+        if (StringUtils.isBlank(propertyName)) {
+            return null;
+        }
+
+        String typeStr = Neo4jUtil.safeGetSingleFromList(record, "propertyTypes");
+        DataType dataType = DataType.instanceOf(typeStr);
+        if (dataType == null) {
+            dataType = DataType.String;
+        }
+
+        GraphProperty prop = new GraphProperty();
+        prop.setCode(propertyName);
+        prop.setName(propertyName);
+        prop.setDataType(dataType);
+        return prop;
+    }
+
 }

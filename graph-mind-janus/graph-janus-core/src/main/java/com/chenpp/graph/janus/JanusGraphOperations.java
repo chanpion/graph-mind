@@ -519,4 +519,72 @@ public class JanusGraphOperations implements GraphOperations {
             log.info("Created system composite index: {} on property: {}", uidIndexName, GraphConstants.UID);
         }
     }
+
+    @Override
+    public void dropVertexLabel(String graphCode, String label) {
+        log.info("Dropping vertex label: {}", label);
+
+        JanusGraphManagement management = null;
+        try {
+            // 删除数据
+            graph.traversal().V().hasLabel(label).drop().iterate();
+            graph.tx().commit();
+
+            management = graph.openManagement();
+            if (management.containsVertexLabel(label)) {
+                VertexLabel vertexLabel = management.getVertexLabel(label);
+                if (vertexLabel != null && !vertexLabel.isRemoved()) {
+                    vertexLabel.remove();
+                }
+                management.commit();
+                log.info("Successfully dropped vertex label: {}", label);
+            } else {
+                log.warn("Vertex label {} does not exist", label);
+                management.rollback();
+            }
+        } catch (Exception e) {
+            log.error("Failed to drop vertex label: {}", label, e);
+            if (management != null) {
+                try {
+                    management.rollback();
+                } catch (Exception rollbackException) {
+                    log.warn("Failed to rollback management transaction", rollbackException);
+                }
+            }
+            throw new GraphException("Failed to drop vertex label: " + label, e);
+        }
+    }
+
+    @Override
+    public void dropEdgeLabel(String graphCode, String label) {
+        log.info("Dropping edge label: {}", label);
+        JanusGraphManagement management = null;
+        try {
+            // 1. 删除所有 label 类型的边
+            graph.traversal().E().hasLabel(label).drop().iterate();
+            graph.tx().commit();
+            management = graph.openManagement();
+            if (management.containsEdgeLabel(label)) {
+                EdgeLabel edgeLabel = management.getEdgeLabel(label);
+                if (edgeLabel != null && !edgeLabel.isRemoved()) {
+                    edgeLabel.remove();
+                }
+                management.commit();
+                log.info("Successfully dropped edge label: {}", label);
+            } else {
+                log.warn("Edge label {} does not exist", label);
+                management.rollback();
+            }
+        } catch (Exception e) {
+            log.error("Failed to drop edge label: {}", label, e);
+            if (management != null) {
+                try {
+                    management.rollback();
+                } catch (Exception rollbackException) {
+                    log.warn("Failed to rollback management transaction", rollbackException);
+                }
+            }
+            throw new GraphException("Failed to drop edge label: " + label, e);
+        }
+    }
 }

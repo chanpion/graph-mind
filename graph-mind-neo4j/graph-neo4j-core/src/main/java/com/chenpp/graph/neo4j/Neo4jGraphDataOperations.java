@@ -36,16 +36,18 @@ import java.util.stream.Collectors;
 public class Neo4jGraphDataOperations implements GraphDataOperations {
     private final Neo4jConf neo4jConf;
     private final Driver driver;
+    private SessionConfig sessionConfig;
 
     public Neo4jGraphDataOperations(Neo4jConf neo4jConf, Driver driver) {
         this.neo4jConf = neo4jConf;
         this.driver = driver;
+        this.sessionConfig=SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build();
     }
 
     @Override
     public GraphVertex addVertex(GraphVertex vertex) throws GraphException {
         log.info("Adding vertex with label: {}, uid: {}", vertex.getLabel(), vertex.getUid());
-        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+        try (Session session = driver.session()) {
             String cypher = String.format("CREATE (n:%s {uid: $uid}) SET n += $properties RETURN n", vertex.getLabel());
 
             Map<String, Object> parameters = Neo4jUtil.convertToMap(vertex);
@@ -61,7 +63,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
     @Override
     public GraphVertex updateVertex(GraphVertex vertex) throws GraphException {
         log.info("Updating vertex with label: {}, uid: {}", vertex.getLabel(), vertex.getUid());
-        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+        try (Session session = driver.session(sessionConfig)) {
             String cypher = String.format(
                     "MATCH (n:%s) WHERE n.uid = $uid OR elementId(n) = $uid SET n += $properties, n.uid = $uid RETURN n",
                     vertex.getLabel());
@@ -84,7 +86,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
         }
         log.info("Batch adding {} vertices", vertices.size());
         Map<String, List<GraphVertex>> labelVerticesMap = vertices.stream().collect(Collectors.groupingBy(GraphVertex::getLabel));
-        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+        try (Session session = driver.session(sessionConfig)) {
             session.executeWrite(tx -> {
                 labelVerticesMap.forEach((label, vertexList) -> {
                     String cypher = String.format("UNWIND $vertices AS row CREATE (n:%s {uid: row.uid}) SET n += row.properties", label);
@@ -104,7 +106,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
     public boolean deleteVertex(GraphVertex vertex) throws GraphException {
         log.info("Deleting vertex with label: {}, uid: {}", vertex.getLabel(), vertex.getUid());
         String cypher = String.format("MATCH (n:%s) WHERE n.uid = $uid OR elementId(n) = $uid DETACH DELETE n", vertex.getLabel());
-        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+        try (Session session = driver.session(sessionConfig)) {
             int deleted = session.executeWrite(tx -> {
                 Result result = tx.run(cypher, Map.of(GraphConstants.UID, vertex.getUid()));
                 return result.consume().counters().nodesDeleted();
@@ -119,7 +121,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
     @Override
     public GraphEdge addEdge(GraphEdge edge) throws GraphException {
         log.info("Adding edge with label: {}, startUid: {}, endUid: {}", edge.getLabel(), edge.getStartUid(), edge.getEndUid());
-        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+        try (Session session = driver.session(sessionConfig)) {
             String cypher = String.format(
                     "MATCH (a) WHERE a.uid = $startUid OR elementId(a) = $startUid "
                     + "MATCH (b) WHERE b.uid = $endUid OR elementId(b) = $endUid "
@@ -142,7 +144,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
         }
         log.info("Batch adding {} edges", edges.size());
         Map<String, List<GraphEdge>> labelEdgesMap = edges.stream().collect(Collectors.groupingBy(e -> String.format("%s-%s-%s", e.getLabel(), e.getStartLabel(), e.getEndLabel())));
-        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+        try (Session session = driver.session(sessionConfig)) {
             session.executeWrite(tx -> {
                 labelEdgesMap.forEach((label, edgeList) -> {
                     String[] labelArr = label.split("-");
@@ -168,7 +170,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
     @Override
     public GraphEdge updateEdge(GraphEdge edge) throws GraphException {
         log.info("Updating edge with label: {}, uid: {}", edge.getLabel(), edge.getUid());
-        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+        try (Session session = driver.session(sessionConfig)) {
             String cypher = String.format(
                     "MATCH ()-[r:%s]->() WHERE r.uid = $uid OR elementId(r) = $uid SET r += $properties, r.uid = $uid RETURN r",
                     edge.getLabel());
@@ -185,7 +187,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
     @Override
     public boolean deleteEdge(GraphEdge edge) throws GraphException {
         log.info("Deleting edge with label: {}, uid: {}", edge.getLabel(), edge.getUid());
-        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+        try (Session session = driver.session(sessionConfig)) {
             String cypher = String.format("MATCH ()-[r:%s]->() WHERE r.uid=$uid OR elementId(r)=$uid DELETE r", edge.getLabel());
             Map<String, Object> parameters = Map.of(GraphConstants.UID, edge.getUid());
             int count = session.executeWrite(tx -> tx.run(cypher, parameters).consume().counters().relationshipsDeleted());
@@ -198,7 +200,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
 
     public GraphData query(String cypher) throws GraphException {
         log.info("Executing Cypher query: {}", cypher);
-        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+        try (Session session = driver.session(sessionConfig)) {
             return session.executeRead(tx -> {
                 Result result = tx.run(cypher);
                 return Neo4jUtil.parseResult(result);
@@ -231,7 +233,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
         String cypher = String.format(
                 "MATCH p = (n:`%s` {`%s`: $value})-[*1..%d]-(m) RETURN p LIMIT %d",
                 label, property, depth, limit);
-        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+        try (Session session = driver.session(sessionConfig)) {
             return session.executeRead(tx -> {
                 Result result = tx.run(cypher, Values.parameters("value", value));
                 return Neo4jUtil.parseResult(result);
@@ -269,7 +271,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
                 "MATCH p = (a:`%s` {`%s`: $startVal})-[*1..%d]-(b:`%s` {`%s`: $endVal}) RETURN p LIMIT %d",
                 start.getLabel(), start.getProperty(), pathQuery.getMaxDepth(),
                 end.getLabel(), end.getProperty(), pathQuery.getLimit());
-        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+        try (Session session = driver.session(sessionConfig)) {
             return session.executeRead(tx -> {
                 Result result = tx.run(cypher, Values.parameters("startVal", start.getValue(), "endVal", end.getValue()));
                 return Neo4jUtil.parseResult(result);
@@ -286,7 +288,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
         log.info("Getting graph summary");
         GraphSummary summary = new GraphSummary();
 
-        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+        try (Session session = driver.session(sessionConfig)) {
             String nodeCountCypher = "MATCH (n) RETURN count(n) AS count";
             Result nodeCountResult = session.run(nodeCountCypher);
             if (nodeCountResult.hasNext()) {
@@ -328,7 +330,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
     public long countVertices(String label) throws GraphException {
         log.info("Counting vertices with label: {}", label);
         String cypher = String.format("MATCH (n:`%s`) RETURN count(n) AS count", label);
-        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+        try (Session session = driver.session(sessionConfig)) {
             return session.executeRead(tx -> {
                 Result result = tx.run(cypher);
                 if (result.hasNext()) {
@@ -346,7 +348,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
     public long countEdges(String label) throws GraphException {
         log.info("Counting edges with label: {}", label);
         String cypher = String.format("MATCH ()-[r:`%s`]->() RETURN count(r) AS count", label);
-        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+        try (Session session = driver.session(sessionConfig)) {
             return session.executeRead(tx -> {
                 Result result = tx.run(cypher);
                 if (result.hasNext()) {
@@ -363,7 +365,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
     @Override
     public GraphVertex findVertex(String label, String property, String value) throws GraphException {
         String cypher = String.format("MATCH (n:`%s`) WHERE n.`%s` = $value OR n.uid = $value RETURN n LIMIT 1", label, property);
-        try (Session session = driver.session(SessionConfig.builder().withDatabase(neo4jConf.getGraphCode()).build())) {
+        try (Session session = driver.session(sessionConfig)) {
             return session.executeRead(tx -> {
                 Result result = tx.run(cypher, Map.of("value", value));
                 if (result.hasNext()) {

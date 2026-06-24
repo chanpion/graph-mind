@@ -20,26 +20,32 @@ import java.util.Map;
 public interface GraphDataService {
 
     /**
-     * 导入节点数据到图数据库
+     * 导入顶点数据到图数据库
      *
-     * @param graphId    图ID
-     * @param vertexTypeId 节点类型ID
-     * @param file       CSV文件
-     * @param config     导入配置JSON（含 delimiter、hasHeader 等）
+     * @param graphId      图ID（可选，与 connectionId 二选一）
+     * @param vertexTypeId 节点类型ID（可选，与 label 二选一）
+     * @param connectionId 连接ID（可选，与 graphId 二选一）
+     * @param graphCode    图编码（可选，配合 connectionId 使用）
+     * @param label        标签名称（可选，配合 connectionId 使用）
+     * @param file         CSV文件
+     * @param config       导入配置JSON（含 delimiter、hasHeader 等）
      * @return 导入结果
      */
-    ImportResult importVertexData(Long graphId, Long vertexTypeId, MultipartFile file, String config);
+    ImportResult importVertexData(Long graphId, Long vertexTypeId, Long connectionId, String graphCode, String label, MultipartFile file, String config);
 
     /**
      * 导入边数据到图数据库
      *
-     * @param graphId    图ID
-     * @param edgeTypeId 边类型ID
-     * @param file       CSV文件
-     * @param config     导入配置JSON（含 delimiter、hasHeader 等）
+     * @param graphId      图ID（可选，与 connectionId 二选一）
+     * @param edgeTypeId   边类型ID（可选，与 label 二选一）
+     * @param connectionId 连接ID（可选，与 graphId 二选一）
+     * @param graphCode    图编码（可选，配合 connectionId 使用）
+     * @param label        标签名称（可选，配合 connectionId 使用）
+     * @param file         CSV文件
+     * @param config       导入配置JSON（含 delimiter、hasHeader 等）
      * @return 导入结果
      */
-    ImportResult importEdgeData(Long graphId, Long edgeTypeId, MultipartFile file, String config);
+    ImportResult importEdgeData(Long graphId, Long edgeTypeId, Long connectionId, String graphCode, String label, MultipartFile file, String config);
 
     /**
      * 查询节点数据列表

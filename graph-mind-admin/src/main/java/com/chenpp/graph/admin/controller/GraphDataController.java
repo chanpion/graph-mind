@@ -38,21 +38,27 @@ public class GraphDataController {
 
     @PostMapping("/importVertices")
     public Result<ImportResult> importVertexData(
-            @RequestParam Long graphId,
-            @RequestParam Long vertexTypeId,
+            @RequestParam(required = false) Long graphId,
+            @RequestParam(required = false) Long vertexTypeId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode,
+            @RequestParam(required = false) String label,
             @RequestPart("file") MultipartFile file,
             @RequestPart("config") String config) {
-        ImportResult result = graphDataService.importVertexData(graphId, vertexTypeId, file, config);
+        ImportResult result = graphDataService.importVertexData(graphId, vertexTypeId, connectionId, graphCode, label, file, config);
         return Result.success(result);
     }
 
     @PostMapping("/importEdges")
     public Result<ImportResult> importEdgeData(
-            @RequestParam Long graphId,
-            @RequestParam Long edgeTypeId,
+            @RequestParam(required = false) Long graphId,
+            @RequestParam(required = false) Long edgeTypeId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode,
+            @RequestParam(required = false) String label,
             @RequestPart("file") MultipartFile file,
             @RequestPart("config") String config) {
-        ImportResult result = graphDataService.importEdgeData(graphId, edgeTypeId, file, config);
+        ImportResult result = graphDataService.importEdgeData(graphId, edgeTypeId, connectionId, graphCode, label, file, config);
         return Result.success(result);
     }
 

@@ -1,6 +1,7 @@
 package com.chenpp.graph.nebula;
 
 import com.chenpp.graph.core.GraphDataOperations;
+import com.chenpp.graph.core.constant.GraphConstants;
 import com.chenpp.graph.core.exception.ErrorCode;
 import com.chenpp.graph.core.exception.GraphException;
 import com.chenpp.graph.core.model.GraphData;
@@ -425,8 +426,8 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
     public GraphData expand(String label, String property, String value, int depth, int limit) throws GraphException {
         String ngql = String.format(
                 "LOOKUP ON %s WHERE %s.%s == '%s' YIELD id(vertex) AS src"
-                + " | GO 1 TO %d STEPS FROM $-.src OVER * BIDIRECT YIELD $^ AS v1, $$ AS v2, edge AS e"
-                + " | LIMIT %d",
+                        + " | GO 1 TO %d STEPS FROM $-.src OVER * BIDIRECT YIELD $^ AS v1, $$ AS v2, edge AS e"
+                        + " | LIMIT %d",
                 label, label, property, value, depth, limit);
         log.debug("Executing expand by property: {}", ngql);
         return query(ngql);
@@ -442,16 +443,38 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
     public GraphData findPath(PathQuery pathQuery) throws GraphException {
         PathQuery.Condition start = pathQuery.getStartProperty();
         PathQuery.Condition end = pathQuery.getEndProperty();
-        String ngql = String.format(
-                "LOOKUP ON %s WHERE %s.%s == '%s' YIELD id(vertex) AS src_id"
-                + " | LOOKUP ON %s WHERE %s.%s == '%s' YIELD $-.src_id AS src_id, id(vertex) AS dst_id"
-                + " | FIND ALL PATH FROM src_id TO dst_id OVER * UPTO %d STEPS YIELD PATH AS p"
-                + " | LIMIT %d",
-                start.getLabel(), start.getLabel(), start.getProperty(), start.getValue(),
-                end.getLabel(), end.getLabel(), end.getProperty(), end.getValue(),
-                pathQuery.getMaxDepth(), pathQuery.getLimit());
-        log.debug("Executing findPath by property: {}", ngql);
-        return query(ngql);
+        String startVid;
+        String endVid;
+        if (start.getProperty().equals(GraphConstants.UID)) {
+            startVid = start.getValue();
+        } else {
+            GraphVertex startVertex = findVertex(start.getLabel(), start.getProperty(), start.getValue());
+            if (startVertex == null) {
+                log.warn("Start vertex not found: label={}, property={}, value={}",
+                        start.getLabel(), start.getProperty(), start.getValue());
+                throw new GraphException("Start vertex not found");
+            }
+            startVid = startVertex.getId();
+        }
+
+        if (GraphConstants.UID.equals(end.getProperty())) {
+            endVid = end.getValue();
+        } else {
+            GraphVertex endVertex = findVertex(end.getLabel(), end.getProperty(), end.getValue());
+            if (endVertex == null) {
+                log.warn("End vertex not found: label={}, property={}, value={}",
+                        end.getLabel(), end.getProperty(), end.getValue());
+                throw new GraphException("End vertex not found");
+            }
+            endVid = endVertex.getId();
+        }
+
+        String pathNgql = String.format(
+                "FIND ALL PATH FROM \"%s\" TO \"%s\" OVER * UPTO %d STEPS YIELD PATH AS p | LIMIT %d",
+                startVid, endVid, pathQuery.getMaxDepth(), pathQuery.getLimit());
+        log.info("Execute path query NGQL: {}", pathNgql);
+
+        return query(pathNgql);
     }
 
     @Override

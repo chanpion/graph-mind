@@ -78,7 +78,7 @@ public class NebulaUtil {
         String properties = entity.getProperties().stream()
                 .map(prop -> prop.getCode() + " " + convertToNebulaDataType(prop.getDataType()))
                 .collect(Collectors.joining(", "));
-        return "ALTER TAG " + entity.getLabel() + " ADD (" + properties + ")";
+        return "ALTER TAG `" + entity.getLabel() + "` ADD (" + properties + ")";
     }
 
     // ========== Edge 操作 ==========
@@ -118,7 +118,16 @@ public class NebulaUtil {
         builder.append("CREATE ").append(index.getIndexType()).append(" INDEX IF NOT EXISTS ").append(index.getIndexName())
                 .append(" ON ").append(index.getTypeName()).append(" (");
         if (index.getPropNameList() != null && !index.getPropNameList().isEmpty()) {
-            builder.append(String.join(", ", index.getPropNameList().stream().map(p -> p + "(64)").collect(Collectors.toList())));
+            Map<String, String> propTypeMap = index.getPropTypeMap();
+            builder.append(index.getPropNameList().stream().map(p -> {
+                if (propTypeMap != null) {
+                    String propType = propTypeMap.get(p);
+                    if ("STRING".equalsIgnoreCase(propType) || "FIXED_STRING".equalsIgnoreCase(propType)) {
+                        return p + "(64)";
+                    }
+                }
+                return p;
+            }).collect(Collectors.joining(", ")));
         }
         builder.append(")");
         return builder.toString();
@@ -130,6 +139,10 @@ public class NebulaUtil {
 
     public static String buildRebuildIndex(SchemaType schemaType, String indexName) {
         return "REBUILD " + schemaType + " INDEX " + indexName;
+    }
+
+    public static String buildDropIndex(SchemaType schemaType, String indexName) {
+        return "DROP " + schemaType + " INDEX IF EXISTS " + indexName;
     }
 
     // ========== Vertex 数据操作 ==========
@@ -236,13 +249,17 @@ public class NebulaUtil {
             if ("null".equalsIgnoreCase(str) || "NULL".equals(str)) {
                 return "NULL";
             }
-            // 检查日期格式 (yyyy-MM-dd)
+            // 检查日期格式 (yyyy-MM-dd) - 转换为 DATETIME 格式，因为 Nebula datetime 类型需要完整的时间
             if (str.matches("\\d{4}-\\d{2}-\\d{2}")) {
-                return "DATE(\"" + str + "\")";
+                return "DATETIME('" + str + " 00:00:00')";
             }
-            // 检查日期时间格式 (yyyy-MM-ddTHH:mm:ss)
+            // 检查日期时间格式 (yyyy-MM-ddTHH:mm:ss) - Nebula 要求使用单引号
             if (str.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}")) {
-                return "DATETIME(\"" + str + "\")";
+                return "DATETIME('" + str + "')";
+            }
+            // 检查日期时间格式 (yyyy-MM-dd HH:mm:ss)
+            if (str.matches("\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2}")) {
+                return "DATETIME('" + str + "')";
             }
             try {
                 if (str.contains(".")) {
@@ -272,17 +289,18 @@ public class NebulaUtil {
     /**
      * 将通用数据类型转换为Nebula数据类型
      */
-    private static String convertToNebulaDataType(DataType dataType) {
+    public static String convertToNebulaDataType(DataType dataType) {
         if (dataType == null) {
             return "STRING";
         }
         return switch (dataType) {
+            case Short -> "INT32";
             case Integer, Int, Long -> "INT64";
             case Float, Double -> "DOUBLE";
             case Boolean -> "BOOL";
             case String -> "STRING";
-            case Date -> "DATE";
-            case Datetime -> "DATETIME";
+            case Date, Datetime -> "DATETIME";
+            case Array -> "STRING";
             default -> {
                 log.warn("Unsupported data type: {}, using STRING as default", dataType);
                 yield "STRING";

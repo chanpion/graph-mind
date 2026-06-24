@@ -267,12 +267,13 @@ public class NebulaGraphOperations implements GraphOperations {
 
     @Override
     public GraphSchema getPublishedSchema(GraphConf graphConf) throws GraphException {
-        log.info("Getting published schema for: {}", graphConf.getGraphCode());
+        String graphCode = graphConf.getGraphCode();
+        log.info("Getting published schema for: {}", graphCode);
         GraphSchema schema = new GraphSchema();
 
         try {
             withSession(session -> {
-                useSpace(session, nebulaConf.getGraphCode());
+                useSpace(session, graphCode);
                 List<GraphEntity> entities = showTags(session);
                 schema.setEntities(entities);
                 List<GraphRelation> relations = showEdges(session);
@@ -440,10 +441,17 @@ public class NebulaGraphOperations implements GraphOperations {
         indices.forEach(i -> log.info("Creating index: name={}, label={}, schemaType={}, property={}, propertyNames={}", i.getName(), i.getLabel(), i.getSchemaType(), i.getProperty(), i.getPropertyNames()));
         indices.forEach(index -> {
             try {
+                // 构建属性类型映射，用于创建索引时判断是否需要添加长度
+                Map<String, String> propTypeMap = index.getProperties().stream().collect(Collectors.toMap(
+                        GraphProperty::getCode, p-> NebulaUtil.convertToNebulaDataType(p.getDataType())
+
+                ));
+
                 NebulaIndex.NebulaIndexBuilder indexBuilder = NebulaIndex.builder()
                         .indexName(index.getName())
                         .typeName(index.getLabel())
-                        .propNameList(index.getPropertyNames());
+                        .propNameList(index.getPropertyNames())
+                        .propTypeMap(propTypeMap);
 
                 if (GraphConstants.VERTEX.equalsIgnoreCase(index.getSchemaType())) {
                     indexBuilder.indexType(SchemaType.TAG);
@@ -455,9 +463,9 @@ public class NebulaGraphOperations implements GraphOperations {
 
                 String nql = NebulaUtil.buildCreateIndex(nebulaIndex);
                 log.info("Execute create index NGQL: {}", nql);
-                log.info("Index details: indexType={}, indexName={}, typeName={}, propNameList={}",
+                log.info("Index details: indexType={}, indexName={}, typeName={}, propNameList={}, propTypeMap={}",
                         nebulaIndex.getIndexType(), nebulaIndex.getIndexName(),
-                        nebulaIndex.getTypeName(), nebulaIndex.getPropNameList());
+                        nebulaIndex.getTypeName(), nebulaIndex.getPropNameList(), nebulaIndex.getPropTypeMap());
 
                 ResultSet resultSet = session.execute(nql);
                 if (!resultSet.isSucceeded()) {
@@ -625,5 +633,91 @@ public class NebulaGraphOperations implements GraphOperations {
     private void useSpace(Session session, String spaceName) throws IOErrorException {
         ResultSet rs = session.execute(NebulaUtil.buildUseSpace(spaceName));
         assertSuccess(rs, "use space " + spaceName);
+    }
+
+    @Override
+    public void dropVertexLabel(String graphCode, String label) {
+        log.info("Dropping vertex label: {}", label);
+        try {
+            withSession(session -> {
+                useSpace(session, graphCode);
+                // 先删除与该标签相关的所有索引
+                dropIndexesForLabel(session, label, SchemaType.TAG);
+                // 然后删除标签
+                String ngql = "DROP TAG IF EXISTS `" + label + "`";
+                log.info("Execute drop tag NGQL: {}", ngql);
+                ResultSet rs = session.execute(ngql);
+                assertSuccess(rs, "drop tag " + label);
+            });
+        } catch (Exception e) {
+            log.error("Failed to drop vertex label: {}", label, e);
+            throw new GraphException("Failed to drop vertex label: " + label, e);
+        }
+    }
+
+    @Override
+    public void dropEdgeLabel(String graphCode, String label) {
+        log.info("Dropping edge label: {}", label);
+        try {
+            withSession(session -> {
+                useSpace(session, graphCode);
+                // 先删除与该边类型相关的所有索引
+                dropIndexesForLabel(session, label, SchemaType.EDGE);
+                // 然后删除边类型
+                String ngql = "DROP EDGE IF EXISTS `" + label + "`";
+                log.info("Execute drop edge NGQL: {}", ngql);
+                ResultSet rs = session.execute(ngql);
+                assertSuccess(rs, "drop edge " + label);
+            });
+        } catch (Exception e) {
+            log.error("Failed to drop edge label: {}", label, e);
+            throw new GraphException("Failed to drop edge label: " + label, e);
+        }
+    }
+
+    /**
+     * 删除与指定标签相关的所有索引
+     *
+     * @param session   会话对象
+     * @param labelName 标签名称
+     * @param schemaType  schema类型 (TAG 或 EDGE)
+     */
+    private void dropIndexesForLabel(Session session, String labelName, SchemaType schemaType) {
+        log.info("Dropping indexes for label: {}, type: {}", labelName, schemaType);
+        String nql = "SHOW " + schemaType + " INDEXES";
+        
+        try {
+            ResultSet rs = session.execute(nql);
+            if (!rs.isSucceeded()) {
+                log.warn("Failed to show indexes for label: {}, error: {}", labelName, rs.getErrorMessage());
+                return;
+            }
+
+            for (int i = 0; i < rs.rowsSize(); i++) {
+                ResultSet.Record record = rs.rowValues(i);
+                try {
+                    // 获取索引名称（第1列）
+                    String indexName = record.get(0).asString();
+                    // 获取标签名称（第2列）
+                    String indexedLabel = record.get(1).asString();
+                    
+                    // 检查索引是否与要删除的标签相关
+                    if (labelName.equalsIgnoreCase(indexedLabel)) {
+                        String dropNql = "DROP " + schemaType + " INDEX IF EXISTS `" + indexName + "`";
+                        log.info("Execute drop index NGQL: {}", dropNql);
+                        ResultSet dropRs = session.execute(dropNql);
+                        if (dropRs.isSucceeded()) {
+                            log.info("Successfully dropped index: {}", indexName);
+                        } else {
+                            log.warn("Failed to drop index: {}, error: {}", indexName, dropRs.getErrorMessage());
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to parse index record, skipping: {}", e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to drop indexes for label: {}", labelName, e);
+        }
     }
 }

@@ -3,10 +3,12 @@ package com.chenpp.graph.janus.util;
 import com.chenpp.graph.core.exception.GraphException;
 import com.chenpp.graph.janus.CassandraConf;
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 import java.net.InetSocketAddress;
 import java.time.Duration;
@@ -28,11 +30,14 @@ public class CassandraClient {
 
         try {
             DriverConfigLoader loader = DriverConfigLoader.fromMap(OptionsMap.driverDefaults());
-            this.session = CqlSession.builder()
+            CqlSessionBuilder sessionBuilder = CqlSession.builder()
                     .addContactPoint(new InetSocketAddress(cassandraConf.getHostname(), cassandraConf.getPort()))
                     .withLocalDatacenter("datacenter1")
-                    .withAuthCredentials(cassandraConf.getUsername(), cassandraConf.getPassword())
-                    .withConfigLoader(loader).build();
+                    .withConfigLoader(loader);
+            if (StringUtils.isNotBlank(cassandraConf.getUsername())){
+                sessionBuilder.withAuthCredentials(cassandraConf.getUsername(), cassandraConf.getPassword());
+            }
+            this.session = sessionBuilder.build();
             log.info("Successfully created Cassandra session to {}:{}", cassandraConf.getHostname(), cassandraConf.getPort());
         } catch (Exception e) {
             log.error("Failed to create Cassandra session to {}:{} with user: {}",

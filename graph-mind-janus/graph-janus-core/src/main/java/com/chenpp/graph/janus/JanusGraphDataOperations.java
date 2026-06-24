@@ -358,6 +358,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
 
     @Override
     public GraphData query(String gremlinQuery) throws GraphException {
+        log.info("Gremlin query: {}", gremlinQuery);
         if (StringUtils.isBlank(gremlinQuery)) {
             log.info("Gremlin query is blank, returning empty GraphData");
             return new GraphData();
@@ -463,6 +464,8 @@ public class JanusGraphDataOperations implements GraphDataOperations {
                 vertexList.add((CacheVertex) edge.outVertex());
                 vertexList.add((CacheVertex) edge.inVertex());
             }
+        } else if (element instanceof HashMap) {
+           // todo
         }
     }
 
@@ -613,7 +616,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         } catch (Exception e) {
             log.debug("Failed to get uid directly, will try to refresh vertex: {}", e.getMessage());
         }
-        
+
         // 对于 detached vertex（如 CacheEdge 的 incident vertex），从图数据库刷新获取
         try {
             Iterator<Vertex> refreshed = graph.vertices(vertex.id());
@@ -626,7 +629,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         } catch (Exception e) {
             log.debug("Failed to refresh vertex for uid: {}", e.getMessage());
         }
-        
+
         return vertex.id().toString();
     }
 
@@ -731,10 +734,10 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         PathQuery.Condition end = pathQuery.getEndProperty();
         String gremlinQuery = String.format(
                 "g.V().hasLabel('%s').has('%s', '%s')"
-                + ".repeat(outE().inV().simplePath())"
-                + ".until(hasLabel('%s').has('%s', '%s').or().loops().is(%d))"
-                + ".hasLabel('%s').has('%s', '%s')"
-                + ".path().by(valueMap()).by(valueMap()).limit(%d)",
+                        + ".repeat(bothE().inV().simplePath())"
+                        + ".until(hasLabel('%s').has('%s', '%s').or().loops().is(%d))"
+                        + ".hasLabel('%s').has('%s', '%s')"
+                        + ".path().limit(%d)",
                 start.getLabel(), start.getProperty(), start.getValue(),
                 end.getLabel(), end.getProperty(), end.getValue(), pathQuery.getMaxDepth(),
                 end.getLabel(), end.getProperty(), end.getValue(), pathQuery.getLimit());
@@ -919,7 +922,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             }
 
             // 按 label + property + value 查找
-            List<Vertex>  labelVertices = tx.traversal().V().hasLabel(label).has(property, value).toList();
+            List<Vertex> labelVertices = tx.traversal().V().hasLabel(label).has(property, value).toList();
             if (CollectionUtils.isNotEmpty(labelVertices)) {
                 JanusGraphVertex vertex = (JanusGraphVertex) labelVertices.get(0);
                 tx.commit();

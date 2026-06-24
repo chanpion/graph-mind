@@ -153,7 +153,7 @@ public class Neo4jGraphOperations implements GraphOperations {
                 if (entity == null) {
                     continue;
                 }
-                GraphProperty prop = parseProperty(record);
+                GraphProperty prop = Neo4jUtil.parseProperty(record);
                 if (prop != null) {
                     entity.getProperties().add(prop);
                 }
@@ -187,7 +187,7 @@ public class Neo4jGraphOperations implements GraphOperations {
 
                 String relType = rawRelType.replaceAll("[:`]", "");
                 GraphRelation relation = relationMap.get(relType);
-                GraphProperty prop = parseProperty(record);
+                GraphProperty prop = Neo4jUtil.parseProperty(record);
                 if (prop != null) {
                     relation.getProperties().add(prop);
                 }
@@ -202,24 +202,6 @@ public class Neo4jGraphOperations implements GraphOperations {
         return new ArrayList<>(relationMap.values());
     }
 
-    private GraphProperty parseProperty(Record record) {
-        String propertyName = Neo4jUtil.safeGetString(record, "propertyName");
-        if (StringUtils.isBlank(propertyName)) {
-            return null;
-        }
-
-        String typeStr = Neo4jUtil.safeGetSingleFromList(record, "propertyTypes");
-        DataType dataType = DataType.instanceOf(typeStr);
-        if (dataType == null) {
-            dataType = DataType.String;
-        }
-
-        GraphProperty prop = new GraphProperty();
-        prop.setCode(propertyName);
-        prop.setName(propertyName);
-        prop.setDataType(dataType);
-        return prop;
-    }
 
     /**
      * 从实际数据中采样推断边的起点/终点节点标签
@@ -286,6 +268,38 @@ public class Neo4jGraphOperations implements GraphOperations {
             result.consume();
         } catch (Exception e) {
             log.error("Failed to drop index: {}", indexName, e);
+        }
+    }
+
+    @Override
+    public void dropVertexLabel(String graphCode, String label) {
+        log.info("Dropping vertex label: {}", label);
+        String database = Neo4jUtil.resolveDatabase(driver, graphCode);
+
+        try (Session session = driver.session(SessionConfig.builder().withDatabase(database).build())) {
+            String cypher = String.format("MATCH (n:`%s`) DETACH DELETE n", label);
+            Result result = session.run(cypher);
+            long deleted = result.consume().counters().nodesDeleted();
+            log.info("Successfully dropped vertex label: {}, deleted {} nodes", label, deleted);
+        } catch (Exception e) {
+            log.error("Failed to drop vertex label: {}", label, e);
+            throw new GraphException("Failed to drop vertex label: " + label, e);
+        }
+    }
+
+    @Override
+    public void dropEdgeLabel(String graphCode, String label) {
+        log.info("Dropping edge label: {}", label);
+        String database = Neo4jUtil.resolveDatabase(driver, graphCode);
+
+        try (Session session = driver.session(SessionConfig.builder().withDatabase(database).build())) {
+            String cypher = String.format("MATCH ()-[r:`%s`]->() DELETE r", label);
+            Result result = session.run(cypher);
+            long deleted = result.consume().counters().relationshipsDeleted();
+            log.info("Successfully dropped edge label: {}, deleted {} relationships", label, deleted);
+        } catch (Exception e) {
+            log.error("Failed to drop edge label: {}", label, e);
+            throw new GraphException("Failed to drop edge label: " + label, e);
         }
     }
 }
