@@ -601,15 +601,17 @@ const edges = ref([])
 
 // 节点显示属性配置
 const defaultVertexDisplayProp = ref('id')
-const vertexDisplayPropMap = ref({})
+const vertexDisplayPropMap = reactive({})
 const nodes = computed(() => vertices.value)
 const getAvailablePropsForLabel = (label) => {
   const props = new Set(['id', 'label', 'uid'])
+  // 需要排除的内部属性（D3力模拟属性和其他内部字段）
+  const excludeProps = new Set(['id', 'label', 'group', 'x', 'y', 'fx', 'fy', 'vx', 'vy', 'index', 'properties', '__proto__'])
   vertices.value.forEach(n => {
     if (n.label === label) {
       if (n.properties) Object.keys(n.properties).forEach(k => props.add(k))
       // also check direct properties (from transform)
-      Object.keys(n).forEach(k => { if (k !== 'id' && k !== 'label' && k !== 'group' && k !== 'x' && k !== 'y' && k !== 'fx' && k !== 'fy') props.add(k) })
+      Object.keys(n).forEach(k => { if (!excludeProps.has(k)) props.add(k) })
     }
   })
   return Array.from(props)
@@ -663,6 +665,11 @@ const updateVertexLabels = () => {
 watch(defaultVertexDisplayProp, () => {
   updateVertexLabels()
 })
+
+// 监听节点显示属性配置变化，实时更新标签
+watch(vertexDisplayPropMap, () => {
+  updateVertexLabels()
+}, { deep: true })
 
 // 拓展配置可见性
 const expandConfigVisible = ref([])

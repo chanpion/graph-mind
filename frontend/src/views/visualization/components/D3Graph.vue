@@ -111,8 +111,10 @@ function updateVertexLabels() {
   }
 }
 
-// 计算边的路径：自环用弧线，普通边用直线
+// 计算边的路径：自环用弧线，普通边用直线（不穿过节点）
 function getEdgePath(d) {
+  const nodeRadius = 16 // 节点半径
+  
   if (d.source === d.target) {
     // 自环：多条自环均匀分布在节点周围
     const x = d.source.x
@@ -130,7 +132,30 @@ function getEdgePath(d) {
     const cy = y + dy * 0.4
     return `M${x},${y} Q${cx},${cy} ${x + dx},${y + dy}`
   }
-  return `M${d.source.x},${d.source.y}L${d.target.x},${d.target.y}`
+  
+  // 普通边：计算起点和终点（不穿过节点）
+  const dx = d.target.x - d.source.x
+  const dy = d.target.y - d.source.y
+  const distance = Math.sqrt(dx * dx + dy * dy)
+  
+  if (distance <= nodeRadius * 2) {
+    // 如果两点太近，直接画直线
+    return `M${d.source.x},${d.source.y}L${d.target.x},${d.target.y}`
+  }
+  
+  // 计算方向向量的单位向量
+  const nx = dx / distance
+  const ny = dy / distance
+  
+  // 起点位置（从源节点边缘开始）
+  const startX = d.source.x + nx * nodeRadius
+  const startY = d.source.y + ny * nodeRadius
+  
+  // 终点位置（到目标节点边缘结束）
+  const endX = d.target.x - nx * nodeRadius
+  const endY = d.target.y - ny * nodeRadius
+  
+  return `M${startX},${startY}L${endX},${endY}`
 }
 
 // 计算层次布局 (自上而下的树)
@@ -228,7 +253,7 @@ function render() {
   defs.append('marker')
     .attr('id', 'arrowhead')
     .attr('viewBox', '0 -5 10 10')
-    .attr('refX', 20)
+    .attr('refX', 10)
     .attr('refY', 0)
     .attr('markerWidth', 6)
     .attr('markerHeight', 6)

@@ -168,15 +168,52 @@
         <el-form-item label="UID" required>
           <el-input v-model="vertexForm.uid" placeholder="输入唯一标识符" :disabled="vertexDialogTitle === '编辑顶点'" />
         </el-form-item>
-        <el-form-item label="属性" v-if="currentVertexDef && currentVertexDef.properties?.length">
+        <el-form-item label="属性" v-if="currentVertexDef && currentVertexDef.properties?.filter(p => p.code !== 'uid').length">
           <div class="props-form">
             <el-form-item
-              v-for="prop in currentVertexDef.properties"
+              v-for="prop in currentVertexDef.properties.filter(p => p.code !== 'uid')"
               :key="prop.id"
               :label="prop.name || prop.code"
               :prop="`props.${prop.code}`"
             >
+              <!-- 根据数据类型显示不同的输入控件 -->
+              <el-switch
+                v-if="isBooleanType(prop)"
+                v-model="vertexForm.props[prop.code]"
+                active-text="是"
+                inactive-text="否"
+              />
+              <el-input-number
+                v-else-if="isNumberType(prop)"
+                v-model="vertexForm.props[prop.code]"
+                :controls="false"
+                :placeholder="`输入${prop.name || prop.code}`"
+              />
+              <el-input-number
+                v-else-if="isDoubleType(prop)"
+                v-model="vertexForm.props[prop.code]"
+                :controls="false"
+                :step="0.1"
+                :placeholder="`输入${prop.name || prop.code}`"
+              />
+              <el-date-picker
+                v-else-if="isDateType(prop)"
+                v-model="vertexForm.props[prop.code]"
+                type="date"
+                format="YYYY-MM-DD"
+                value-format="YYYY-MM-DD"
+                placeholder="选择日期"
+              />
+              <el-date-picker
+                v-else-if="isDateTimeType(prop)"
+                v-model="vertexForm.props[prop.code]"
+                type="datetime"
+                format="YYYY-MM-DD HH:mm:ss"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                placeholder="选择日期时间"
+              />
               <el-input
+                v-else
                 v-model="vertexForm.props[prop.code]"
                 :placeholder="`输入${prop.name || prop.code}`"
                 clearable
@@ -202,20 +239,60 @@
             <el-option v-for="t in edgeTypes" :key="t.id" :label="t.name || t.label" :value="t.label" />
           </el-select>
         </el-form-item>
+        <el-form-item label="唯一标识符" required>
+          <el-input v-model="edgeForm.uid" placeholder="输入唯一标识符" :disabled="edgeDialogTitle === '编辑边'" />
+        </el-form-item>
         <el-form-item label="起点UID" required>
           <el-input v-model="edgeForm.startUid" placeholder="输入起点顶点UID" :disabled="edgeDialogTitle === '编辑边'" />
         </el-form-item>
         <el-form-item label="终点UID" required>
           <el-input v-model="edgeForm.endUid" placeholder="输入终点顶点UID" :disabled="edgeDialogTitle === '编辑边'" />
         </el-form-item>
-        <el-form-item label="属性" v-if="currentEdgeDef && currentEdgeDef.properties?.length">
+        <el-form-item label="属性" v-if="currentEdgeDef && currentEdgeDef.properties?.filter(p => p.code !== 'uid').length">
           <div class="props-form">
             <el-form-item
-              v-for="prop in currentEdgeDef.properties"
+              v-for="prop in currentEdgeDef.properties.filter(p => p.code !== 'uid')"
               :key="prop.id"
               :label="prop.name || prop.code"
             >
+              <!-- 根据数据类型显示不同的输入控件 -->
+              <el-switch
+                v-if="isBooleanType(prop)"
+                v-model="edgeForm.props[prop.code]"
+                active-text="是"
+                inactive-text="否"
+              />
+              <el-input-number
+                v-else-if="isNumberType(prop)"
+                v-model="edgeForm.props[prop.code]"
+                :controls="false"
+                :placeholder="`输入${prop.name || prop.code}`"
+              />
+              <el-input-number
+                v-else-if="isDoubleType(prop)"
+                v-model="edgeForm.props[prop.code]"
+                :controls="false"
+                :step="0.1"
+                :placeholder="`输入${prop.name || prop.code}`"
+              />
+              <el-date-picker
+                v-else-if="isDateType(prop)"
+                v-model="edgeForm.props[prop.code]"
+                type="date"
+                format="YYYY-MM-DD"
+                value-format="YYYY-MM-DD"
+                placeholder="选择日期"
+              />
+              <el-date-picker
+                v-else-if="isDateTimeType(prop)"
+                v-model="edgeForm.props[prop.code]"
+                type="datetime"
+                format="YYYY-MM-DD HH:mm:ss"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                placeholder="选择日期时间"
+              />
               <el-input
+                v-else
                 v-model="edgeForm.props[prop.code]"
                 :placeholder="`输入${prop.name || prop.code}`"
                 clearable
@@ -283,6 +360,32 @@ import { graphApi } from '@/views/graphs/api/graph'
 import { useGraphsStore } from '@/views/graphs/stores/useGraphsStore'
 
 const graphsStore = useGraphsStore()
+
+// ---- 属性类型判断方法 ----
+function isBooleanType(prop) {
+  const type = (prop.dataType || prop.type)?.toLowerCase?.() || ''
+  return type.includes('bool')
+}
+
+function isNumberType(prop) {
+  const type = (prop.dataType || prop.type)?.toLowerCase?.() || ''
+  return type.includes('int') || type.includes('long') || type.includes('short')
+}
+
+function isDoubleType(prop) {
+  const type = (prop.dataType || prop.type)?.toLowerCase?.() || ''
+  return type.includes('float') || type.includes('double') || type.includes('decimal')
+}
+
+function isDateType(prop) {
+  const type = (prop.dataType || prop.type)?.toLowerCase?.() || ''
+  return type === 'date'
+}
+
+function isDateTimeType(prop) {
+  const type = (prop.dataType || prop.type)?.toLowerCase?.() || ''
+  return type.includes('datetime') || type.includes('timestamp')
+}
 
 // ---- 图信息 ----
 const graphId = computed(() => graphsStore.currentGraphId)
@@ -424,7 +527,7 @@ function showCreateDialog() {
     vertexDialogTitle.value = '新增顶点'
     vertexDialogVisible.value = true
   } else {
-    edgeForm.value = { label: '', startUid: '', endUid: '', props: {} }
+    edgeForm.value = { uid: '', label: '', startUid: '', endUid: '', props: {} }
     currentEdgeDef.value = null
     edgeDialogTitle.value = '新增边'
     edgeDialogVisible.value = true
@@ -443,10 +546,10 @@ function onEdgeLabelChange(label) {
 
 function showEditDialog(row) {
   const props = row.properties || {}
-  // 过滤掉 null 和 undefined 值
+  // 过滤掉 null、undefined 值和 uid（uid是唯一标识，不应作为属性）
   const filteredProps = {}
   Object.entries(props).forEach(([k, v]) => {
-    if (v != null && v !== '') filteredProps[k] = v
+    if (v != null && v !== '' && k !== 'uid') filteredProps[k] = v
   })
   if (selectedType.value === 'vertex') {
     const def = vertexTypes.value.find(t => t.label === row.label)
@@ -514,11 +617,12 @@ async function saveVertex() {
 // ---- 新增/编辑 边 ----
 const edgeDialogVisible = ref(false)
 const edgeDialogTitle = ref('')
-const edgeForm = ref({ label: '', startUid: '', endUid: '', props: {} })
+const edgeForm = ref({ uid: '', label: '', startUid: '', endUid: '', props: {} })
 const currentEdgeDef = ref(null)
 
 async function saveEdge() {
   if (!edgeForm.value.label) { ElMessage.warning('请选择标签'); return }
+  if (!edgeForm.value.uid) { ElMessage.warning('请输入唯一标识符'); return }
   if (!edgeForm.value.startUid) { ElMessage.warning('请输入起点UID'); return }
   if (!edgeForm.value.endUid) { ElMessage.warning('请输入终点UID'); return }
   saving.value = true
@@ -528,6 +632,7 @@ async function saveEdge() {
       if (v !== '' && v != null) properties[k] = v
     })
     const data = {
+      uid: edgeForm.value.uid,
       label: edgeForm.value.label,
       startUid: edgeForm.value.startUid,
       endUid: edgeForm.value.endUid,
@@ -739,11 +844,27 @@ async function importData() {
       delimiter: ',',
       hasHeader: true
     }))
+    
+    // 对于发现的图（graphId < 0），使用 connectionId + graphCode + label
+    const opts = {}
+    if (graphId.value < 0 && graphsStore.currentGraph) {
+      opts.connectionId = graphsStore.currentGraph.connectionId
+      opts.graphCode = graphsStore.currentGraph.code
+      // 获取当前选中类型的 label
+      if (selectedType.value === 'vertex') {
+        const vt = vertexTypes.value.find(t => t.id === selectedTypeId.value)
+        if (vt) opts.label = vt.label
+      } else {
+        const et = edgeTypes.value.find(t => t.id === selectedTypeId.value)
+        if (et) opts.label = et.label
+      }
+    }
+    
     let res
     if (selectedType.value === 'vertex') {
-      res = await graphApi.importVertexData(graphId.value, selectedTypeId.value, formData)
+      res = await graphApi.importVertexData(graphId.value, selectedTypeId.value, formData, opts)
     } else {
-      res = await graphApi.importEdgeData(graphId.value, selectedTypeId.value, formData)
+      res = await graphApi.importEdgeData(graphId.value, selectedTypeId.value, formData, opts)
     }
     const result = res?.data
     if (result) {

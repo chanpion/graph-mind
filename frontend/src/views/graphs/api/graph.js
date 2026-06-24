@@ -175,17 +175,19 @@ export const graphApi = {
   // ====== 数据导入 ======
 
   /** 导入节点数据（CSV） */
-  importVertexData(graphId, vertexTypeId, formData) {
+  importVertexData(graphId, vertexTypeId, formData, opts = {}) {
+    const params = { graphId, vertexTypeId, ...opts }
     return request.post('/api/graph/data/importVertices', formData, {
-      params: { graphId, vertexTypeId },
+      params,
       headers: { 'Content-Type': 'multipart/form-data' }
     })
   },
 
   /** 导入边数据（CSV） */
-  importEdgeData(graphId, edgeTypeId, formData) {
+  importEdgeData(graphId, edgeTypeId, formData, opts = {}) {
+    const params = { graphId, edgeTypeId, ...opts }
     return request.post('/api/graph/data/importEdges', formData, {
-      params: { graphId, edgeTypeId },
+      params,
       headers: { 'Content-Type': 'multipart/form-data' }
     })
   }
