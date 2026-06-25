@@ -39,4 +39,13 @@ public interface GraphService extends IService<GraphInfo> {
      * @return 是否成功
      */
     boolean removeGraph(Long graphId, Long connectionId, String graphCode);
+
+    /**
+     * 根据连接ID和图编码查询图信息
+     *
+     * @param connectionId 连接ID
+     * @param graphCode    图编码
+     * @return 图信息，如果不存在返回null
+     */
+    GraphInfo getGraph(Long connectionId, String graphCode);
 }

@@ -3,8 +3,8 @@ package com.chenpp.graph.admin.service;
 import com.chenpp.graph.admin.model.GraphInfo;
 import com.chenpp.graph.admin.model.GraphEdgeDef;
 import com.chenpp.graph.admin.model.GraphVertexDef;
-import com.chenpp.graph.admin.model.SchemaExportDTO;
-import com.chenpp.graph.admin.model.SchemaImportDTO;
+import com.chenpp.graph.admin.model.SchemaExportResponse;
+import com.chenpp.graph.admin.model.SchemaImportRequest;
 import com.chenpp.graph.core.schema.GraphSchema;
 
 import java.util.List;
@@ -61,24 +61,14 @@ public interface GraphSchemaService {
     List<GraphEdgeDef> discoverEdgeDefs(Long graphId, Long connectionId, String graphCode);
 
     /**
-     * 合并从图数据库发现的节点属性到已有的节点定义中
-     */
-    void mergeDiscoveredVertexProperties(List<GraphVertexDef> vertexDefs, Long graphId, Long connectionId, String graphCode);
-
-    /**
-     * 合并从图数据库发现的边属性到已有的边定义中
-     */
-    void mergeDiscoveredEdgeProperties(List<GraphEdgeDef> edgeDefs, Long graphId, Long connectionId, String graphCode);
-
-    /**
      * 导出图Schema
      */
-    SchemaExportDTO exportSchema(Long graphId);
+    SchemaExportResponse exportSchema(Long graphId);
 
     /**
      * 导入图Schema
      */
-    void importSchema(Long graphId, SchemaImportDTO importDTO);
+    void importSchema(Long graphId, SchemaImportRequest importDTO);
 
     /**
      * 在图数据库中创建图（不发布Schema）

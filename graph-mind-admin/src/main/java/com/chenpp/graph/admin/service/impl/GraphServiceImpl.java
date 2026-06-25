@@ -25,6 +25,7 @@ import com.chenpp.graph.core.model.GraphConf;
 import com.chenpp.graph.core.schema.Graph;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -68,44 +69,6 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, GraphInfo> implement
     @Autowired
     private TransactionTemplate transactionTemplate;
 
-    private void fillGraphStatus(List<GraphInfo> graphInfos) {
-        if (graphInfos == null || graphInfos.isEmpty()) {
-            return;
-        }
-
-        Set<Long> connIds = graphInfos.stream().map(GraphInfo::getConnectionId).filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        if (CollectionUtils.isEmpty(connIds)) {
-            return;
-        }
-
-        Map<Long, GraphConnection> connMap = connectionService.listByIds(connIds).stream()
-                .collect(Collectors.toMap(GraphConnection::getId, c -> c, (a, b) -> a));
-
-        for (GraphInfo graphInfo : graphInfos) {
-            GraphConnection conn = connMap.get(graphInfo.getConnectionId());
-            graphInfo.setStatus(conn != null && conn.getStatus() != null && conn.getStatus() == 1 ? 0 : 1);
-        }
-    }
-
-    private void fillGraphCounts(List<GraphInfo> records) {
-        if (records == null || records.isEmpty()) {
-            return;
-        }
-        List<Long> graphIds = records.stream().map(GraphInfo::getId).collect(Collectors.toList());
-        List<GraphVertexDef> allVertices = graphVertexDefDao.selectList(
-                new QueryWrapper<GraphVertexDef>().in("graph_id", graphIds).select("graph_id"));
-        Map<Long, Long> vertexCountMap = allVertices.stream()
-                .collect(Collectors.groupingBy(GraphVertexDef::getGraphId, Collectors.counting()));
-        List<GraphEdgeDef> allEdges = graphEdgeDefDao.selectList(
-                new QueryWrapper<GraphEdgeDef>().in("graph_id", graphIds).select("graph_id"));
-        Map<Long, Long> edgeCountMap = allEdges.stream()
-                .collect(Collectors.groupingBy(GraphEdgeDef::getGraphId, Collectors.counting()));
-        for (GraphInfo graphInfo : records) {
-            graphInfo.setVertexTypeCount(vertexCountMap.getOrDefault(graphInfo.getId(), 0L).intValue());
-            graphInfo.setEdgeTypeCount(edgeCountMap.getOrDefault(graphInfo.getId(), 0L).intValue());
-        }
-    }
 
     @Override
     public Page<GraphInfo> queryGraphs(Page<GraphInfo> page, String keyword) {
@@ -127,7 +90,6 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, GraphInfo> implement
         queryWrapper.orderByDesc("create_time");
         Page<GraphInfo> pageResult = this.page(page, queryWrapper);
 
-        // 从本地数据库填充节点/边类型计数（对本地创建的图有效）
         fillGraphCounts(pageResult.getRecords());
 
         // 标记本地图为平台创建
@@ -242,20 +204,72 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, GraphInfo> implement
             log.info("缺少图数据库连接或图标识，跳过删除远程图，graphId={}", graphId);
         }
 
-        // 4) 删除本地元数据（事务内）
         if (graphInfo != null && graphInfo.getId() != null && graphInfo.getId() > 0) {
             Long gId = graphInfo.getId();
-            return Boolean.TRUE.equals(transactionTemplate.execute(status -> {
+            return transactionTemplate.execute(status -> {
                 vertexDefService.remove(new QueryWrapper<GraphVertexDef>().eq("graph_id", gId));
                 edgeDefService.remove(new QueryWrapper<GraphEdgeDef>().eq("graph_id", gId));
                 propertyDefService.remove(new QueryWrapper<GraphPropertyDef>().eq("graph_id", gId));
                 boolean result = removeById(gId);
                 log.info("已删除本地图元数据，graphId={}, result={}", gId, result);
                 return result;
-            }));
+            });
         }
 
         return true;
+    }
+
+    @Override
+    public GraphInfo getGraph(Long connectionId, String graphCode) {
+        if (connectionId == null && StringUtils.isBlank(graphCode)) {
+            return null;
+        }
+        QueryWrapper<GraphInfo> queryWrapper = new QueryWrapper<>();
+        if (connectionId != null) {
+            queryWrapper.eq("connection_id", connectionId);
+        }
+
+        queryWrapper.eq("code", graphCode);
+        return this.getOne(queryWrapper, false);
+    }
+
+    private void fillGraphStatus(List<GraphInfo> graphInfos) {
+        if (graphInfos == null || graphInfos.isEmpty()) {
+            return;
+        }
+
+        Set<Long> connIds = graphInfos.stream().map(GraphInfo::getConnectionId).filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (CollectionUtils.isEmpty(connIds)) {
+            return;
+        }
+
+        Map<Long, GraphConnection> connMap = connectionService.listByIds(connIds).stream()
+                .collect(Collectors.toMap(GraphConnection::getId, c -> c, (a, b) -> a));
+
+        for (GraphInfo graphInfo : graphInfos) {
+            GraphConnection conn = connMap.get(graphInfo.getConnectionId());
+            graphInfo.setStatus(conn != null && conn.getStatus() != null && conn.getStatus() == 1 ? 0 : 1);
+        }
+    }
+
+    private void fillGraphCounts(List<GraphInfo> records) {
+        if (records == null || records.isEmpty()) {
+            return;
+        }
+        List<Long> graphIds = records.stream().map(GraphInfo::getId).collect(Collectors.toList());
+        List<GraphVertexDef> allVertices = graphVertexDefDao.selectList(
+                new QueryWrapper<GraphVertexDef>().in("graph_id", graphIds).select("graph_id"));
+        Map<Long, Long> vertexCountMap = allVertices.stream()
+                .collect(Collectors.groupingBy(GraphVertexDef::getGraphId, Collectors.counting()));
+        List<GraphEdgeDef> allEdges = graphEdgeDefDao.selectList(
+                new QueryWrapper<GraphEdgeDef>().in("graph_id", graphIds).select("graph_id"));
+        Map<Long, Long> edgeCountMap = allEdges.stream()
+                .collect(Collectors.groupingBy(GraphEdgeDef::getGraphId, Collectors.counting()));
+        for (GraphInfo graphInfo : records) {
+            graphInfo.setVertexTypeCount(vertexCountMap.getOrDefault(graphInfo.getId(), 0L).intValue());
+            graphInfo.setEdgeTypeCount(edgeCountMap.getOrDefault(graphInfo.getId(), 0L).intValue());
+        }
     }
 
     /**
