@@ -29,7 +29,7 @@ public class JanusClient implements GraphClient {
         }
         
         try {
-            this.graph = JanusClientFactory.getOrCreateJanusGrapht(janusConf);
+            this.graph = JanusClientFactory.getOrCreateJanusGraph(janusConf);
             log.debug("Successfully created JanusClient for graph: {}", janusConf.getGraphCode());
         } catch (Exception e) {
             log.error("Failed to create JanusGraph client for graph: {}", janusConf.getGraphCode(), e);

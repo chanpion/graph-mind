@@ -143,8 +143,8 @@ public class NebulaTest {
             sinceProperty.setDataType(DataType.String);
 
             friendRelation.setProperties(Arrays.asList(uidProperty, sinceProperty));
-            friendRelation.setSourceLabel("person");
-            friendRelation.setTargetLabel("person");
+            friendRelation.setStartLabel("person");
+            friendRelation.setEndLabel("person");
 
             GraphIndex index = new GraphIndex();
             index.setName("idx_person_uid");
@@ -444,7 +444,7 @@ public class NebulaTest {
 
         // 更新边
         try {
-            int result = nebulaClient.opsForGraphData().updateEdge(edge);
+            GraphEdge result = nebulaClient.opsForGraphData().updateEdge(edge);
             System.out.println("更新边成功，影响行数: " + result);
         } catch (Exception e) {
             e.printStackTrace();
@@ -462,7 +462,7 @@ public class NebulaTest {
         // 删除边
         NebulaGraphDataOperations dataOps = new NebulaGraphDataOperations(nebulaConf);
         try {
-            int result = dataOps.deleteEdge(edge);
+            boolean result = dataOps.deleteEdge(edge);
             System.out.println("删除边成功，影响行数: " + result);
         } catch (Exception e) {
             e.printStackTrace();

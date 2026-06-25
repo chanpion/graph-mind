@@ -5,7 +5,6 @@ import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphVertex;
 import com.chenpp.graph.core.schema.DataType;
 import com.chenpp.graph.core.schema.GraphEntity;
-import com.chenpp.graph.core.schema.GraphIndex;
 import com.chenpp.graph.core.schema.GraphProperty;
 import com.chenpp.graph.core.schema.GraphRelation;
 import com.chenpp.graph.nebula.NebulaConf;
@@ -33,15 +32,15 @@ public class NebulaUtil {
     // ========== Space 操作 ==========
 
     public static String buildCreateSpace(NebulaConf nebulaConf) {
-        return "CREATE SPACE IF NOT EXISTS " + nebulaConf.getGraphCode() + " (PARTITION_NUM = " + nebulaConf.getPartitionNum() + ", REPLICA_FACTOR = " + nebulaConf.getReplicaFactor() + ", VID_TYPE = FIXED_STRING(" + nebulaConf.getVidFixedStrLength() + "))";
+        return "CREATE SPACE IF NOT EXISTS " + quoteIdentifier(nebulaConf.getGraphCode()) + " (PARTITION_NUM = " + nebulaConf.getPartitionNum() + ", REPLICA_FACTOR = " + nebulaConf.getReplicaFactor() + ", VID_TYPE = FIXED_STRING(" + nebulaConf.getVidFixedStrLength() + "))";
     }
 
     public static String buildDropSpace(String spaceName) {
-        return "DROP SPACE IF EXISTS " + spaceName;
+        return "DROP SPACE IF EXISTS " + quoteIdentifier(spaceName);
     }
 
     public static String buildUseSpace(String spaceName) {
-        return "USE " + spaceName;
+        return "USE " + quoteIdentifier(spaceName);
     }
 
     public static String buildShowSpaces() {
@@ -55,12 +54,12 @@ public class NebulaUtil {
         String properties = entity.getProperties().stream()
                 .map(prop -> prop.getCode() + " " + convertToNebulaDataType(prop.getDataType()))
                 .collect(Collectors.joining(", "));
-        tagBuilder.append("CREATE TAG IF NOT EXISTS ").append(entity.getLabel()).append(" (").append(properties).append(")");
+        tagBuilder.append("CREATE TAG IF NOT EXISTS ").append(quoteIdentifier(entity.getLabel())).append(" (").append(properties).append(")");
         return tagBuilder.toString();
     }
 
     public static String buildDescribeTag(String tagName) {
-        return "DESCRIBE TAG " + tagName;
+        return "DESCRIBE TAG " + quoteIdentifier(tagName);
     }
 
     public static String buildShowTags() {
@@ -68,7 +67,7 @@ public class NebulaUtil {
     }
 
     public static String buildDropTag(String tagName) {
-        return "DROP TAG IF EXISTS " + tagName;
+        return "DROP TAG IF EXISTS " + quoteIdentifier(tagName);
     }
 
     /**
@@ -78,7 +77,7 @@ public class NebulaUtil {
         String properties = entity.getProperties().stream()
                 .map(prop -> prop.getCode() + " " + convertToNebulaDataType(prop.getDataType()))
                 .collect(Collectors.joining(", "));
-        return "ALTER TAG `" + entity.getLabel() + "` ADD (" + properties + ")";
+        return "ALTER TAG " + quoteIdentifier(entity.getLabel()) + " ADD (" + properties + ")";
     }
 
     // ========== Edge 操作 ==========
@@ -88,12 +87,12 @@ public class NebulaUtil {
         String properties = relation.getProperties().stream()
                 .map(prop -> prop.getCode() + " " + convertToNebulaDataType(prop.getDataType()))
                 .collect(Collectors.joining(", "));
-        edgeBuilder.append("CREATE EDGE IF NOT EXISTS ").append(relation.getLabel()).append("(").append(properties).append(")");
+        edgeBuilder.append("CREATE EDGE IF NOT EXISTS ").append(quoteIdentifier(relation.getLabel())).append("(").append(properties).append(")");
         return edgeBuilder.toString();
     }
 
     public static String buildDescribeEdge(String edgeTypeName) {
-        return "DESCRIBE EDGE " + edgeTypeName;
+        return "DESCRIBE EDGE " + quoteIdentifier(edgeTypeName);
     }
 
     public static String buildShowEdges() {
@@ -101,22 +100,22 @@ public class NebulaUtil {
     }
 
     public static String buildDropEdge(String edgeTypeName) {
-        return "DROP EDGE IF EXISTS " + edgeTypeName;
+        return "DROP EDGE IF EXISTS " + quoteIdentifier(edgeTypeName);
     }
 
     public static String buildAlterEdgeAdd(GraphRelation relation) {
         String properties = relation.getProperties().stream()
                 .map(prop -> prop.getCode() + " " + convertToNebulaDataType(prop.getDataType()))
                 .collect(Collectors.joining(", "));
-        return "ALTER EDGE " + relation.getLabel() + " ADD (" + properties + ")";
+        return "ALTER EDGE " + quoteIdentifier(relation.getLabel()) + " ADD (" + properties + ")";
     }
 
     // ========== Index 操作 ==========
 
     public static String buildCreateIndex(NebulaIndex index) {
         StringBuilder builder = new StringBuilder();
-        builder.append("CREATE ").append(index.getIndexType()).append(" INDEX IF NOT EXISTS ").append(index.getIndexName())
-                .append(" ON ").append(index.getTypeName()).append(" (");
+        builder.append("CREATE ").append(index.getIndexType()).append(" INDEX IF NOT EXISTS ").append(quoteIdentifier(index.getIndexName()))
+                .append(" ON ").append(quoteIdentifier(index.getTypeName())).append(" (");
         if (index.getPropNameList() != null && !index.getPropNameList().isEmpty()) {
             Map<String, String> propTypeMap = index.getPropTypeMap();
             builder.append(index.getPropNameList().stream().map(p -> {
@@ -138,11 +137,11 @@ public class NebulaUtil {
     }
 
     public static String buildRebuildIndex(SchemaType schemaType, String indexName) {
-        return "REBUILD " + schemaType + " INDEX " + indexName;
+        return "REBUILD " + schemaType + " INDEX " + quoteIdentifier(indexName);
     }
 
     public static String buildDropIndex(SchemaType schemaType, String indexName) {
-        return "DROP " + schemaType + " INDEX IF EXISTS " + indexName;
+        return "DROP " + schemaType + " INDEX IF EXISTS " + quoteIdentifier(indexName);
     }
 
     // ========== Vertex 数据操作 ==========
@@ -158,11 +157,11 @@ public class NebulaUtil {
         String uid = vertex.getUid();
         String keys = String.join(",", vertex.getProperties().keySet());
         String propValues = buildPropertyValuesClause(vertex.getProperties(), propertyTypes);
-        return String.format("INSERT VERTEX %s(%s) VALUES \"%s\":(%s)", vertex.getLabel(), keys, uid, propValues);
+        return String.format("INSERT VERTEX %s(%s) VALUES \"%s\":(%s)", quoteIdentifier(vertex.getLabel()), keys, uid, propValues);
     }
 
     public static String buildInsertVertexBatch(String label, String keys, String valuesClause) {
-        return String.format("INSERT VERTEX %s(%s) VALUES %s", label, keys, valuesClause);
+        return String.format("INSERT VERTEX %s(%s) VALUES %s", quoteIdentifier(label), keys, valuesClause);
     }
 
     /**
@@ -174,7 +173,7 @@ public class NebulaUtil {
     }
 
     public static String buildUpdateVertex(String label, String vid, String setClause) {
-        return String.format("UPDATE VERTEX ON %s \"%s\" SET %s", label, vid, setClause);
+        return String.format("UPDATE VERTEX ON %s \"%s\" SET %s", quoteIdentifier(label), vid, setClause);
     }
 
     public static String buildDeleteVertex(String uid) {
@@ -184,19 +183,19 @@ public class NebulaUtil {
     // ========== Edge 数据操作 ==========
 
     public static String buildInsertEdge(String label, String keys, String startUid, String endUid, String propValues) {
-        return String.format("INSERT EDGE %s (%s) VALUES \"%s\" -> \"%s\":(%s);", label, keys, startUid, endUid, propValues);
+        return String.format("INSERT EDGE %s (%s) VALUES \"%s\" -> \"%s\":(%s);", quoteIdentifier(label), keys, startUid, endUid, propValues);
     }
 
     public static String buildInsertEdgeBatch(String label, String propKeys, String valuesStr) {
-        return String.format("INSERT EDGE %s (%s) VALUES %s", label, propKeys, valuesStr);
+        return String.format("INSERT EDGE %s (%s) VALUES %s", quoteIdentifier(label), propKeys, valuesStr);
     }
 
     public static String buildUpdateEdge(String label, String startUid, String endUid, String setClause) {
-        return String.format("UPDATE EDGE ON %s \"%s\" -> \"%s\" SET %s;", label, startUid, endUid, setClause);
+        return String.format("UPDATE EDGE ON %s \"%s\" -> \"%s\" SET %s;", quoteIdentifier(label), startUid, endUid, setClause);
     }
 
     public static String buildDeleteEdge(String label, String startUid, String endUid) {
-        return String.format("DELETE EDGE %s \"%s\" -> \"%s\";", label, startUid, endUid);
+        return String.format("DELETE EDGE %s \"%s\" -> \"%s\";", quoteIdentifier(label), startUid, endUid);
     }
 
     // ========== 查询操作 ==========
@@ -214,11 +213,11 @@ public class NebulaUtil {
     }
 
     public static String buildCountVertex(String label) {
-        return String.format("MATCH (v:%s) RETURN count(v) AS count;", label);
+        return String.format("MATCH (v:%s) RETURN count(v) AS count;", quoteIdentifier(label));
     }
 
     public static String buildCountEdge(String label) {
-        return String.format("MATCH ()-[e:%s]->() RETURN count(e) AS count;", label);
+        return String.format("MATCH ()-[e:%s]->() RETURN count(e) AS count;", quoteIdentifier(label));
     }
 
     /**
@@ -244,6 +243,13 @@ public class NebulaUtil {
     }
 
     // ========== 工具方法 ==========
+
+    /**
+     * 为 NGQL 标识符（标签名、边类型名、属性名等）添加反引号转义
+     */
+    private static String quoteIdentifier(String identifier) {
+        return "`" + identifier + "`";
+    }
 
     public static String buildPropertyValuesClause(Map<String, Object> properties) {
         return properties.values().stream()

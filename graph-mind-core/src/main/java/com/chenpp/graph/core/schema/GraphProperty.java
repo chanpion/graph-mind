@@ -15,7 +15,7 @@ public class GraphProperty {
     /**
      * 唯一标识
      */
-    public String uid;
+    private String uid;
     /**
      * 标识
      */

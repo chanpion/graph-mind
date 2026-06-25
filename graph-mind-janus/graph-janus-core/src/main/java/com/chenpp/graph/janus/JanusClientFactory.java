@@ -55,7 +55,7 @@ public class JanusClientFactory {
 
     private static final Map<String, JanusGraph> JANUS_GRAPH_MAP = new ConcurrentHashMap<>();
 
-    public static JanusGraph getOrCreateJanusGrapht(JanusConf janusConf) {
+    public static JanusGraph getOrCreateJanusGraph(JanusConf janusConf) {
         String key = String.format("%s_%s_%s", janusConf.getStorageHost(), janusConf.getStoragePort(), janusConf.getGraphCode());
 
         JanusGraph graph = JANUS_GRAPH_MAP.get(key);
