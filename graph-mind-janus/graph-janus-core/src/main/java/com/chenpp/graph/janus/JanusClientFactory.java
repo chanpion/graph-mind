@@ -36,23 +36,6 @@ import static org.janusgraph.graphdb.database.idassigner.placement.SimpleBulkPla
  */
 @Slf4j
 public class JanusClientFactory {
-
-    /**
-     * 根据配置创建JanusGraph客户端实例
-     *
-     * @param janusConf JanusGraph配置
-     * @return JanusClient实例
-     */
-    public static JanusClient createJanusClient(JanusConf janusConf) {
-        try {
-            return new JanusClient(janusConf);
-        } catch (Exception e) {
-            log.error("Failed to create JanusGraph client", e);
-            throw new RuntimeException("Failed to create JanusGraph client", e);
-        }
-    }
-
-
     private static final Map<String, JanusGraph> JANUS_GRAPH_MAP = new ConcurrentHashMap<>();
 
     public static JanusGraph getOrCreateJanusGraph(JanusConf janusConf) {

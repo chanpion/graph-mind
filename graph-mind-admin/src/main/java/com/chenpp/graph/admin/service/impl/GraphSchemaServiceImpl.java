@@ -98,52 +98,68 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
     @Override
     public List<GraphVertexDef> discoverVertexDefs(Long graphId, Long connectionId, String graphCode) {
         GraphSchema schema = discoverSchema(connectionId, graphCode, graphId);
-        if (schema == null || schema.getEntities() == null || schema.getEntities().isEmpty()) {
+        if (schema == null || CollectionUtils.isEmpty(schema.getEntities())) {
             return new ArrayList<>();
         }
         AtomicLong idCounter = new AtomicLong(-1);
-        return schema.getEntities().stream().map(entity -> {
-            GraphVertexDef vertexDef = new GraphVertexDef();
-            vertexDef.setId(idCounter.decrementAndGet());
-            vertexDef.setGraphId(graphId);
-            vertexDef.setLabel(entity.getLabel());
-            vertexDef.setName(entity.getLabel());
-            vertexDef.setStatus(1);
-            if (entity.getProperties() != null) {
-                List<GraphPropertyDef> props = entity.getProperties().stream()
-                        .map(this::buildPropertyDef)
-                        .collect(Collectors.toList());
-                vertexDef.setProperties(props);
-            }
-            return vertexDef;
-        }).collect(Collectors.toList());
+        return schema.getEntities().stream()
+                .map(entity -> buildVertexDef(entity, graphId, idCounter))
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<GraphEdgeDef> discoverEdgeDefs(Long graphId, Long connectionId, String graphCode) {
         GraphSchema schema = discoverSchema(connectionId, graphCode, graphId);
-        if (schema == null || schema.getRelations() == null || schema.getRelations().isEmpty()) {
+        if (schema == null || CollectionUtils.isEmpty(schema.getRelations())) {
             return new ArrayList<>();
         }
         AtomicLong idCounter = new AtomicLong(-1000);
-        return schema.getRelations().stream().map(relation -> {
-            GraphEdgeDef edgeDef = new GraphEdgeDef();
-            edgeDef.setId(idCounter.decrementAndGet());
-            edgeDef.setGraphId(graphId);
-            edgeDef.setLabel(relation.getLabel());
-            edgeDef.setName(relation.getLabel());
-            edgeDef.setStatus(1);
-            edgeDef.setMultiple(relation.getMultiple());
-            edgeDef.setStartLabel(relation.getStartLabel());
-            edgeDef.setEndLabel(relation.getEndLabel());
-            if (relation.getProperties() != null) {
-                List<GraphPropertyDef> props = relation.getProperties().stream()
-                        .map(this::buildPropertyDef)
-                        .collect(Collectors.toList());
-                edgeDef.setProperties(props);
-            }
-            return edgeDef;
-        }).collect(Collectors.toList());
+        return schema.getRelations().stream()
+                .map(relation -> buildEdgeDef(relation, graphId, idCounter))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 构建顶点定义对象
+     */
+    private GraphVertexDef buildVertexDef(GraphEntity entity, Long graphId, AtomicLong idCounter) {
+        GraphVertexDef vertexDef = new GraphVertexDef();
+        vertexDef.setId(idCounter.decrementAndGet());
+        vertexDef.setGraphId(graphId);
+        vertexDef.setLabel(entity.getLabel());
+        vertexDef.setName(entity.getLabel());
+        vertexDef.setStatus(1);
+        vertexDef.setProperties(buildPropertyDefs(entity.getProperties()));
+        return vertexDef;
+    }
+
+    /**
+     * 构建边定义对象
+     */
+    private GraphEdgeDef buildEdgeDef(GraphRelation relation, Long graphId, AtomicLong idCounter) {
+        GraphEdgeDef edgeDef = new GraphEdgeDef();
+        edgeDef.setId(idCounter.decrementAndGet());
+        edgeDef.setGraphId(graphId);
+        edgeDef.setLabel(relation.getLabel());
+        edgeDef.setName(relation.getLabel());
+        edgeDef.setStatus(1);
+        edgeDef.setMultiple(relation.getMultiple());
+        edgeDef.setStartLabel(relation.getStartLabel());
+        edgeDef.setEndLabel(relation.getEndLabel());
+        edgeDef.setProperties(buildPropertyDefs(relation.getProperties()));
+        return edgeDef;
+    }
+
+    /**
+     * 构建属性定义列表
+     */
+    private List<GraphPropertyDef> buildPropertyDefs(List<GraphProperty> properties) {
+        if (CollectionUtils.isEmpty(properties)) {
+            return new ArrayList<>();
+        }
+        return properties.stream()
+                .map(this::buildPropertyDef)
+                .collect(Collectors.toList());
     }
 
     @Override
