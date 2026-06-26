@@ -24,6 +24,7 @@ import com.chenpp.graph.core.model.GraphData;
 import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphSummary;
 import com.chenpp.graph.core.model.GraphVertex;
+import com.chenpp.graph.core.util.DataTypeConverter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +43,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -88,26 +90,35 @@ public class GraphDataServiceImpl implements GraphDataService {
 
     @Override
     public ImportResult importVertexData(Long graphId, Long vertexTypeId, Long connectionId, String graphCode, String label, MultipartFile file) {
+        return doImportData(graphId, vertexTypeId, connectionId, graphCode, label, file, true);
+    }
+
+    @Override
+    public ImportResult importEdgeData(Long graphId, Long edgeTypeId, Long connectionId, String graphCode, String label, MultipartFile file) {
+        return doImportData(graphId, edgeTypeId, connectionId, graphCode, label, file, false);
+    }
+
+    private ImportResult doImportData(Long graphId, Long typeId, Long connectionId, String graphCode,
+                                       String label, MultipartFile file, boolean isVertex) {
+        String dataType = isVertex ? "顶点" : "边";
         ImportResult result = new ImportResult();
         result.setTotalCount(0);
         result.setSuccessCount(0);
         result.setFailureCount(0);
         List<String> errorMessages = new ArrayList<>();
 
-        // 获取并发锁，防止同一图的并发导入
         ReentrantLock importLock = getImportLock(graphId, graphCode);
         boolean lockAcquired = false;
         try {
-            if (importLock.tryLock(30, java.util.concurrent.TimeUnit.SECONDS)) {
-                lockAcquired = true;
-                log.info("获取导入锁成功，graphId={}, graphCode={}", graphId, graphCode);
-            } else {
+            if (!importLock.tryLock(30, TimeUnit.SECONDS)) {
                 errorMessages.add("系统繁忙，请稍后再试");
                 result.setErrorMessages(errorMessages.toArray(new String[0]));
                 return result;
             }
+            lockAcquired = true;
+            log.info("获取导入锁成功，graphId={}, graphCode={}", graphId, graphCode);
 
-            ImportContext context = prepareImportContext(graphId, vertexTypeId, connectionId, graphCode, label, true);
+            ImportContext context = prepareImportContext(graphId, typeId, connectionId, graphCode, label, isVertex);
             if (context.hasError()) {
                 result.setErrorMessages(context.getErrors().toArray(new String[0]));
                 return result;
@@ -119,22 +130,23 @@ public class GraphDataServiceImpl implements GraphDataService {
             GraphClient graphClient = GraphClientFactory.createGraphClient(context.getGraphConf());
             GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
 
-            // 批量导入
-            int successCount = batchImportVertices(graphDataOperations, dataList, context.getLabel(), errorMessages);
+            int successCount = isVertex
+                    ? batchImportVertices(graphDataOperations, dataList, context.getLabel(), errorMessages)
+                    : batchImportEdges(graphDataOperations, dataList, context.getLabel(), errorMessages);
 
             result.setSuccessCount(successCount);
             result.setFailureCount(dataList.size() - successCount);
             result.setErrorMessages(errorMessages.toArray(new String[0]));
 
-            log.info("导入顶点数据完成，总数={}，成功={}，失败={}", dataList.size(), successCount, dataList.size() - successCount);
+            log.info("导入{}数据完成，总数={}，成功={}，失败={}", dataType, dataList.size(), successCount, dataList.size() - successCount);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             log.error("获取导入锁被中断", e);
             errorMessages.add("导入操作被中断");
             result.setErrorMessages(errorMessages.toArray(new String[0]));
         } catch (Exception e) {
-            log.error("导入顶点数据失败", e);
-            errorMessages.add("导入顶点数据失败: " + e.getMessage());
+            log.error("导入{}数据失败", dataType, e);
+            errorMessages.add("导入" + dataType + "数据失败: " + e.getMessage());
             result.setErrorMessages(errorMessages.toArray(new String[0]));
         } finally {
             if (lockAcquired) {
@@ -160,14 +172,8 @@ public class GraphDataServiceImpl implements GraphDataService {
                 GraphVertex vertex = new GraphVertex();
                 vertex.setUid(dataRow.get(GraphConstants.UID));
                 vertex.setLabel(label);
-
-                Map<String, Object> properties = new HashMap<>();
-                dataRow.forEach((key, value) -> {
-                    if (!GraphConstants.LABEL.equals(key)) {
-                        properties.put(key, value);
-                    }
-                });
-                vertex.setProperties(properties);
+                vertex.setProperties(DataTypeConverter.extractProperties(
+                        new HashMap<>(dataRow), Set.of(GraphConstants.LABEL)));
                 batch.add(vertex);
 
                 if (batch.size() >= BATCH_SIZE || i == dataList.size() - 1) {
@@ -359,63 +365,6 @@ public class GraphDataServiceImpl implements GraphDataService {
     }
 
 
-    @Override
-    public ImportResult importEdgeData(Long graphId, Long edgeTypeId, Long connectionId, String graphCode, String label, MultipartFile file) {
-        ImportResult result = new ImportResult();
-        result.setTotalCount(0);
-        result.setSuccessCount(0);
-        result.setFailureCount(0);
-        List<String> errorMessages = new ArrayList<>();
-
-        ReentrantLock importLock = getImportLock(graphId, graphCode);
-        boolean lockAcquired = false;
-        try {
-            if (importLock.tryLock(30, TimeUnit.SECONDS)) {
-                lockAcquired = true;
-            } else {
-                errorMessages.add("系统繁忙，请稍后再试");
-                result.setErrorMessages(errorMessages.toArray(new String[0]));
-                return result;
-            }
-
-            ImportContext context = prepareImportContext(graphId, edgeTypeId, connectionId, graphCode, label, false);
-            if (context.hasError()) {
-                result.setErrorMessages(context.getErrors().toArray(new String[0]));
-                return result;
-            }
-
-            List<Map<String, String>> dataList = parseDataCsv(file);
-            result.setTotalCount(dataList.size());
-
-            GraphClient graphClient = GraphClientFactory.createGraphClient(context.getGraphConf());
-            GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
-
-            int successCount = batchImportEdges(graphDataOperations, dataList, context.getLabel(), errorMessages);
-
-            result.setSuccessCount(successCount);
-            result.setFailureCount(dataList.size() - successCount);
-            result.setErrorMessages(errorMessages.toArray(new String[0]));
-
-            log.info("导入边数据完成，总数={}，成功={}，失败={}", dataList.size(), successCount, dataList.size() - successCount);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            log.error("获取导入锁被中断", e);
-            errorMessages.add("导入操作被中断");
-            result.setErrorMessages(errorMessages.toArray(new String[0]));
-        } catch (Exception e) {
-            log.error("导入边数据失败", e);
-            errorMessages.add("导入边数据失败: " + e.getMessage());
-            result.setErrorMessages(errorMessages.toArray(new String[0]));
-        } finally {
-            if (lockAcquired) {
-                importLock.unlock();
-                releaseImportLock(graphId, graphCode);
-            }
-        }
-
-        return result;
-    }
-
     /**
      * 批量导入边数据
      */
@@ -431,15 +380,8 @@ public class GraphDataServiceImpl implements GraphDataService {
                 edge.setLabel(label);
                 edge.setStartUid(dataRow.getOrDefault("startUid", dataRow.get("source")));
                 edge.setEndUid(dataRow.getOrDefault("endUid", dataRow.get("target")));
-
-                Map<String, Object> properties = new HashMap<>();
-                dataRow.forEach((key, value) -> {
-                    if (!"startUid".equals(key) && !"endUid".equals(key) && !"source".equals(key)
-                            && !"target".equals(key) && !"label".equals(key)) {
-                        properties.put(key, value);
-                    }
-                });
-                edge.setProperties(properties);
+                edge.setProperties(DataTypeConverter.extractProperties(
+                        dataRow, Set.of("startUid", "endUid", "source", "target", "label")));
                 batch.add(edge);
 
                 if (batch.size() >= BATCH_SIZE || i == dataList.size() - 1) {
@@ -525,7 +467,10 @@ public class GraphDataServiceImpl implements GraphDataService {
 
             String query = buildEdgeLabelQuery(graphId, connectionId, label, skip, size);
             GraphData graphData = ops.query(query);
-            return new PageResult<>(graphData.getEdges(), total, page, size);
+            List<GraphEdge> records = (graphData == null || graphData.getEdges() == null)
+                    ? new ArrayList<>()
+                    : graphData.getEdges();
+            return new PageResult<>(records, total, page, size);
         } catch (Exception e) {
             log.error("查询边数据列表失败，graphId={}, edgeTypeId={}", graphId, edgeTypeId, e);
             return PageResult.empty(page, size);
@@ -605,11 +550,6 @@ public class GraphDataServiceImpl implements GraphDataService {
 
             Map<String, Object> properties = handleProperties(data, propDefs);
             vertex.setProperties(properties);
-            String uid = data.get(GraphConstants.UID).toString();
-            if (StringUtils.isBlank(uid)) {
-                uid = data.get(GraphConstants.UID).toString();
-            }
-            vertex.setUid(uid);
             ops.updateVertex(vertex);
             log.info("更新顶点成功，vertexId={}", vertexId);
             return true;
@@ -623,40 +563,7 @@ public class GraphDataServiceImpl implements GraphDataService {
      * 根据属性类型转换值
      */
     private Object convertValueType(Object value, String type) {
-        if (value == null) {
-            return null;
-        }
-        String typeLower = type != null ? type.toLowerCase() : "string";
-
-        try {
-            switch (typeLower) {
-                case "long":
-                case "int64":
-                case "integer":
-                    if (value instanceof Number) {
-                        return ((Number) value).longValue();
-                    }
-                    return Long.parseLong(value.toString());
-                case "double":
-                case "float":
-                    if (value instanceof Number) {
-                        return ((Number) value).doubleValue();
-                    }
-                    return Double.parseDouble(value.toString());
-                case "boolean":
-                    if (value instanceof Boolean) {
-                        return value;
-                    }
-                    String str = value.toString().toLowerCase();
-                    return "true".equals(str) || "1".equals(str);
-                case "string":
-                default:
-                    return value.toString();
-            }
-        } catch (NumberFormatException e) {
-            log.warn("Failed to convert value '{}' to type {}, using as-is", value, type);
-            return value;
-        }
+        return DataTypeConverter.convertValue(value, type);
     }
 
     @Override

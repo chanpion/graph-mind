@@ -47,7 +47,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
     @Override
     public GraphVertex addVertex(GraphVertex vertex) throws GraphException {
         log.info("Adding vertex with label: {}, uid: {}", vertex.getLabel(), vertex.getUid());
-        try (Session session = driver.session()) {
+        try (Session session = driver.session(sessionConfig)) {
             String cypher = String.format("CREATE (n:%s {uid: $uid}) SET n += $properties RETURN n", vertex.getLabel());
 
             Map<String, Object> parameters = Neo4jUtil.convertToMap(vertex);
@@ -216,7 +216,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
     public GraphData expand(String vertexId, int depth) throws GraphException {
         log.info("Expanding vertex: {}, depth: {}", vertexId, depth);
         String cypher = String.format("MATCH p = (n)-[*1..%d]-(m) WHERE n.uid = $vertexId OR elementId(n) = $vertexId RETURN p", depth);
-        try (Session session = driver.session()) {
+        try (Session session = driver.session(sessionConfig)) {
             return session.executeRead(tx -> {
                 Result result = tx.run(cypher, Values.parameters("vertexId", vertexId));
                 return Neo4jUtil.parseResult(result);
@@ -249,7 +249,7 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
         log.info("Finding path from: {} to: {}, maxDepth: {}", startVertexId, endVertexId, maxDepth);
         String cypher = String.format(
                 "MATCH p = shortestPath((a {uid: $startVertexId})-[*..%d]-(b {uid: $endVertexId})) RETURN p", maxDepth);
-        try (Session session = driver.session()) {
+        try (Session session = driver.session(sessionConfig)) {
             return session.executeRead(tx -> {
                 Result result = tx.run(cypher, Values.parameters("startVertexId", startVertexId, "endVertexId", endVertexId));
                 return Neo4jUtil.parseResult(result);

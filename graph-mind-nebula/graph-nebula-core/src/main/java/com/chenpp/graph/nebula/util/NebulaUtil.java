@@ -7,6 +7,7 @@ import com.chenpp.graph.core.schema.DataType;
 import com.chenpp.graph.core.schema.GraphEntity;
 import com.chenpp.graph.core.schema.GraphProperty;
 import com.chenpp.graph.core.schema.GraphRelation;
+import com.chenpp.graph.core.util.DataTypeConverter;
 import com.chenpp.graph.nebula.NebulaConf;
 import com.chenpp.graph.nebula.schema.NebulaDataType;
 import com.chenpp.graph.nebula.schema.NebulaIndex;
@@ -320,24 +321,20 @@ public class NebulaUtil {
                     }
                 }
                 case Boolean -> {
-                    // 转换为布尔类型
-                    if ("true".equalsIgnoreCase(strValue) || "1".equals(strValue)) {
-                        yield "TRUE";
-                    } else if ("false".equalsIgnoreCase(strValue) || "0".equals(strValue)) {
-                        yield "FALSE";
-                    } else {
+                    try {
+                        yield DataTypeConverter.toBoolean(strValue) ? "TRUE" : "FALSE";
+                    } catch (IllegalArgumentException e) {
                         log.warn("Failed to parse '{}' as boolean, treating as string", strValue);
                         yield "\"" + strValue.replace("\"", "\\\"") + "\"";
                     }
                 }
                 case Date, Datetime -> {
-                    // 转换为日期时间类型
-                    if (strValue.matches("\\d{4}-\\d{2}-\\d{2}")) {
-                        yield "DATETIME('" + strValue + " 00:00:00')";
-                    } else if (strValue.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}")) {
-                        yield "DATETIME('" + strValue + "')";
-                    } else if (strValue.matches("\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2}")) {
-                        yield "DATETIME('" + strValue + "')";
+                    if (DataTypeConverter.isDateString(strValue)) {
+                        if (strValue.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                            yield "DATETIME('" + strValue + " 00:00:00')";
+                        } else {
+                            yield "DATETIME('" + strValue + "')";
+                        }
                     } else {
                         log.warn("Failed to parse '{}' as datetime, treating as string", strValue);
                         yield "\"" + strValue.replace("\"", "\\\"") + "\"";
@@ -359,23 +356,16 @@ public class NebulaUtil {
             if ("null".equalsIgnoreCase(str) || "NULL".equals(str)) {
                 return "NULL";
             }
-            // 检查日期格式 (yyyy-MM-dd) - 转换为 DATETIME 格式，因为 Nebula datetime 类型需要完整的时间
-            if (str.matches("\\d{4}-\\d{2}-\\d{2}")) {
-                return "DATETIME('" + str + " 00:00:00')";
-            }
-            // 检查日期时间格式 (yyyy-MM-ddTHH:mm:ss) - Nebula 要求使用单引号
-            if (str.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}")) {
+            // 检查日期格式
+            if (DataTypeConverter.isDateString(str)) {
+                if (str.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                    return "DATETIME('" + str + " 00:00:00')";
+                }
                 return "DATETIME('" + str + "')";
             }
-            // 检查日期时间格式 (yyyy-MM-dd HH:mm:ss)
-            if (str.matches("\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2}")) {
-                return "DATETIME('" + str + "')";
-            }
-            if ("true".equalsIgnoreCase(str)) {
-                return "TRUE";
-            }
-            if ("false".equalsIgnoreCase(str)) {
-                return "FALSE";
+            try {
+                return DataTypeConverter.toBoolean(str) ? "TRUE" : "FALSE";
+            } catch (IllegalArgumentException ignored) {
             }
             return "\"" + str.replace("\"", "\\\"") + "\"";
         }

@@ -1,18 +1,19 @@
 package com.chenpp.graph.admin.service.impl;
 
-import com.chenpp.graph.admin.model.GraphInfo;
 import com.chenpp.graph.admin.model.GraphConnection;
 import com.chenpp.graph.admin.model.GraphEdgeDef;
-import com.chenpp.graph.admin.model.GraphVertexDef;
+import com.chenpp.graph.admin.model.GraphEntityDef;
+import com.chenpp.graph.admin.model.GraphInfo;
 import com.chenpp.graph.admin.model.GraphPropertyDef;
+import com.chenpp.graph.admin.model.GraphVertexDef;
 import com.chenpp.graph.admin.model.SchemaExportDTO;
 import com.chenpp.graph.admin.model.SchemaImportDTO;
 import com.chenpp.graph.admin.service.GraphConnectionService;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
-import com.chenpp.graph.admin.service.GraphVertexDefService;
 import com.chenpp.graph.admin.service.GraphPropertyDefService;
 import com.chenpp.graph.admin.service.GraphSchemaService;
 import com.chenpp.graph.admin.service.GraphService;
+import com.chenpp.graph.admin.service.GraphVertexDefService;
 import com.chenpp.graph.admin.util.GraphClientFactory;
 import com.chenpp.graph.core.GraphClient;
 import com.chenpp.graph.core.GraphOperations;
@@ -26,9 +27,9 @@ import com.chenpp.graph.core.schema.GraphProperty;
 import com.chenpp.graph.core.schema.GraphRelation;
 import com.chenpp.graph.core.schema.GraphSchema;
 import com.chenpp.graph.core.schema.IndexType;
-import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -37,8 +38,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -52,22 +53,22 @@ import java.util.stream.Collectors;
 public class GraphSchemaServiceImpl implements GraphSchemaService {
 
 
-    @Resource
+    @Autowired
     private GraphService graphService;
 
-    @Resource
+    @Autowired
     private GraphConnectionService connectionService;
 
-    @Resource
+    @Autowired
     private GraphVertexDefService graphVertexDefService;
 
-    @Resource
+    @Autowired
     private GraphEdgeDefService graphEdgeDefService;
 
-    @Resource
+    @Autowired
     private GraphPropertyDefService graphPropertyDefService;
 
-    @Resource
+    @Autowired
     private TransactionTemplate transactionTemplate;
 
 
@@ -146,49 +147,48 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
 
     @Override
     public void mergeDiscoveredVertexProperties(List<GraphVertexDef> vertexDefs, Long graphId, Long connectionId, String graphCode) {
+        mergeDiscoveredEntityProperties(vertexDefs, graphId, connectionId, graphCode, true);
+    }
+
+    @Override
+    public void mergeDiscoveredEdgeProperties(List<GraphEdgeDef> edgeDefs, Long graphId, Long connectionId, String graphCode) {
+        mergeDiscoveredEntityProperties(edgeDefs, graphId, connectionId, graphCode, false);
+    }
+
+    private <T extends GraphEntityDef> void mergeDiscoveredEntityProperties(
+            List<T> defs, Long graphId, Long connectionId, String graphCode, boolean isVertex) {
         GraphSchema schema = discoverSchema(connectionId, graphCode, graphId);
-        if (schema == null || schema.getEntities() == null) {
+        if (schema == null) {
             return;
         }
-        Map<String, List<GraphProperty>> labelPropsMap = schema.getEntities().stream()
-                .collect(Collectors.toMap(GraphEntity::getLabel, GraphEntity::getProperties, (a, b) -> a));
-        for (GraphVertexDef vertexDef : vertexDefs) {
-            List<GraphProperty> discovered = labelPropsMap.get(vertexDef.getLabel());
+        Map<String, List<GraphProperty>> labelPropsMap;
+        if (isVertex) {
+            List<GraphEntity> entities = schema.getEntities();
+            if (entities == null) {
+                return;
+            }
+            labelPropsMap = entities.stream()
+                    .collect(Collectors.toMap(GraphEntity::getLabel, GraphEntity::getProperties, (a, b) -> a));
+        } else {
+            List<GraphRelation> relations = schema.getRelations();
+            if (relations == null) {
+                return;
+            }
+            labelPropsMap = relations.stream()
+                    .collect(Collectors.toMap(GraphRelation::getLabel, GraphRelation::getProperties, (a, b) -> a));
+        }
+        for (T def : defs) {
+            List<GraphProperty> discovered = labelPropsMap.get(def.getLabel());
             if (discovered != null && !discovered.isEmpty()) {
-                List<GraphPropertyDef> existing = vertexDef.getProperties() != null
-                        ? vertexDef.getProperties() : new ArrayList<>();
+                List<GraphPropertyDef> existing = def.getProperties() != null
+                        ? def.getProperties() : new ArrayList<>();
                 for (GraphProperty p : discovered) {
                     boolean exists = existing.stream().anyMatch(e -> p.getCode().equals(e.getCode()));
                     if (!exists) {
                         existing.add(buildPropertyDef(p));
                     }
                 }
-                vertexDef.setProperties(existing);
-            }
-        }
-    }
-
-    @Override
-    public void mergeDiscoveredEdgeProperties(List<GraphEdgeDef> edgeDefs, Long graphId, Long connectionId, String graphCode) {
-        GraphSchema schema = discoverSchema(connectionId, graphCode, graphId);
-        if (schema == null || schema.getRelations() == null) {
-            return;
-        }
-        Map<String, List<GraphProperty>> labelPropsMap = schema.getRelations().stream()
-                .collect(Collectors.toMap(GraphRelation::getLabel, GraphRelation::getProperties, (a, b) -> a));
-        for (GraphEdgeDef edgeDef : edgeDefs) {
-            List<GraphProperty> discovered = labelPropsMap.get(edgeDef.getLabel());
-            if (discovered != null && !discovered.isEmpty()) {
-                List<GraphPropertyDef> existing = edgeDef.getProperties() != null
-                        ? edgeDef.getProperties() : new ArrayList<>();
-                for (GraphProperty p : discovered) {
-                    boolean exists = existing.stream()
-                            .anyMatch(e -> p.getCode().equals(e.getCode()));
-                    if (!exists) {
-                        existing.add(buildPropertyDef(p));
-                    }
-                }
-                edgeDef.setProperties(existing);
+                def.setProperties(existing);
             }
         }
     }
@@ -391,20 +391,29 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         if (hasAlter) {
             graphOperations.alterSchema(graphConf, alterSchema);
         }
-        // 变更实体的索引在 alterSchema 之后创建，确保属性已存在
-        // 等待500ms让图数据库完成schema变更的内部处理，避免索引创建时属性尚未就绪
-        if (!alterEntityIndexes.isEmpty()) {
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                log.warn("Schema发布等待被中断", e);
-            }
-        }
         if (!alterEntityIndexes.isEmpty()) {
             GraphSchema alterIndexSchema = new GraphSchema();
             alterIndexSchema.setIndexes(alterEntityIndexes);
-            graphOperations.applySchema(graphConf, alterIndexSchema);
+            // 重试机制：schema 变更后索引创建可能需要等待属性就绪
+            int maxRetries = 3;
+            for (int attempt = 0; attempt < maxRetries; attempt++) {
+                try {
+                    graphOperations.applySchema(graphConf, alterIndexSchema);
+                    break;
+                } catch (Exception e) {
+                    if (attempt < maxRetries - 1) {
+                        log.debug("索引创建失败，第{}次重试: {}", attempt + 1, e.getMessage());
+                        try {
+                            TimeUnit.MILLISECONDS.sleep(200L * (attempt + 1));
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
+                    } else {
+                        throw e;
+                    }
+                }
+            }
         }
         if (!hasNew && !hasAlter) {
             log.info("Schema 无变更，跳过发布，graphId={}", graphId);
@@ -526,13 +535,17 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
 
 
         if (importEdges != null) {
+            Map<String, Boolean> existingEdgeLabelMap;
+            if (replace) {
+                existingEdgeLabelMap = Map.of();
+            } else {
+                existingEdgeLabelMap = graphEdgeDefService.getEdgeDefsByGraphId(graphId, null).stream()
+                        .filter(e -> e.getLabel() != null)
+                        .collect(Collectors.toMap(GraphEdgeDef::getLabel, e -> true, (a, b) -> a));
+            }
             for (GraphEdgeDef edge : importEdges) {
-                if (!replace) {
-                    List<GraphEdgeDef> existingEdges = graphEdgeDefService.getEdgeDefsByGraphId(graphId, null);
-                    boolean exists = existingEdges.stream().anyMatch(e -> Objects.equals(e.getLabel(), edge.getLabel()));
-                    if (exists) {
-                        continue;
-                    }
+                if (!replace && existingEdgeLabelMap.containsKey(edge.getLabel())) {
+                    continue;
                 }
                 edge.setGraphId(graphId);
                 edge.setId(null);

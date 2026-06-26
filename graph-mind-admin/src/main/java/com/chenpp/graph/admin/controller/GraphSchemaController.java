@@ -1,20 +1,19 @@
 package com.chenpp.graph.admin.controller;
 
 import com.chenpp.graph.admin.model.GraphEdgeDef;
+import com.chenpp.graph.admin.model.GraphEntityDef;
 import com.chenpp.graph.admin.model.GraphPropertyDef;
 import com.chenpp.graph.admin.model.GraphVertexDef;
 import com.chenpp.graph.admin.model.Result;
 import com.chenpp.graph.admin.model.SchemaExportDTO;
 import com.chenpp.graph.admin.model.SchemaImportDTO;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
-import com.chenpp.graph.admin.service.GraphVertexDefService;
 import com.chenpp.graph.admin.service.GraphSchemaService;
-import com.chenpp.graph.core.schema.GraphSchema;
+import com.chenpp.graph.admin.service.GraphVertexDefService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -61,40 +60,7 @@ public class GraphSchemaController {
 
         try {
             List<GraphVertexDef> discovered = graphSchemaService.discoverVertexDefs(graphId, connectionId, graphCode);
-            if (discovered != null && !discovered.isEmpty()) {
-                Set<String> localLabels = vertexDefs.stream()
-                        .map(GraphVertexDef::getLabel)
-                        .collect(Collectors.toSet());
-
-                // 补充图库原有的，平台未创建的类型
-                for (GraphVertexDef d : discovered) {
-                    if (d.getLabel() != null && !localLabels.contains(d.getLabel())) {
-                        vertexDefs.add(d);
-                        localLabels.add(d.getLabel());
-                    }
-                }
-
-                // 合并属性：对本地已有类型，补全图库中存在的属性
-                Map<String, List<GraphPropertyDef>> discoveredProps = discovered.stream()
-                        .filter(d -> d.getLabel() != null && d.getProperties() != null)
-                        .collect(Collectors.toMap(GraphVertexDef::getLabel, GraphVertexDef::getProperties));
-                for (GraphVertexDef vd : vertexDefs) {
-                    if (vd.getLabel() != null && discoveredProps.containsKey(vd.getLabel())) {
-                        List<GraphPropertyDef> existing = vd.getProperties() != null
-                                ? new ArrayList<>(vd.getProperties()) : new ArrayList<>();
-                        Set<String> existingCodes = existing.stream()
-                                .map(GraphPropertyDef::getCode)
-                                .filter(Objects::nonNull)
-                                .collect(Collectors.toSet());
-                        for (GraphPropertyDef p : discoveredProps.get(vd.getLabel())) {
-                            if (p.getCode() != null && !existingCodes.contains(p.getCode())) {
-                                existing.add(p);
-                            }
-                        }
-                        vd.setProperties(existing);
-                    }
-                }
-            }
+            mergeDiscoveredDefs(vertexDefs, discovered);
         } catch (Exception e) {
             log.warn("从图数据库发现节点类型失败", e);
         }
@@ -164,38 +130,7 @@ public class GraphSchemaController {
 
         try {
             List<GraphEdgeDef> discovered = graphSchemaService.discoverEdgeDefs(graphId, connectionId, graphCode);
-            if (discovered != null && !discovered.isEmpty()) {
-                Set<String> localLabels = edgeDefs.stream()
-                        .map(GraphEdgeDef::getLabel)
-                        .collect(Collectors.toSet());
-
-                // 补充图库原有的，平台未创建的类型
-                for (GraphEdgeDef d : discovered) {
-                    if (d.getLabel() != null && !localLabels.contains(d.getLabel())) {
-                        edgeDefs.add(d);
-                        localLabels.add(d.getLabel());
-                    }
-                }
-
-                // 合并属性：对本地已有类型，补全图库中存在的属性
-                Map<String, List<GraphPropertyDef>> discoveredProps = discovered.stream()
-                        .filter(d -> d.getLabel() != null && d.getProperties() != null)
-                        .collect(Collectors.toMap(GraphEdgeDef::getLabel, GraphEdgeDef::getProperties));
-                for (GraphEdgeDef ed : edgeDefs) {
-                    if (ed.getLabel() != null && discoveredProps.containsKey(ed.getLabel())) {
-                        List<GraphPropertyDef> existing = ed.getProperties() != null ? new ArrayList<>(ed.getProperties()) : new ArrayList<>();
-                        Set<String> existingCodes = existing.stream()
-                                .map(GraphPropertyDef::getCode)
-                                .collect(Collectors.toSet());
-                        for (GraphPropertyDef p : discoveredProps.get(ed.getLabel())) {
-                            if (p.getCode() != null && !existingCodes.contains(p.getCode())) {
-                                existing.add(p);
-                            }
-                        }
-                        ed.setProperties(existing);
-                    }
-                }
-            }
+            mergeDiscoveredDefs(edgeDefs, discovered);
         } catch (Exception e) {
             log.warn("从图数据库发现边类型失败", e);
         }
@@ -255,5 +190,49 @@ public class GraphSchemaController {
     public Result<String> importSchema(@RequestParam Long graphId, @RequestBody SchemaImportDTO importDTO) {
         graphSchemaService.importSchema(graphId, importDTO);
         return Result.success("导入成功");
+    }
+
+    /**
+     * 合并发现的实体定义到本地列表，包括新增类型和补全属性
+     */
+    private <T extends GraphEntityDef> void mergeDiscoveredDefs(List<T> localDefs, List<T> discovered) {
+        if (discovered == null || discovered.isEmpty()) {
+            return;
+        }
+
+        Set<String> localLabels = localDefs.stream()
+                .map(GraphEntityDef::getLabel)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        // 补充图库原有的，平台未创建的类型
+        for (T d : discovered) {
+            if (d.getLabel() != null && !localLabels.contains(d.getLabel())) {
+                localDefs.add(d);
+                localLabels.add(d.getLabel());
+            }
+        }
+
+        // 合并属性：对本地已有类型，补全图库中存在的属性
+        Map<String, List<GraphPropertyDef>> discoveredProps = discovered.stream()
+                .filter(d -> d.getLabel() != null && d.getProperties() != null)
+                .collect(Collectors.toMap(GraphEntityDef::getLabel, GraphEntityDef::getProperties, (a, b) -> a));
+        for (T def : localDefs) {
+            if (def.getLabel() == null || !discoveredProps.containsKey(def.getLabel())) {
+                continue;
+            }
+            List<GraphPropertyDef> existing = def.getProperties() != null
+                    ? new ArrayList<>(def.getProperties()) : new ArrayList<>();
+            Set<String> existingCodes = existing.stream()
+                    .map(GraphPropertyDef::getCode)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            for (GraphPropertyDef p : discoveredProps.get(def.getLabel())) {
+                if (p.getCode() != null && !existingCodes.contains(p.getCode())) {
+                    existing.add(p);
+                }
+            }
+            def.setProperties(existing);
+        }
     }
 }

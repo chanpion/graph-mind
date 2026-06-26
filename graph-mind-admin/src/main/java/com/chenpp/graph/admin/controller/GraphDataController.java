@@ -7,8 +7,6 @@ import com.chenpp.graph.admin.model.GraphEdgeDef;
 import com.chenpp.graph.admin.model.PageResult;
 import com.chenpp.graph.admin.service.GraphDataService;
 import com.chenpp.graph.admin.service.GraphSchemaService;
-import com.chenpp.graph.core.exception.BusinessException;
-import com.chenpp.graph.core.exception.ErrorCode;
 import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphSummary;
 import com.chenpp.graph.core.model.GraphVertex;
@@ -145,7 +143,7 @@ public class GraphDataController {
             @RequestBody Map<String, Object> data) {
         boolean result = graphDataService.addVertexData(graphId, vertexTypeId, connectionId, graphCode, data);
         if (!result) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "新增顶点数据失败");
+            return Result.error("新增顶点数据失败");
         }
         return Result.success(true);
     }
@@ -159,7 +157,7 @@ public class GraphDataController {
             @RequestBody Map<String, Object> data) {
         boolean result = graphDataService.addEdgeData(graphId, edgeTypeId, connectionId, graphCode, data);
         if (!result) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "新增边数据失败");
+            return Result.error("新增边数据失败");
         }
         return Result.success(true);
     }
@@ -173,7 +171,7 @@ public class GraphDataController {
             @RequestBody Map<String, Object> data) {
         boolean result = graphDataService.updateVertexData(graphId, vertexId, connectionId, graphCode, data);
         if (!result) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "更新顶点数据失败");
+            return Result.error("更新顶点数据失败");
         }
         return Result.success(true);
     }
@@ -187,7 +185,7 @@ public class GraphDataController {
             @RequestBody Map<String, Object> data) {
         boolean result = graphDataService.updateEdgeData(graphId, edgeId, connectionId, graphCode, data);
         if (!result) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "更新边数据失败");
+            return Result.error("更新边数据失败");
         }
         return Result.success(true);
     }
@@ -201,7 +199,7 @@ public class GraphDataController {
             @RequestParam(required = false) String graphCode) {
         boolean result = graphDataService.deleteVertex(graphId, vertexId, label, connectionId, graphCode);
         if (!result) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "删除顶点失败");
+            return Result.error("删除顶点失败");
         }
         return Result.success(true);
     }
@@ -215,7 +213,7 @@ public class GraphDataController {
             @RequestParam(required = false) String graphCode) {
         boolean result = graphDataService.deleteEdge(graphId, edgeId, label, connectionId, graphCode);
         if (!result) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "删除边失败");
+            return Result.error("删除边失败");
         }
         return Result.success(true);
     }

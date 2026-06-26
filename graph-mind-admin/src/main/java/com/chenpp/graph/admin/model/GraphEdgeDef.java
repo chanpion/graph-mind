@@ -17,7 +17,7 @@ import java.util.List;
  */
 @TableName(value = "graph_edge_def", excludeProperty = {"properties"})
 @Data
-public class GraphEdgeDef {
+public class GraphEdgeDef implements GraphEntityDef {
     @TableId(type = IdType.AUTO)
     private Long id;
 

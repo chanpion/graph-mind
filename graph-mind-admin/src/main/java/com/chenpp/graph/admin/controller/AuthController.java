@@ -5,7 +5,6 @@ import com.chenpp.graph.admin.model.LoginResponse;
 import com.chenpp.graph.admin.model.Result;
 import com.chenpp.graph.admin.util.JwtUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -32,7 +31,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<Result<LoginResponse>> login(@RequestBody LoginRequest loginRequest) {
+    public Result<LoginResponse> login(@RequestBody LoginRequest loginRequest) {
         log.info("用户登录：{}", loginRequest.getUsername());
         UsernamePasswordAuthenticationToken authenticationToken =
                 new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword());
@@ -43,13 +42,12 @@ public class AuthController {
         LoginResponse loginResponse = new LoginResponse(token, 24 * 60 * 60 * 1000L);
         loginResponse.setUsername(loginRequest.getUsername());
 
-        return ResponseEntity.ok(Result.success(loginResponse));
+        return Result.success(loginResponse);
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Result<String>> logout() {
+    public Result<String> logout() {
         SecurityContextHolder.clearContext();
-        Result<String> result = Result.success("登出成功", "");
-        return ResponseEntity.ok(result);
+        return Result.success("登出成功");
     }
 }

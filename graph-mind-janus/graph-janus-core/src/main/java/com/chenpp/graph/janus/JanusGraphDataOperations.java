@@ -8,6 +8,7 @@ import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphSummary;
 import com.chenpp.graph.core.model.GraphVertex;
 import com.chenpp.graph.core.model.PathQuery;
+import com.chenpp.graph.core.util.DataTypeConverter;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import lombok.extern.slf4j.Slf4j;
@@ -985,83 +986,39 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         }
 
         Class<?> propertyType = getPropertyType(key);
-        if (propertyType == null) {
+        if (propertyType == null || propertyType.isInstance(value)) {
             return value;
         }
 
-        // 如果值已经是目标类型，直接返回
-        if (propertyType.isInstance(value)) {
+        if (!(value instanceof String)) {
             return value;
         }
 
-        // 处理字符串值的类型转换
-        if (value instanceof String) {
-            String strValue = (String) value;
-            try {
-                if (propertyType == Date.class) {
-                    // 尝试多种日期时间格式解析
-                    return parseDate(strValue);
-                } else if (propertyType == Integer.class || propertyType == int.class) {
-                    return Integer.parseInt(strValue);
-                } else if (propertyType == Long.class || propertyType == long.class) {
-                    return Long.parseLong(strValue);
-                } else if (propertyType == Double.class || propertyType == double.class) {
-                    return Double.parseDouble(strValue);
-                } else if (propertyType == Float.class || propertyType == float.class) {
-                    return Float.parseFloat(strValue);
-                } else if (propertyType == Boolean.class || propertyType == boolean.class) {
-                    return parseBoolean(strValue);
-                }
-            } catch (Exception e) {
-                log.warn("Failed to convert value '{}' to type {} for property {}: {}", 
-                        strValue, propertyType.getSimpleName(), key, e.getMessage());
-                return value;
+        String strValue = (String) value;
+        try {
+            if (propertyType == Date.class) {
+                return DataTypeConverter.parseDate(strValue);
             }
+            if (propertyType == Integer.class || propertyType == int.class) {
+                return DataTypeConverter.toLong(strValue).intValue();
+            }
+            if (propertyType == Long.class || propertyType == long.class) {
+                return DataTypeConverter.toLong(strValue);
+            }
+            if (propertyType == Double.class || propertyType == double.class) {
+                return DataTypeConverter.toDouble(strValue);
+            }
+            if (propertyType == Float.class || propertyType == float.class) {
+                return DataTypeConverter.toDouble(strValue).floatValue();
+            }
+            if (propertyType == Boolean.class || propertyType == boolean.class) {
+                return DataTypeConverter.toBoolean(strValue);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to convert value '{}' to type {} for property {}: {}",
+                    strValue, propertyType.getSimpleName(), key, e.getMessage());
         }
-
         return value;
     }
 
-    /**
-     * 解析日期时间字符串，支持多种格式
-     */
-    private Date parseDate(String strValue) {
-        if (StringUtils.isBlank(strValue)) {
-            return null;
-        }
-
-        // 尝试多种日期时间格式
-        String[] patterns = {
-            "yyyy-MM-dd HH:mm:ss",
-            "yyyy-MM-dd'T'HH:mm:ss",
-            "yyyy-MM-dd",
-            "yyyy/MM/dd HH:mm:ss",
-            "yyyy/MM/dd"
-        };
-
-        for (String pattern : patterns) {
-            try {
-                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat(pattern);
-                sdf.setLenient(false);
-                return sdf.parse(strValue.trim());
-            } catch (java.text.ParseException e) {
-                // 继续尝试下一个格式
-            }
-        }
-
-        throw new IllegalArgumentException("Unable to parse date: " + strValue);
-    }
-
-    /**
-     * 解析布尔值，支持多种格式
-     */
-    private Boolean parseBoolean(String strValue) {
-        String lower = strValue.toLowerCase().trim();
-        if ("true".equals(lower) || "1".equals(lower) || "yes".equals(lower)) {
-            return true;
-        } else if ("false".equals(lower) || "0".equals(lower) || "no".equals(lower)) {
-            return false;
-        }
-        throw new IllegalArgumentException("Unable to parse boolean: " + strValue);
-    }
 }
