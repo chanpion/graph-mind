@@ -11,6 +11,7 @@ import com.chenpp.graph.core.model.PathQuery;
 import com.chenpp.graph.core.util.DataTypeConverter;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.chenpp.graph.janus.util.JanusUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -72,7 +73,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
                 vertex.getProperties().forEach((key, value) -> {
                     if (value != null) {
                         // 根据属性类型转换值
-                        Object convertedValue = convertPropertyValue(key, value);
+                        Object convertedValue = JanusUtil.convertPropertyValue(key, value, graph);
                         janusVertex.property(key, convertedValue);
                     }
                 });
@@ -109,7 +110,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
                     vertex.getProperties().forEach((key, value) -> {
                         if (value != null) {
                             // 根据属性类型转换值
-                            Object convertedValue = convertPropertyValue(key, value);
+                            Object convertedValue = JanusUtil.convertPropertyValue(key, value, graph);
                             janusVertex.property(key, convertedValue);
                         }
                     });
@@ -150,7 +151,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
                     vertex.getProperties().forEach((key, value) -> {
                         if (value != null) {
                             // 根据属性类型转换值
-                            Object convertedValue = convertPropertyValue(key, value);
+                            Object convertedValue = JanusUtil.convertPropertyValue(key, value, graph);
                             janusVertex.property(key, convertedValue);
                         }
                     });
@@ -206,21 +207,18 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         JanusGraphTransaction tx = null;
         try {
             tx = graph.newTransaction();
-            // 查找起始顶点
             Iterator<JanusGraphVertex> startVertices = tx.query().has(GraphConstants.UID, edge.getStartUid()).vertices().iterator();
             if (!startVertices.hasNext()) {
                 throw new GraphException("Start vertex not found with uid: " + edge.getStartUid());
             }
             JanusGraphVertex startVertex = startVertices.next();
 
-            // 查找结束顶点
             Iterator<JanusGraphVertex> endVertices = tx.query().has(GraphConstants.UID, edge.getEndUid()).vertices().iterator();
             if (!endVertices.hasNext()) {
                 throw new GraphException("End vertex not found with uid: " + edge.getEndUid());
             }
             JanusGraphVertex endVertex = endVertices.next();
 
-            // 创建边
             JanusGraphEdge janusEdge = startVertex.addEdge(edge.getLabel(), endVertex);
 
             if (edge.getUid() != null) {
@@ -230,8 +228,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             if (edge.getProperties() != null) {
                 edge.getProperties().forEach((key, value) -> {
                     if (value != null) {
-                        // 根据属性类型转换值
-                        Object convertedValue = convertPropertyValue(key, value);
+                        Object convertedValue = JanusUtil.convertPropertyValue(key, value, graph);
                         janusEdge.property(key, convertedValue);
                     }
                 });
@@ -279,8 +276,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
                 if (edge.getProperties() != null) {
                     edge.getProperties().forEach((key, value) -> {
                         if (value != null) {
-                            // 根据属性类型转换值
-                            Object convertedValue = convertPropertyValue(key, value);
+                            Object convertedValue = JanusUtil.convertPropertyValue(key, value, graph);
                             janusEdge.property(key, convertedValue);
                         }
                     });
@@ -316,8 +312,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
                 if (edge.getProperties() != null) {
                     edge.getProperties().forEach((key, value) -> {
                         if (value != null) {
-                            // 根据属性类型转换值
-                            Object convertedValue = convertPropertyValue(key, value);
+                            Object convertedValue = JanusUtil.convertPropertyValue(key, value, graph);
                             janusEdge.property(key, convertedValue);
                         }
                     });
@@ -538,12 +533,6 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         return null;
     }
 
-    /**
-     * 转换成vertex
-     *
-     * @param detachedVertexList CacheVertex list
-     * @return Multimap，以uid作为key，value为统一uid的集合。
-     */
     private List<GraphVertex> convertVertex(List<CacheVertex> detachedVertexList) {
         List<GraphVertex> vertexList = Lists.newArrayList();
         Set<String> idSet = new HashSet<>();
@@ -577,12 +566,6 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         return vertexList;
     }
 
-    /**
-     * 转换成edge
-     *
-     * @param detachedEdgeList CacheEdge list
-     * @return EdgeDTO list
-     */
     private List<GraphEdge> convertEdge(List<CacheEdge> detachedEdgeList) {
         List<GraphEdge> edgeList = Lists.newArrayList();
         for (CacheEdge detachedEdge : detachedEdgeList) {
@@ -591,8 +574,8 @@ public class JanusGraphDataOperations implements GraphDataOperations {
 
             JanusGraphVertex outVertex = detachedEdge.outVertex();
             JanusGraphVertex inVertex = detachedEdge.inVertex();
-            graphEdge.setStartUid(getVertexUid(outVertex));
-            graphEdge.setEndUid(getVertexUid(inVertex));
+            graphEdge.setStartUid(JanusUtil.getVertexUid(outVertex, graph));
+            graphEdge.setEndUid(JanusUtil.getVertexUid(inVertex, graph));
 
             graphEdge.setLabel(detachedEdge.label());
             Map<String, Object> map = Maps.newHashMap();
@@ -613,37 +596,6 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         return edgeList;
     }
 
-    /**
-     * 从TinkerPop顶点获取uid属性值，支持 detached vertex（从 CacheEdge 获取的顶点需刷新）
-     */
-    private String getVertexUid(Vertex vertex) {
-        // 尝试直接从属性读取
-        try {
-            if (vertex.property(GraphConstants.UID).isPresent()) {
-                Object uid = vertex.property(GraphConstants.UID).value();
-                if (uid != null && !uid.toString().isEmpty()) {
-                    return uid.toString();
-                }
-            }
-        } catch (Exception e) {
-            log.debug("Failed to get uid directly, will try to refresh vertex: {}", e.getMessage());
-        }
-
-        // 对于 detached vertex（如 CacheEdge 的 incident vertex），从图数据库刷新获取
-        try {
-            Iterator<Vertex> refreshed = graph.vertices(vertex.id());
-            if (refreshed.hasNext()) {
-                Vertex freshVertex = refreshed.next();
-                if (freshVertex.property(GraphConstants.UID).isPresent() && !freshVertex.property(GraphConstants.UID).value().toString().isEmpty()) {
-                    return freshVertex.property(GraphConstants.UID).value().toString();
-                }
-            }
-        } catch (Exception e) {
-            log.debug("Failed to refresh vertex for uid: {}", e.getMessage());
-        }
-
-        return vertex.id().toString();
-    }
 
     /**
      * 根据顶点ID列表查询顶点
@@ -663,7 +615,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             Iterator<JanusGraphVertex> vertices = tx.query().has(GraphConstants.UID, Contain.IN, vertexIds).vertices().iterator();
             while (vertices.hasNext()) {
                 JanusGraphVertex vertex = vertices.next();
-                GraphVertex graphVertex = parseVertex(vertex);
+                GraphVertex graphVertex = JanusUtil.parseVertex(vertex);
                 result.add(graphVertex);
             }
 
@@ -690,16 +642,14 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         JanusGraphTransaction tx = null;
         try {
             tx = graph.newTransaction();
-            // 查询边
             Iterator<JanusGraphEdge> edges = tx.query().has(GraphConstants.UID, org.janusgraph.core.attribute.Contain.IN, edgeIds).edges().iterator();
             List<GraphEdge> result = new ArrayList<>();
             while (edges.hasNext()) {
                 JanusGraphEdge edge = edges.next();
-                GraphEdge graphEdge = parseEdge(edge);
+                GraphEdge graphEdge = JanusUtil.parseEdge(edge);
                 result.add(graphEdge);
             }
 
-            // 提交事务
             tx.commit();
             return result;
         } catch (Exception e) {
@@ -755,81 +705,6 @@ public class JanusGraphDataOperations implements GraphDataOperations {
                 end.getLabel(), end.getProperty(), end.getValue(), pathQuery.getLimit());
         log.debug("Executing findPath by property query: {}", gremlinQuery);
         return query(gremlinQuery);
-    }
-
-    /**
-     * 解析JanusGraphVertex为GraphVertex
-     *
-     * @param vertex JanusGraphVertex对象
-     * @return GraphVertex对象
-     */
-    private GraphVertex parseVertex(JanusGraphVertex vertex) {
-        GraphVertex graphVertex = new GraphVertex();
-
-        // 获取UID，优先使用uid属性，否则使用内部ID
-        if (vertex.property(GraphConstants.UID).isPresent()) {
-            graphVertex.setUid(vertex.property(GraphConstants.UID).value().toString());
-        } else {
-            graphVertex.setUid(vertex.id().toString());
-        }
-        // 获取ID
-        graphVertex.setId(vertex.id().toString());
-        // 获取标签
-        graphVertex.setLabel(vertex.label());
-
-        // 获取其他属性
-        Map<String, Object> properties = new HashMap<>();
-        vertex.keys().forEach(key -> {
-            if (vertex.property(key).isPresent() && !GraphConstants.UID.equals(key)) {
-                properties.put(key, vertex.property(key).value());
-            }
-        });
-        graphVertex.setProperties(properties);
-
-        return graphVertex;
-    }
-
-    /**
-     * 解析JanusGraphEdge为GraphEdge
-     *
-     * @param edge JanusGraphEdge对象
-     * @return GraphEdge对象
-     */
-    private GraphEdge parseEdge(JanusGraphEdge edge) {
-        GraphEdge graphEdge = new GraphEdge();
-
-        // 获取UID，优先使用uid属性，否则使用内部ID
-        if (edge.property(GraphConstants.UID).isPresent()) {
-            graphEdge.setUid((String) edge.property(GraphConstants.UID).value());
-        } else {
-            graphEdge.setUid(edge.id().toString());
-        }
-
-        // 获取标签
-        graphEdge.setLabel(edge.label());
-
-        // 获取起始和结束顶点的UID
-        JanusGraphVertex outVertex = edge.outVertex();
-        JanusGraphVertex inVertex = edge.inVertex();
-
-        if (outVertex.property(GraphConstants.UID).isPresent()) {
-            graphEdge.setStartUid((String) outVertex.property(GraphConstants.UID).value());
-        }
-
-        if (inVertex.property(GraphConstants.UID).isPresent()) {
-            graphEdge.setEndUid((String) inVertex.property(GraphConstants.UID).value());
-        }
-
-        // 获取其他属性
-        Map<String, Object> properties = new HashMap<>();
-        edge.keys().forEach(key -> {
-            if (edge.property(key).isPresent() && !GraphConstants.UID.equals(key)) {
-                properties.put(key, edge.property(key).value());
-            }
-        });
-        graphEdge.setProperties(properties);
-
-        return graphEdge;
     }
 
     @Override
@@ -930,7 +805,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             if (CollectionUtils.isNotEmpty(vertices)) {
                 JanusGraphVertex vertex = (JanusGraphVertex) vertices.get(0);
                 tx.commit();
-                return parseVertex(vertex);
+                return JanusUtil.parseVertex(vertex);
             }
 
             // 按 label + property + value 查找
@@ -938,7 +813,7 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             if (CollectionUtils.isNotEmpty(labelVertices)) {
                 JanusGraphVertex vertex = (JanusGraphVertex) labelVertices.get(0);
                 tx.commit();
-                return parseVertex(vertex);
+                return JanusUtil.parseVertex(vertex);
             }
 
             tx.commit();
@@ -956,69 +831,4 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             }
         }
     }
-
-    /**
-     * 获取属性的类型信息
-     * @param propertyName 属性名
-     * @return 属性的数据类型，如果不存在返回 null
-     */
-    private Class<?> getPropertyType(String propertyName) {
-        try {
-            org.janusgraph.core.PropertyKey propertyKey = graph.getPropertyKey(propertyName);
-            if (propertyKey != null) {
-                return propertyKey.dataType();
-            }
-        } catch (Exception e) {
-            log.debug("Failed to get property type for {}: {}", propertyName, e.getMessage());
-        }
-        return null;
-    }
-
-    /**
-     * 根据属性类型转换值
-     * @param key 属性名
-     * @param value 原始值
-     * @return 转换后的值
-     */
-    private Object convertPropertyValue(String key, Object value) {
-        if (value == null) {
-            return null;
-        }
-
-        Class<?> propertyType = getPropertyType(key);
-        if (propertyType == null || propertyType.isInstance(value)) {
-            return value;
-        }
-
-        if (!(value instanceof String)) {
-            return value;
-        }
-
-        String strValue = (String) value;
-        try {
-            if (propertyType == Date.class) {
-                return DataTypeConverter.parseDate(strValue);
-            }
-            if (propertyType == Integer.class || propertyType == int.class) {
-                return DataTypeConverter.toLong(strValue).intValue();
-            }
-            if (propertyType == Long.class || propertyType == long.class) {
-                return DataTypeConverter.toLong(strValue);
-            }
-            if (propertyType == Double.class || propertyType == double.class) {
-                return DataTypeConverter.toDouble(strValue);
-            }
-            if (propertyType == Float.class || propertyType == float.class) {
-                return DataTypeConverter.toDouble(strValue).floatValue();
-            }
-            if (propertyType == Boolean.class || propertyType == boolean.class) {
-                return DataTypeConverter.toBoolean(strValue);
-            }
-        } catch (Exception e) {
-            log.warn("Failed to convert value '{}' to type {} for property {}: {}",
-                    strValue, propertyType.getSimpleName(), key, e.getMessage());
-        }
-        return value;
-    }
-
 }

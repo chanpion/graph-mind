@@ -70,10 +70,10 @@
           <el-table-column prop="label" label="标签" min-width="120" />
           <el-table-column prop="name" label="名称" min-width="150" />
           <el-table-column label="起点类型" min-width="120">
-            <template #default="{ row }">{{ getVertexNameByLabel(row.startLabel) }}</template>
+            <template #default="{ row }">{{ row.startLabel || '未定义' }}</template>
           </el-table-column>
           <el-table-column label="终点类型" min-width="120">
-            <template #default="{ row }">{{ getVertexNameByLabel(row.endLabel) }}</template>
+            <template #default="{ row }">{{ row.endLabel || '未定义' }}</template>
           </el-table-column>
           <el-table-column prop="description" label="描述" min-width="180" />
           <el-table-column prop="status" label="状态" width="90" align="center">
@@ -184,12 +184,12 @@
         </el-form-item>
         <el-form-item label="起点类型">
           <el-select v-model="edgeForm.startLabel" placeholder="请选择起点类型" style="width: 100%">
-            <el-option v-for="vertex in vertexDefs" :key="vertex.id" :label="vertex.name" :value="vertex.label" />
+            <el-option v-for="vertex in vertexDefs" :key="vertex.id" :label="vertex.label" :value="vertex.label" />
           </el-select>
         </el-form-item>
         <el-form-item label="终点类型">
           <el-select v-model="edgeForm.endLabel" placeholder="请选择终点类型" style="width: 100%">
-            <el-option v-for="vertex in vertexDefs" :key="vertex.id" :label="vertex.name" :value="vertex.label" />
+            <el-option v-for="vertex in vertexDefs" :key="vertex.id" :label="vertex.label" :value="vertex.label" />
           </el-select>
         </el-form-item>
         <el-form-item label="描述">
@@ -388,11 +388,6 @@ function handleTabChange(tab) {
   }
 }
 
-function getVertexNameByLabel(label) {
-  if (!label) return '未定义'
-  const vertex = vertexDefs.value.find(n => n.label === label)
-  return vertex ? vertex.name : label
-}
 
 function handleAdd() {
   if (activeTab.value === 'vertices') {

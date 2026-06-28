@@ -2,8 +2,11 @@ package com.chenpp.graph.admin.service.impl;
 
 import com.chenpp.graph.admin.mapper.GraphVertexDefDao;
 import com.chenpp.graph.admin.model.GraphVertexDef;
+import com.chenpp.graph.admin.service.GraphSchemaService;
 import com.chenpp.graph.admin.service.GraphVertexDefService;
 import com.chenpp.graph.core.constant.GraphConstants;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +22,10 @@ import java.util.List;
 public class GraphVertexDefServiceImpl extends AbstractEntityDefService<GraphVertexDefDao, GraphVertexDef>
         implements GraphVertexDefService {
 
+    @Lazy
+    @Autowired
+    private GraphSchemaService graphSchemaService;
+
     @Override
     protected String getPropertyType() {
         return GraphConstants.VERTEX;
@@ -32,13 +39,21 @@ public class GraphVertexDefServiceImpl extends AbstractEntityDefService<GraphVer
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean saveVertexDefWithProperties(GraphVertexDef vertexDef) {
-        return saveEntityDefWithProperties(vertexDef);
+        boolean saved = saveEntityDefWithProperties(vertexDef);
+        if (saved && vertexDef.getGraphId() != null) {
+            graphSchemaService.publishVertexDef(vertexDef.getGraphId(), null, null, vertexDef.getLabel());
+        }
+        return saved;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean updateVertexDefWithProperties(GraphVertexDef vertexDef) {
-        return updateEntityDefWithProperties(vertexDef);
+        boolean updated = updateEntityDefWithProperties(vertexDef);
+        if (updated && vertexDef.getGraphId() != null) {
+            graphSchemaService.publishVertexDef(vertexDef.getGraphId(), null, null, vertexDef.getLabel());
+        }
+        return updated;
     }
 
     @Override

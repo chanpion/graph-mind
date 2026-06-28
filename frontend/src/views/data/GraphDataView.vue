@@ -27,7 +27,7 @@
                 :class="{ active: selectedType === 'vertex' && selectedTypeId === t.id }"
                 @click="selectVertexType(t)"
               >
-                <span class="tag-text">{{ t.name || t.label }}</span>
+                <span class="tag-text">{{ t.label || t.name }}</span>
               </div>
             </div>
             <el-empty v-else-if="graphLoaded" description="无顶点类型" :image-size="60" />
@@ -47,7 +47,7 @@
                 :class="{ active: selectedType === 'edge' && selectedTypeId === t.id }"
                 @click="selectEdgeType(t)"
               >
-                <span class="tag-text">{{ t.name || t.label }}</span>
+                <span class="tag-text">{{ t.label || t.name }}</span>
               </div>
             </div>
             <el-empty v-else-if="graphLoaded" description="无边类型" :image-size="60" />
@@ -683,7 +683,13 @@ function exportData(format) {
 }
 
 function exportJson(items) {
-  const typeLabel = selectedType.value === 'vertex' ? 'vertices' : 'edges'
+  const typeLabel = selectedType.value === 'vertex' ? 'vertex' : 'edge'
+  const graphCode = graphsStore.currentGraph?.code || graphId.value
+  const typeDefs = selectedType.value === 'vertex' ? vertexTypes.value : edgeTypes.value
+  const currentType = typeDefs.find(t => t.id === selectedTypeId.value)
+  const typeLabel_val = currentType?.label || 'unknown'
+  const now = new Date()
+  const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`
   const data = items.map(d => ({
     uid: d.uid,
     label: d.label,
@@ -694,14 +700,20 @@ function exportJson(items) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.href = url; a.download = `${typeLabel}_${graphId.value}_${Date.now()}.json`
+  a.href = url; a.download = `data_export_${typeLabel}_${graphCode}_${typeLabel_val}_${dateStr}.json`
   a.click()
   URL.revokeObjectURL(url)
   ElMessage.success('JSON 导出成功')
 }
 
 function exportCsv(items) {
-  const typeLabel = selectedType.value === 'vertex' ? 'vertices' : 'edges'
+  const typeLabel = selectedType.value === 'vertex' ? 'vertex' : 'edge'
+  const graphCode = graphsStore.currentGraph?.code || graphId.value
+  const typeDefs = selectedType.value === 'vertex' ? vertexTypes.value : edgeTypes.value
+  const currentType = typeDefs.find(t => t.id === selectedTypeId.value)
+  const typeLabel_val = currentType?.label || 'unknown'
+  const now = new Date()
+  const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`
   const fields = baseFields.value
   const headerRow = fields.join(',')
   const dataRows = items.map(d => {
@@ -719,7 +731,7 @@ function exportCsv(items) {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.href = url; a.download = `${typeLabel}_${graphId.value}_${Date.now()}.csv`
+  a.href = url; a.download = `data_export_${typeLabel}_${graphCode}_${typeLabel_val}_${dateStr}.csv`
   a.click()
   URL.revokeObjectURL(url)
   ElMessage.success('CSV 导出成功')

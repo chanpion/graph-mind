@@ -14,4 +14,6 @@ public class GraphConstants {
     public static final String VERTEX = "vertex";
     public static final String EDGE = "edge";
     public static final String LABEL = "label";
+    public static final String START_UID = "startUid";
+    public static final String END_UID = "endUid";
 }

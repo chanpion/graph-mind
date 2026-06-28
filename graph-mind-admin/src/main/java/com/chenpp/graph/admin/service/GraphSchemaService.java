@@ -21,6 +21,26 @@ public interface GraphSchemaService {
     void publishSchema(Long graphId, Long connectionId, String graphCode);
 
     /**
+     * 发布单个顶点定义到图数据库（增量发布）
+     *
+     * @param graphId       图ID（用于查 MySQL 定义，可为 null）
+     * @param connectionId  图数据库连接ID
+     * @param graphCode     图编码
+     * @param label         顶点标签名
+     */
+    void publishVertexDef(Long graphId, Long connectionId, String graphCode, String label);
+
+    /**
+     * 发布单个边定义到图数据库（增量发布）
+     *
+     * @param graphId       图ID（用于查 MySQL 定义，可为 null）
+     * @param connectionId  图数据库连接ID
+     * @param graphCode     图编码
+     * @param label         边类型名
+     */
+    void publishEdgeDef(Long graphId, Long connectionId, String graphCode, String label);
+
+    /**
      * 获取图Schema
      */
     GraphSchema getGraphSchema(Long graphId);

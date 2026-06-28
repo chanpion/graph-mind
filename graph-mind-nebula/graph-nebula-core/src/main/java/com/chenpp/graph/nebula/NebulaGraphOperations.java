@@ -294,9 +294,6 @@ public class NebulaGraphOperations implements GraphOperations {
     private ResultSet execute(NebulaConf nebulaConf, String nql) {
         log.info("Execute ngql: {}", nql);
         NebulaPool nebulaPool = NebulaClientFactory.getNebulaPool(nebulaConf);
-        if (nebulaPool == null) {
-            throw new GraphException("Nebula pool not initialized for " + nebulaConf.getHosts());
-        }
         try (Session session = nebulaPool.getSession(nebulaConf.getUsername(), nebulaConf.getPassword(), false)) {
             return session.execute(nql);
         } catch (Exception e) {
@@ -441,7 +438,6 @@ public class NebulaGraphOperations implements GraphOperations {
         indices.forEach(i -> log.info("Creating index: name={}, label={}, schemaType={}, property={}, propertyNames={}", i.getName(), i.getLabel(), i.getSchemaType(), i.getProperty(), i.getPropertyNames()));
         indices.forEach(index -> {
             try {
-                // 构建属性类型映射，用于创建索引时判断是否需要添加长度
                 Map<String, String> propTypeMap = index.getProperties().stream().collect(Collectors.toMap(
                         GraphProperty::getCode, p-> NebulaUtil.convertToNebulaDataType(p.getDataType())
 
@@ -610,9 +606,6 @@ public class NebulaGraphOperations implements GraphOperations {
 
     private <T> T withSession(SessionFunction<T> fn) throws Exception {
         NebulaPool nebulaPool = NebulaClientFactory.getNebulaPool(nebulaConf);
-        if (nebulaPool == null) {
-            throw new GraphException("Nebula pool not initialized for " + nebulaConf.getHosts());
-        }
         try (Session session = nebulaPool.getSession(
                 nebulaConf.getUsername(), nebulaConf.getPassword(), false)) {
             return fn.apply(session);
@@ -621,9 +614,6 @@ public class NebulaGraphOperations implements GraphOperations {
 
     private void withSession(SessionConsumer fn) throws Exception {
         NebulaPool nebulaPool = NebulaClientFactory.getNebulaPool(nebulaConf);
-        if (nebulaPool == null) {
-            throw new GraphException("Nebula pool not initialized for " + nebulaConf.getHosts());
-        }
         try (Session session = nebulaPool.getSession(
                 nebulaConf.getUsername(), nebulaConf.getPassword(), false)) {
             fn.accept(session);
@@ -696,12 +686,9 @@ public class NebulaGraphOperations implements GraphOperations {
             for (int i = 0; i < rs.rowsSize(); i++) {
                 ResultSet.Record record = rs.rowValues(i);
                 try {
-                    // 获取索引名称（第1列）
                     String indexName = record.get(0).asString();
-                    // 获取标签名称（第2列）
                     String indexedLabel = record.get(1).asString();
                     
-                    // 检查索引是否与要删除的标签相关
                     if (labelName.equalsIgnoreCase(indexedLabel)) {
                         String dropNql = "DROP " + schemaType + " INDEX IF EXISTS `" + indexName + "`";
                         log.info("Execute drop index NGQL: {}", dropNql);

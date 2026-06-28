@@ -99,7 +99,7 @@ public class GraphDataServiceImpl implements GraphDataService {
     }
 
     private ImportResult doImportData(Long graphId, Long typeId, Long connectionId, String graphCode,
-                                       String label, MultipartFile file, boolean isVertex) {
+                                      String label, MultipartFile file, boolean isVertex) {
         String dataType = isVertex ? "顶点" : "边";
         ImportResult result = new ImportResult();
         result.setTotalCount(0);
@@ -172,8 +172,7 @@ public class GraphDataServiceImpl implements GraphDataService {
                 GraphVertex vertex = new GraphVertex();
                 vertex.setUid(dataRow.get(GraphConstants.UID));
                 vertex.setLabel(label);
-                vertex.setProperties(DataTypeConverter.extractProperties(
-                        new HashMap<>(dataRow), Set.of(GraphConstants.LABEL)));
+                vertex.setProperties(extractProperties(new HashMap<>(dataRow), Set.of(GraphConstants.LABEL)));
                 batch.add(vertex);
 
                 if (batch.size() >= BATCH_SIZE || i == dataList.size() - 1) {
@@ -365,9 +364,6 @@ public class GraphDataServiceImpl implements GraphDataService {
     }
 
 
-    /**
-     * 批量导入边数据
-     */
     private int batchImportEdges(GraphDataOperations graphDataOperations, List<Map<String, String>> dataList, String label, List<String> errorMessages) {
         int successCount = 0;
         List<GraphEdge> batch = new ArrayList<>(BATCH_SIZE);
@@ -378,10 +374,9 @@ public class GraphDataServiceImpl implements GraphDataService {
                 GraphEdge edge = new GraphEdge();
                 edge.setUid(dataRow.get(GraphConstants.UID));
                 edge.setLabel(label);
-                edge.setStartUid(dataRow.getOrDefault("startUid", dataRow.get("source")));
-                edge.setEndUid(dataRow.getOrDefault("endUid", dataRow.get("target")));
-                edge.setProperties(DataTypeConverter.extractProperties(
-                        dataRow, Set.of("startUid", "endUid", "source", "target", "label")));
+                edge.setStartUid(dataRow.get(GraphConstants.START_UID));
+                edge.setEndUid(dataRow.get(GraphConstants.END_UID));
+                edge.setProperties(extractProperties(dataRow, Set.of(GraphConstants.START_UID, GraphConstants.END_UID, GraphConstants.LABEL)));
                 batch.add(edge);
 
                 if (batch.size() >= BATCH_SIZE || i == dataList.size() - 1) {
@@ -533,8 +528,8 @@ public class GraphDataServiceImpl implements GraphDataService {
 
             GraphVertex vertex = new GraphVertex();
             vertex.setUid(vertexId);
-            if (data.containsKey("label")) {
-                vertex.setLabel(data.get("label").toString());
+            if (data.containsKey(GraphConstants.LABEL)) {
+                vertex.setLabel(data.get(GraphConstants.LABEL).toString());
             }
 
             String label = vertex.getLabel();
@@ -559,13 +554,6 @@ public class GraphDataServiceImpl implements GraphDataService {
         }
     }
 
-    /**
-     * 根据属性类型转换值
-     */
-    private Object convertValueType(Object value, String type) {
-        return DataTypeConverter.convertValue(value, type);
-    }
-
     @Override
     public boolean updateEdgeData(Long graphId, String edgeId, Long connectionId, String graphCode, Map<String, Object> data) {
         try {
@@ -573,8 +561,8 @@ public class GraphDataServiceImpl implements GraphDataService {
 
             GraphEdge edge = new GraphEdge();
             edge.setUid(edgeId);
-            if (data.containsKey("label")) {
-                edge.setLabel(data.get("label").toString());
+            if (data.containsKey(GraphConstants.LABEL)) {
+                edge.setLabel(data.get(GraphConstants.LABEL).toString());
             }
 
             String label = edge.getLabel();
@@ -590,21 +578,21 @@ public class GraphDataServiceImpl implements GraphDataService {
 
             // 处理嵌套属性结构
             Map<String, Object> properties = handleProperties(data, propDefs);
-            if (data.containsKey("startUid")) {
-                edge.setStartUid(data.get("startUid").toString());
-            } else if (properties.containsKey("startUid")) {
-                edge.setStartUid(properties.get("startUid").toString());
+            if (data.containsKey(GraphConstants.START_UID)) {
+                edge.setStartUid(data.get(GraphConstants.START_UID).toString());
+            } else if (properties.containsKey(GraphConstants.START_UID)) {
+                edge.setStartUid(properties.get(GraphConstants.START_UID).toString());
             }
-            if (data.containsKey("endUid")) {
-                edge.setEndUid(data.get("endUid").toString());
-            } else if (properties.containsKey("endUid")) {
-                edge.setEndUid(properties.get("endUid").toString());
+            if (data.containsKey(GraphConstants.END_UID)) {
+                edge.setEndUid(data.get(GraphConstants.END_UID).toString());
+            } else if (properties.containsKey(GraphConstants.END_UID)) {
+                edge.setEndUid(properties.get(GraphConstants.END_UID).toString());
             }
             // 根据属性定义进行类型转换
             for (GraphPropertyDef propDef : propDefs) {
                 String code = propDef.getCode();
                 if (properties.containsKey(code)) {
-                    properties.put(code, convertValueType(properties.get(code), propDef.getType()));
+                    properties.put(code, DataTypeConverter.convertValue(properties.get(code), propDef.getType()));
                 }
             }
             edge.setProperties(properties);
@@ -792,11 +780,25 @@ public class GraphDataServiceImpl implements GraphDataService {
             for (GraphPropertyDef propDef : propertyDefList) {
                 String code = propDef.getCode();
                 if (properties.containsKey(code)) {
-                    properties.put(code, convertValueType(properties.get(code), propDef.getType()));
+                    properties.put(code, DataTypeConverter.convertValue(properties.get(code), propDef.getType()));
                 }
             }
         }
         properties.put(GraphConstants.UID, data.get(GraphConstants.UID));
         return properties;
+    }
+
+
+    public static Map<String, Object> extractProperties(Map<String, ?> raw, Set<String> excludeKeys) {
+        Map<String, Object> result = new HashMap<>();
+        if (raw == null) {
+            return result;
+        }
+        raw.forEach((key, value) -> {
+            if (excludeKeys == null || !excludeKeys.contains(key)) {
+                result.put(key, value);
+            }
+        });
+        return result;
     }
 }

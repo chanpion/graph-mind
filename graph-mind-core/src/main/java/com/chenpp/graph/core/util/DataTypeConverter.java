@@ -48,11 +48,11 @@ public final class DataTypeConverter {
         String typeLower = type.toLowerCase();
         try {
             return switch (typeLower) {
-                case "long", "int64", "integer", "int", "int32" -> toLong(value);
+                case "long", "int64", "integer", "int" -> toLong(value);
                 case "double", "float" -> toDouble(value);
                 case "boolean", "bool" -> toBoolean(value);
                 case "date", "datetime", "timestamp" -> toDate(value);
-                case "string", "text", "varchar" -> value.toString();
+                case "string", "text" -> value.toString();
                 default -> value;
             };
         } catch (Exception e) {
@@ -145,21 +145,5 @@ public final class DataTypeConverter {
                 || s.matches("\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2}");
     }
 
-    // ==================== 属性提取 ====================
 
-    /**
-     * 从原始属性 Map 中排除指定 key，返回新的属性 Map
-     */
-    public static Map<String, Object> extractProperties(Map<String, ?> raw, Set<String> excludeKeys) {
-        Map<String, Object> result = new HashMap<>();
-        if (raw == null) {
-            return result;
-        }
-        raw.forEach((key, value) -> {
-            if (excludeKeys == null || !excludeKeys.contains(key)) {
-                result.put(key, value);
-            }
-        });
-        return result;
-    }
 }

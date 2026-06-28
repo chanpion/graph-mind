@@ -42,6 +42,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 
 
 /**
@@ -445,6 +446,150 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         } else {
             log.info("Discovered graph Schema 已发布（无需更新 MySQL 元数据），graphId={}", graphId);
         }
+    }
+
+    @Override
+    public void publishVertexDef(Long graphId, Long connectionId, String graphCode, String label) {
+        // 未传 connectionId/graphCode 时从 graphId 解析
+        if ((connectionId == null || graphCode == null) && graphId != null) {
+            GraphInfo graphInfo = graphService.getById(graphId);
+            if (graphInfo != null) {
+                connectionId = graphInfo.getConnectionId();
+                graphCode = graphInfo.getCode();
+            }
+        }
+        GraphVertexDef vertexDef = null;
+        if (graphId != null && label != null) {
+            vertexDef = graphVertexDefService.getOne(
+                    new QueryWrapper<GraphVertexDef>().eq("graph_id", graphId).eq("label", label));
+        }
+
+        GraphEntity entity = new GraphEntity();
+        entity.setLabel(label);
+        if (vertexDef != null && vertexDef.getProperties() != null) {
+            entity.setProperties(transformGraphProperty(vertexDef.getProperties()));
+        }
+
+        GraphSchema schema = new GraphSchema();
+        schema.setEntities(List.of(entity));
+
+        publishSingleSchema(connectionId, graphCode, schema);
+
+        if (vertexDef != null) {
+            vertexDef.setStatus(1);
+            graphVertexDefService.updateById(vertexDef);
+        }
+    }
+
+    @Override
+    public void publishEdgeDef(Long graphId, Long connectionId, String graphCode, String label) {
+        // 未传 connectionId/graphCode 时从 graphId 解析
+        if ((connectionId == null || graphCode == null) && graphId != null) {
+            GraphInfo graphInfo = graphService.getById(graphId);
+            if (graphInfo != null) {
+                connectionId = graphInfo.getConnectionId();
+                graphCode = graphInfo.getCode();
+            }
+        }
+        GraphEdgeDef edgeDef = null;
+        if (graphId != null && label != null) {
+            edgeDef = graphEdgeDefService.getOne(
+                    new QueryWrapper<GraphEdgeDef>().eq("graph_id", graphId).eq("label", label));
+        }
+
+        GraphRelation relation = new GraphRelation();
+        relation.setLabel(label);
+        if (edgeDef != null) {
+            relation.setStartLabel(edgeDef.getStartLabel());
+            relation.setEndLabel(edgeDef.getEndLabel());
+            relation.setMultiple(edgeDef.getMultiple());
+            if (edgeDef.getProperties() != null) {
+                relation.setProperties(transformGraphProperty(edgeDef.getProperties()));
+            }
+        }
+
+        GraphSchema schema = new GraphSchema();
+        schema.setRelations(List.of(relation));
+
+        publishSingleSchema(connectionId, graphCode, schema);
+
+        if (edgeDef != null) {
+            edgeDef.setStatus(1);
+            graphEdgeDefService.updateById(edgeDef);
+        }
+    }
+
+    private void publishSingleSchema(Long connectionId, String graphCode, GraphSchema schema) {
+        GraphConnection connection = connectionService.getById(connectionId);
+        if (connection == null) {
+            log.error("图数据库连接不存在，connectionId={}", connectionId);
+            return;
+        }
+        GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graphCode);
+
+        GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+        GraphOperations graphOperations = graphClient.opsForGraph();
+
+        // 获取远端已发布的 Schema 来判断新标签还是变更
+        GraphSchema remoteSchema;
+        try {
+            remoteSchema = graphOperations.getPublishedSchema(graphConf);
+        } catch (Exception e) {
+            log.warn("获取远程Schema失败，将全量发布: {}", e.getMessage());
+            remoteSchema = new GraphSchema();
+        }
+
+        boolean hasNew = false;
+        boolean hasAlter = false;
+        GraphSchema newSchema = new GraphSchema();
+        GraphSchema alterSchema = new GraphSchema();
+
+        if (schema.getEntities() != null && !schema.getEntities().isEmpty()) {
+            Set<String> remoteLabels = remoteSchema.getEntities() != null
+                    ? remoteSchema.getEntities().stream().map(GraphEntity::getLabel).collect(Collectors.toSet())
+                    : Set.of();
+            List<GraphEntity> newEntities = new ArrayList<>();
+            List<GraphEntity> alterEntities = new ArrayList<>();
+            for (GraphEntity entity : schema.getEntities()) {
+                if (remoteLabels.contains(entity.getLabel())) {
+                    alterEntities.add(entity);
+                } else {
+                    newEntities.add(entity);
+                }
+            }
+            newSchema.setEntities(newEntities);
+            alterSchema.setEntities(alterEntities);
+            if (!newEntities.isEmpty()) hasNew = true;
+            if (!alterEntities.isEmpty()) hasAlter = true;
+        }
+
+        if (schema.getRelations() != null && !schema.getRelations().isEmpty()) {
+            Set<String> remoteEdges = remoteSchema.getRelations() != null
+                    ? remoteSchema.getRelations().stream().map(GraphRelation::getLabel).collect(Collectors.toSet())
+                    : Set.of();
+            List<GraphRelation> newRelations = new ArrayList<>();
+            List<GraphRelation> alterRelations = new ArrayList<>();
+            for (GraphRelation relation : schema.getRelations()) {
+                if (remoteEdges.contains(relation.getLabel())) {
+                    alterRelations.add(relation);
+                } else {
+                    newRelations.add(relation);
+                }
+            }
+            newSchema.setRelations(newRelations);
+            alterSchema.setRelations(alterRelations);
+            if (!newRelations.isEmpty()) hasNew = true;
+            if (!alterRelations.isEmpty()) hasAlter = true;
+        }
+
+        if (hasNew) {
+            graphOperations.applySchema(graphConf, newSchema);
+        }
+        if (hasAlter) {
+            graphOperations.alterSchema(graphConf, alterSchema);
+        }
+
+        log.info("增量 Schema 发布完成");
     }
 
     public List<GraphProperty> transformGraphProperty(List<GraphPropertyDef> properties) {

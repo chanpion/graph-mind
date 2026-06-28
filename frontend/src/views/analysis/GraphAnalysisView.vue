@@ -471,7 +471,7 @@ const entityOptions = computed(() => {
     children: (entity.properties && entity.properties.length > 0)
       ? entity.properties.map(prop => ({
           value: prop.code || prop.name,
-          label: prop.name || prop.code
+          label: prop.code || prop.name
         }))
       : [{ value: '_none', label: '（无属性）' }]
   }))

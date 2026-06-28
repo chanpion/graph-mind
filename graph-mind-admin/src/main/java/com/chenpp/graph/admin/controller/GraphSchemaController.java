@@ -76,7 +76,6 @@ public class GraphSchemaController {
         vertexDef.setGraphId(graphId);
         boolean success = vertexDefService.saveVertexDefWithProperties(vertexDef);
         if (success) {
-            graphSchemaService.publishSchema(graphId, null, null);
             return Result.success("新增节点定义成功");
         }
         return Result.error("新增节点定义失败");
@@ -102,8 +101,6 @@ public class GraphSchemaController {
         }
 
         if (success) {
-            Long targetGraphId = vertexDef.getGraphId() != null ? vertexDef.getGraphId() : graphId;
-            graphSchemaService.publishSchema(targetGraphId, connectionId, graphCode);
             return Result.success(vertexId != null && vertexId > 0 ? "更新节点定义成功" : "新增节点定义成功");
         }
         return Result.error(vertexId != null && vertexId > 0 ? "更新节点定义失败" : "新增节点定义失败");
@@ -143,7 +140,6 @@ public class GraphSchemaController {
         edgeDef.setGraphId(graphId);
         boolean success = edgeDefService.saveEdgeDefWithProperties(edgeDef);
         if (success) {
-            graphSchemaService.publishSchema(graphId, null, null);
             return Result.success("新增边定义成功");
         }
         return Result.error("新增边定义失败");
@@ -155,7 +151,6 @@ public class GraphSchemaController {
         edgeDef.setGraphId(graphId);
         boolean success = edgeDefService.updateEdgeDefWithProperties(edgeDef);
         if (success) {
-            graphSchemaService.publishSchema(graphId, null, null);
             return Result.success("更新边定义成功");
         }
         return Result.error("更新边定义失败");

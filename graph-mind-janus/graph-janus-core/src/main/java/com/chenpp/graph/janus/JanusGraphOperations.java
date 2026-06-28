@@ -57,7 +57,6 @@ public class JanusGraphOperations implements GraphOperations {
 
     @Override
     public void createGraph(GraphConf graphConf) throws GraphException {
-        // JanusGraph中创建图空间的操作通常在配置中完成，这里可以做一些初始化工作
         try {
             if (graph == null || graph.isClosed()) {
                 log.error("JanusGraph instance is not available");
@@ -84,7 +83,6 @@ public class JanusGraphOperations implements GraphOperations {
     public void dropGraph(GraphConf graphConf) throws GraphException {
         try {
             if (graph != null && !graph.isClosed()) {
-                // 注意：这个操作会关闭图数据库并删除其数据
                 graph.close();
                 log.info("Closed graph instance for: {}", graphConf.getGraphCode());
             }
@@ -145,13 +143,7 @@ public class JanusGraphOperations implements GraphOperations {
             log.info("Successfully applied schema to graph: {}", graphConf.getGraphCode());
         } catch (Exception e) {
             log.error("Failed to apply schema to graph: {}", graphConf.getGraphCode(), e);
-            if (management != null) {
-                try {
-                    management.rollback();
-                } catch (Exception rollbackException) {
-                    log.warn("Failed to rollback management transaction", rollbackException);
-                }
-            }
+            JanusUtil.safeRollback(management);
             throw new GraphException("Failed to apply schema", e);
         }
     }
@@ -164,16 +156,13 @@ public class JanusGraphOperations implements GraphOperations {
         try {
             management = graph.openManagement();
 
-            // 获取顶点标签
             List<GraphEntity> entities = getVertexLabels(management);
             schema.setEntities(entities);
 
-            // 获取边标签
             List<GraphRelation> relations = getEdgeLabels(management);
             schema.setRelations(relations);
 
             getPropertyKeys(management);
-            // 获取索引
             List<GraphIndex> indexes = getIndices(management);
             schema.setIndexes(indexes);
 
@@ -184,13 +173,7 @@ public class JanusGraphOperations implements GraphOperations {
             log.error("Failed to get published schema for graph: {}", graphConf.getGraphCode(), e);
             throw new GraphException("Failed to get published schema", e);
         } finally {
-            if (management != null) {
-                try {
-                    management.rollback(); // 只读操作，回滚以避免持有管理会话
-                } catch (Exception rollbackException) {
-                    log.warn("Failed to rollback management transaction", rollbackException);
-                }
-            }
+            JanusUtil.safeRollback(management);
         }
     }
 
@@ -202,7 +185,6 @@ public class JanusGraphOperations implements GraphOperations {
             if (!vertexLabel.isPartitioned() && !vertexLabel.isStatic()) {
                 GraphEntity entity = new GraphEntity();
                 entity.setLabel(vertexLabel.name());
-
                 List<GraphProperty> properties = new ArrayList<>();
                 for (PropertyKey pk : vertexLabel.mappedProperties()) {
                     GraphProperty prop = new GraphProperty();
@@ -540,17 +522,11 @@ public class JanusGraphOperations implements GraphOperations {
                 log.info("Successfully dropped vertex label: {}", label);
             } else {
                 log.warn("Vertex label {} does not exist", label);
-                management.rollback();
+                JanusUtil.safeRollback(management);
             }
         } catch (Exception e) {
             log.error("Failed to drop vertex label: {}", label, e);
-            if (management != null) {
-                try {
-                    management.rollback();
-                } catch (Exception rollbackException) {
-                    log.warn("Failed to rollback management transaction", rollbackException);
-                }
-            }
+            JanusUtil.safeRollback(management);
             throw new GraphException("Failed to drop vertex label: " + label, e);
         }
     }
@@ -573,17 +549,11 @@ public class JanusGraphOperations implements GraphOperations {
                 log.info("Successfully dropped edge label: {}", label);
             } else {
                 log.warn("Edge label {} does not exist", label);
-                management.rollback();
+                JanusUtil.safeRollback(management);
             }
         } catch (Exception e) {
             log.error("Failed to drop edge label: {}", label, e);
-            if (management != null) {
-                try {
-                    management.rollback();
-                } catch (Exception rollbackException) {
-                    log.warn("Failed to rollback management transaction", rollbackException);
-                }
-            }
+            JanusUtil.safeRollback(management);
             throw new GraphException("Failed to drop edge label: " + label, e);
         }
     }

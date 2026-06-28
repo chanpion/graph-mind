@@ -58,8 +58,8 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
         }
         try {
             // 获取该标签的属性类型映射
-            Map<String, DataType> propertyTypes = getTagPropertyTypes(vertex.getLabel());
-            
+            Map<String, DataType> propertyTypes = getPropertyTypes(vertex.getLabel(), true);
+
             String nql = NebulaUtil.buildInsertVertex(vertex, propertyTypes);
             log.info("Execute NGQL: {}", nql);
 
@@ -83,10 +83,9 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
         if (MapUtils.isEmpty(vertex.getProperties())) {
             throw new GraphException(ErrorCode.BAD_REQUEST, "Vertex properties cannot be empty");
         }
-        // Nebula中更新顶点使用UPDATE语法
         try {
             String vid = vertex.getUid();
-            Map<String, DataType> propertyTypes = getTagPropertyTypes(vertex.getLabel());
+            Map<String, DataType> propertyTypes = getPropertyTypes(vertex.getLabel(), true);
             String setClause = vertex.getProperties().entrySet().stream()
                     .map(entry -> entry.getKey() + " = " + NebulaUtil.formatValue(entry.getValue(), propertyTypes != null ? propertyTypes.get(entry.getKey()) : null))
                     .reduce((a, b) -> a + ", " + b)
@@ -117,28 +116,23 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
         }
 
         try {
-            // 按标签分组顶点
             Map<String, List<GraphVertex>> verticesByLabel = vertices.stream()
                     .filter(vertex -> MapUtils.isNotEmpty(vertex.getProperties()))
                     .collect(Collectors.groupingBy(GraphVertex::getLabel));
 
-            // 为每个标签构建批量插入语句
             verticesByLabel.forEach((label, vertexList) -> {
                 if (CollectionUtils.isEmpty(vertexList)) {
                     return;
                 }
-                // 获取属性键（假设同标签的顶点具有相同的属性结构）
                 String keys = String.join(",", vertexList.get(0).getProperties().keySet());
-                
-                // 获取该标签的属性类型映射
-                Map<String, DataType> propertyTypes = getTagPropertyTypes(label);
+
+                Map<String, DataType> propertyTypes = getPropertyTypes(label, true);
 
                 String valuesClause = vertexList.stream().map(vertex -> {
                     String propValues = NebulaUtil.buildPropertyValuesClause(vertex.getProperties(), propertyTypes);
                     return String.format("\"%s\":(%s)", vertex.getUid(), propValues);
                 }).collect(Collectors.joining(","));
 
-                // 构建完整的NGQL语句
                 String nql = NebulaUtil.buildInsertVertexBatch(label, keys, valuesClause);
                 log.info("Execute batch insert NGQL: {}", nql);
 
@@ -166,7 +160,6 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
     @Override
     public boolean deleteVertex(GraphVertex vertex) throws GraphException {
         try {
-            // 删除顶点及其关联的边
             String nql = NebulaUtil.buildDeleteVertex(vertex.getUid());
             log.info("Execute NGQL: {}", nql);
 
@@ -187,9 +180,8 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
     @Override
     public GraphEdge addEdge(GraphEdge edge) throws GraphException {
         try {
-            // 获取该边类型的属性类型映射
-            Map<String, DataType> propertyTypes = getEdgePropertyTypes(edge.getLabel());
-            
+            Map<String, DataType> propertyTypes = getPropertyTypes(edge.getLabel(), false);
+
             // 构建插入边的NGQL语句
             // 语法: INSERT EDGE edge_type (prop1, prop2) VALUES src_vid -> dst_vid @rank: (val1, val2)
             String keys = String.join(",", edge.getProperties().keySet());
@@ -221,11 +213,9 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
         }
 
         try {
-            // 按标签分组边
             Map<String, List<GraphEdge>> edgesByLabel = edges.stream()
                     .collect(Collectors.groupingBy(GraphEdge::getLabel));
 
-            // 为每个标签构建批量插入语句
             for (Map.Entry<String, List<GraphEdge>> entry : edgesByLabel.entrySet()) {
                 String label = entry.getKey();
                 List<GraphEdge> edgeList = entry.getValue();
@@ -234,17 +224,14 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                     continue;
                 }
 
-                // 获取属性键（假设同标签的边具有相同的属性结构）
                 GraphEdge firstEdge = edgeList.get(0);
                 String propKeys = "";
                 if (firstEdge.getProperties() != null && !firstEdge.getProperties().isEmpty()) {
                     propKeys = String.join(", ", firstEdge.getProperties().keySet());
                 }
-                
-                // 获取该边类型的属性类型映射
-                Map<String, DataType> propertyTypes = getEdgePropertyTypes(label);
 
-                // 构建批量插入语句的值部分
+                Map<String, DataType> propertyTypes = getPropertyTypes(label, false);
+
                 StringBuilder valuesBuilder = new StringBuilder();
                 String valuesStr = edgeList.stream().map(edge -> {
                     String propValues = NebulaUtil.buildPropertyValuesClause(edge.getProperties(), propertyTypes);
@@ -252,7 +239,6 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                 }).collect(Collectors.joining(", "));
                 valuesBuilder.append(valuesStr);
 
-                // 构建完整的NGQL语句
                 String nql = NebulaUtil.buildInsertEdgeBatch(label, propKeys, valuesBuilder.toString());
                 log.info("Execute batch insert NGQL: {}", nql);
 
@@ -273,10 +259,8 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
     @Override
     public GraphEdge updateEdge(GraphEdge edge) throws GraphException {
         try {
-            // 获取该边类型的属性类型映射
-            Map<String, DataType> propertyTypes = getEdgePropertyTypes(edge.getLabel());
-            
-            // 添加SET子句
+            Map<String, DataType> propertyTypes = getPropertyTypes(edge.getLabel(), false);
+
             String setClause = edge.getProperties().entrySet().stream()
                     .map(entry -> entry.getKey() + " = " + NebulaUtil.formatValue(entry.getValue(), propertyTypes != null ? propertyTypes.get(entry.getKey()) : null))
                     .reduce((a, b) -> a + ", " + b)
@@ -335,11 +319,9 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                         + ", errorMessage: " + resultSet.getErrorMessage());
             }
 
-            // 使用 Map 做去重，key 为 uid 保证顺序
             Map<String, GraphVertex> vertexMap = new LinkedHashMap<>();
             Map<String, GraphEdge> edgeMap = new LinkedHashMap<>();
 
-            // 解析结果集
             for (int i = 0; i < resultSet.rowsSize(); i++) {
                 ResultSet.Record record = resultSet.rowValues(i);
                 for (ValueWrapper value : record.values()) {
@@ -401,9 +383,7 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
         }
 
         try {
-            // 添加ID列表
             String idListStr = idList.stream().map(id -> "'" + id + "'").collect(Collectors.joining(", "));
-            // 根据Nebula Graph查询规范，必须添加LIMIT子句
             String ngql = NebulaUtil.buildMatchVertices(idListStr);
             log.info("Execute NGQL: {}", ngql);
 
@@ -417,7 +397,6 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
 
             List<GraphVertex> vertices = new ArrayList<>();
 
-            // 解析结果集
             for (int i = 0; i < resultSet.rowsSize(); i++) {
                 ResultSet.Record record = resultSet.rowValues(i);
                 for (ValueWrapper value : record.values()) {
@@ -440,7 +419,6 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
 
     @Override
     public GraphData expand(String vertexId, int depth) throws GraphException {
-        // 使用 MATCH 匹配从起点出发的所有可达路径，返回点、边、关系
         String ngql = NebulaUtil.buildExpandPath(vertexId, depth);
         return query(ngql);
     }
@@ -504,7 +482,6 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
     public GraphSummary getSummary() throws GraphException {
         GraphSummary summary = new GraphSummary();
         try {
-            // 提交STATS作业
             String submitStatsJob = NebulaUtil.buildSubmitJobStats();
             ResultSet submitResult = sessionPool.execute(submitStatsJob);
             if (!submitResult.isSucceeded()) {
@@ -514,14 +491,11 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                         + ", errorMessage: " + submitResult.getErrorMessage());
             }
 
-            // 获取作业ID
             long jobId = submitResult.rowValues(0).get(0).asLong();
 
-            // 轮询检查作业状态，直到完成
             String showJob = NebulaUtil.buildShowJob(jobId);
             ResultSet jobResult = null;
             int retryCount = 0;
-            // 最多重试30次，每次间隔100ms，总共3秒
             final int maxRetries = 30;
             while (retryCount < maxRetries) {
                 Thread.sleep(1000);
@@ -532,7 +506,6 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                     throw new GraphException("Failed to get job status, errorCode: " + jobResult.getErrorCode()
                             + ", errorMessage: " + jobResult.getErrorMessage());
                 }
-                // 检查作业状态
                 String status = jobResult.rowValues(1).get(2).asString();
                 if ("FINISHED".equals(status)) {
                     break;
@@ -547,7 +520,6 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                 throw new GraphException("STATS job timeout");
             }
 
-            // 获取统计信息
             String showStats = NebulaUtil.buildShowStats();
             ResultSet statsResult = sessionPool.execute(showStats);
             if (!statsResult.isSucceeded()) {
@@ -557,7 +529,6 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                         + ", errorMessage: " + statsResult.getErrorMessage());
             }
 
-            // 解析统计信息
             Map<String, Integer> vertexLabelCount = new HashMap<>();
             Map<String, Integer> edgeLabelCount = new HashMap<>();
 
@@ -657,18 +628,13 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
         return edge.getStartUid() + "->" + edge.getEndUid() + "#" + edge.getLabel();
     }
 
-    /**
-     * 获取指定标签的属性类型映射
-     * @param tagName 标签名称
-     * @return 属性名到数据类型的映射
-     */
-    private Map<String, DataType> getTagPropertyTypes(String tagName) {
+    private Map<String, DataType> getPropertyTypes(String label, boolean isVertex) {
+        String nql = isVertex ? NebulaUtil.buildDescribeTag(label) : NebulaUtil.buildDescribeEdge(label);
         try {
-            String nql = NebulaUtil.buildDescribeTag(tagName);
             ResultSet resultSet = sessionPool.execute(nql);
             if (!resultSet.isSucceeded()) {
-                log.warn("Failed to describe tag {}, errorCode: {}, errorMessage: {}", 
-                        tagName, resultSet.getErrorCode(), resultSet.getErrorMessage());
+                log.warn("Failed to describe tag/edge {}, errorCode: {}, errorMessage: {}",
+                        label, resultSet.getErrorCode(), resultSet.getErrorMessage());
                 return null;
             }
 
@@ -682,39 +648,8 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
             }
             return propertyTypes;
         } catch (Exception e) {
-            log.warn("Failed to get tag property types for {}: {}", tagName, e.getMessage());
+            log.warn("Failed to get property types for {}: {}", label, e.getMessage());
             return null;
         }
     }
-
-    /**
-     * 获取指定边类型的属性类型映射
-     * @param edgeName 边类型名称
-     * @return 属性名到数据类型的映射
-     */
-    private Map<String, DataType> getEdgePropertyTypes(String edgeName) {
-        try {
-            String nql = NebulaUtil.buildDescribeEdge(edgeName);
-            ResultSet resultSet = sessionPool.execute(nql);
-            if (!resultSet.isSucceeded()) {
-                log.warn("Failed to describe edge {}, errorCode: {}, errorMessage: {}", 
-                        edgeName, resultSet.getErrorCode(), resultSet.getErrorMessage());
-                return null;
-            }
-
-            Map<String, DataType> propertyTypes = new HashMap<>();
-            for (int i = 0; i < resultSet.rowsSize(); i++) {
-                ResultSet.Record record = resultSet.rowValues(i);
-                String fieldName = record.get(0).asString();
-                String typeName = record.get(1).asString();
-                DataType dataType = DataType.instanceOf(typeName);
-                propertyTypes.put(fieldName, dataType);
-            }
-            return propertyTypes;
-        } catch (Exception e) {
-            log.warn("Failed to get edge property types for {}: {}", edgeName, e.getMessage());
-            return null;
-        }
-    }
-
 }

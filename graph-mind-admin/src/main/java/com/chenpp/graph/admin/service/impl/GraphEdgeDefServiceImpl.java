@@ -3,7 +3,10 @@ package com.chenpp.graph.admin.service.impl;
 import com.chenpp.graph.admin.mapper.GraphEdgeDefDao;
 import com.chenpp.graph.admin.model.GraphEdgeDef;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
+import com.chenpp.graph.admin.service.GraphSchemaService;
 import com.chenpp.graph.core.constant.GraphConstants;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +22,10 @@ import java.util.List;
 public class GraphEdgeDefServiceImpl extends AbstractEntityDefService<GraphEdgeDefDao, GraphEdgeDef>
         implements GraphEdgeDefService {
 
+    @Lazy
+    @Autowired
+    private GraphSchemaService graphSchemaService;
+
     @Override
     protected String getPropertyType() {
         return GraphConstants.EDGE;
@@ -32,13 +39,21 @@ public class GraphEdgeDefServiceImpl extends AbstractEntityDefService<GraphEdgeD
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean saveEdgeDefWithProperties(GraphEdgeDef edgeDef) {
-        return saveEntityDefWithProperties(edgeDef);
+        boolean saved = saveEntityDefWithProperties(edgeDef);
+        if (saved && edgeDef.getGraphId() != null) {
+            graphSchemaService.publishEdgeDef(edgeDef.getGraphId(), null, null, edgeDef.getLabel());
+        }
+        return saved;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean updateEdgeDefWithProperties(GraphEdgeDef edgeDef) {
-        return updateEntityDefWithProperties(edgeDef);
+        boolean updated = updateEntityDefWithProperties(edgeDef);
+        if (updated && edgeDef.getGraphId() != null) {
+            graphSchemaService.publishEdgeDef(edgeDef.getGraphId(), null, null, edgeDef.getLabel());
+        }
+        return updated;
     }
 
     @Override
