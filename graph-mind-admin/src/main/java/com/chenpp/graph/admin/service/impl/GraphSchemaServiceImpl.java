@@ -718,8 +718,15 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
         GraphOperations graphOperations = graphClient.opsForGraph();
 
-        graphOperations.createGraph(graphConf);
-        log.info("已在图数据库中创建图，graphCode={}", graphInfo.getCode());
+        List<com.chenpp.graph.core.schema.Graph> existingGraphs = graphOperations.listGraphs(graphConf);
+        boolean graphExists = existingGraphs.stream()
+                .anyMatch(g -> graphInfo.getCode().equals(g.getCode()));
+        if (!graphExists) {
+            graphOperations.createGraph(graphConf);
+            log.info("已在图数据库中创建图，graphCode={}", graphInfo.getCode());
+        } else {
+            log.info("图已存在于图数据库中，跳过创建，graphCode={}", graphInfo.getCode());
+        }
 
         graphInfo.setStatus(0);
         graphInfo.setGraphType(connection.getGraphTypeEnum());
