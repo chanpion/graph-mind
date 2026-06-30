@@ -68,7 +68,7 @@ public interface GraphSchemaService {
     /**
      * 导入图Schema
      */
-    void importSchema(Long graphId, SchemaImportRequest importDTO);
+    void importSchema(Long graphId, SchemaImportRequest importRequest);
 
     /**
      * 在图数据库中创建图（不发布Schema）

@@ -1,13 +1,6 @@
 package com.chenpp.graph.admin.service.impl;
 
-import com.chenpp.graph.admin.model.GraphConnection;
-import com.chenpp.graph.admin.model.GraphEdgeDef;
-import com.chenpp.graph.admin.model.GraphEntityDef;
-import com.chenpp.graph.admin.model.GraphInfo;
-import com.chenpp.graph.admin.model.GraphPropertyDef;
-import com.chenpp.graph.admin.model.GraphVertexDef;
-import com.chenpp.graph.admin.model.SchemaExportDTO;
-import com.chenpp.graph.admin.model.SchemaImportDTO;
+import com.chenpp.graph.admin.model.*;
 import com.chenpp.graph.admin.service.GraphConnectionService;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
 import com.chenpp.graph.admin.service.GraphPropertyDefService;
@@ -160,54 +153,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         return properties.stream()
                 .map(this::buildPropertyDef)
                 .collect(Collectors.toList());
-    }
-
-    @Override
-    public void mergeDiscoveredVertexProperties(List<GraphVertexDef> vertexDefs, Long graphId, Long connectionId, String graphCode) {
-        mergeDiscoveredEntityProperties(vertexDefs, graphId, connectionId, graphCode, true);
-    }
-
-    @Override
-    public void mergeDiscoveredEdgeProperties(List<GraphEdgeDef> edgeDefs, Long graphId, Long connectionId, String graphCode) {
-        mergeDiscoveredEntityProperties(edgeDefs, graphId, connectionId, graphCode, false);
-    }
-
-    private <T extends GraphEntityDef> void mergeDiscoveredEntityProperties(
-            List<T> defs, Long graphId, Long connectionId, String graphCode, boolean isVertex) {
-        GraphSchema schema = discoverSchema(connectionId, graphCode, graphId);
-        if (schema == null) {
-            return;
-        }
-        Map<String, List<GraphProperty>> labelPropsMap;
-        if (isVertex) {
-            List<GraphEntity> entities = schema.getEntities();
-            if (entities == null) {
-                return;
-            }
-            labelPropsMap = entities.stream()
-                    .collect(Collectors.toMap(GraphEntity::getLabel, GraphEntity::getProperties, (a, b) -> a));
-        } else {
-            List<GraphRelation> relations = schema.getRelations();
-            if (relations == null) {
-                return;
-            }
-            labelPropsMap = relations.stream()
-                    .collect(Collectors.toMap(GraphRelation::getLabel, GraphRelation::getProperties, (a, b) -> a));
-        }
-        for (T def : defs) {
-            List<GraphProperty> discovered = labelPropsMap.get(def.getLabel());
-            if (discovered != null && !discovered.isEmpty()) {
-                List<GraphPropertyDef> existing = def.getProperties() != null
-                        ? def.getProperties() : new ArrayList<>();
-                for (GraphProperty p : discovered) {
-                    boolean exists = existing.stream().anyMatch(e -> p.getCode().equals(e.getCode()));
-                    if (!exists) {
-                        existing.add(buildPropertyDef(p));
-                    }
-                }
-                def.setProperties(existing);
-            }
-        }
     }
 
     private GraphPropertyDef buildPropertyDef(GraphProperty p) {
@@ -411,7 +356,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         if (!alterEntityIndexes.isEmpty()) {
             GraphSchema alterIndexSchema = new GraphSchema();
             alterIndexSchema.setIndexes(alterEntityIndexes);
-            // 重试机制：schema 变更后索引创建可能需要等待属性就绪
             int maxRetries = 3;
             for (int attempt = 0; attempt < maxRetries; attempt++) {
                 try {
@@ -466,7 +410,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
 
     @Override
     public void publishVertexDef(Long graphId, Long connectionId, String graphCode, String label) {
-        // 未传 connectionId/graphCode 时从 graphId 解析
         if ((connectionId == null || graphCode == null) && graphId != null) {
             GraphInfo graphInfo = graphService.getById(graphId);
             if (graphInfo != null) {
@@ -499,7 +442,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
 
     @Override
     public void publishEdgeDef(Long graphId, Long connectionId, String graphCode, String label) {
-        // 未传 connectionId/graphCode 时从 graphId 解析
         if ((connectionId == null || graphCode == null) && graphId != null) {
             GraphInfo graphInfo = graphService.getById(graphId);
             if (graphInfo != null) {
@@ -628,7 +570,7 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
     }
 
     @Override
-    public SchemaExportDTO exportSchema(Long graphId) {
+    public SchemaExportResponse exportSchema(Long graphId) {
         GraphInfo graphInfo = graphService.getById(graphId);
         if (graphInfo == null) {
             throw new GraphException("图不存在");
@@ -636,7 +578,7 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         List<GraphVertexDef> vertices = graphVertexDefService.getVertexDefsByGraphId(graphId, null);
         List<GraphEdgeDef> edges = graphEdgeDefService.getEdgeDefsByGraphId(graphId, null);
 
-        SchemaExportDTO dto = new SchemaExportDTO();
+        SchemaExportResponse dto = new SchemaExportResponse();
         dto.setExportedAt(LocalDateTime.now().toString());
         dto.setGraphId(graphId);
         dto.setGraphCode(graphInfo.getCode());
@@ -647,18 +589,18 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
 
     @Transactional(rollbackFor = Exception.class)
     @Override
-    public void importSchema(Long graphId, SchemaImportDTO importDTO) {
-        if (importDTO == null) {
+    public void importSchema(Long graphId, SchemaImportRequest importRequest) {
+        if (importRequest == null) {
             throw new GraphException("导入数据为空");
         }
 
-        List<GraphVertexDef> importVertices = importDTO.getVertices();
-        List<GraphEdgeDef> importEdges = importDTO.getEdges();
+        List<GraphVertexDef> importVertices = importRequest.getVertices();
+        List<GraphEdgeDef> importEdges = importRequest.getEdges();
         if (CollectionUtils.isEmpty(importVertices) && CollectionUtils.isEmpty(importEdges)) {
             throw new GraphException("导入数据为空");
         }
 
-        String mode = importDTO.getMode();
+        String mode = importRequest.getMode();
         boolean replace = "replace".equalsIgnoreCase(mode);
 
         if (replace) {
