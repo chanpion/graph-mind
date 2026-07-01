@@ -71,7 +71,7 @@ const mockSchemas = {
     vertexLabels: [
       {
         id: 101, label: 'Person', name: '人员',
-        description: '人员节点',
+        description: '人员顶点',
         status: 1,
         properties: [
           { code: 'uid', name: '唯一标识', type: 'String', indexed: true, status: 1 },
@@ -82,7 +82,7 @@ const mockSchemas = {
       },
       {
         id: 102, label: 'Company', name: '公司',
-        description: '公司节点',
+        description: '公司顶点',
         status: 1,
         properties: [
           { code: 'uid', name: '唯一标识', type: 'String', indexed: true, status: 1 },
@@ -123,7 +123,7 @@ const mockSchemas = {
     vertexLabels: [
       {
         id: 103, label: 'Product', name: '产品',
-        description: '产品节点',
+        description: '产品顶点',
         status: 1,
         properties: [
           { code: 'uid', name: '唯一标识', type: 'String', indexed: true, status: 1 },

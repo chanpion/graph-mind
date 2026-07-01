@@ -36,52 +36,23 @@
                   <el-input v-model="analysisForm.queryValue" placeholder="请输入查询值"/>
                 </el-form-item>
 
-                <!-- 拓展配置 -->
-                <el-collapse v-model="expandConfigVisible" accordion>
-                  <el-collapse-item title="拓展配置" name="1">
-                    <div class="config-item">
-                      <el-form-item label="返回最大路径数：" prop="maxPaths">
-                        <el-input-number
-                            v-model="analysisForm.maxPaths"
-                            :min="1"
-                            :max="10000"
-                            style="width: 100%"
-                        />
-                      </el-form-item>
+                <el-form-item label="拓展层数：" prop="layers">
+                  <el-input-number
+                      v-model="analysisForm.layers"
+                      :min="1"
+                      :max="10"
+                      style="width: 100%"
+                  />
+                </el-form-item>
 
-                      <el-form-item label="拓展层数：" prop="layers">
-                        <el-input-number
-                            v-model="analysisForm.layers"
-                            :min="1"
-                            :max="10"
-                            style="width: 100%"
-                        />
-                      </el-form-item>
-
-                      <el-form-item label="拓展实体：" prop="expandEntities">
-                        <el-select
-                            v-model="analysisForm.expandEntities"
-                            multiple
-                            placeholder="选择拓展实体"
-                            style="width: 100%"
-                        >
-                          <el-option label="全部" value="all"/>
-                        </el-select>
-                      </el-form-item>
-
-                      <el-form-item label="拓展关系：" prop="expandRelations">
-                        <el-select
-                            v-model="analysisForm.expandRelations"
-                            multiple
-                            placeholder="选择拓展关系"
-                            style="width: 100%"
-                        >
-                          <el-option label="全部" value="all"/>
-                        </el-select>
-                      </el-form-item>
-                    </div>
-                  </el-collapse-item>
-                </el-collapse>
+                <el-form-item label="最大返回路径数：" prop="maxPaths">
+                  <el-input-number
+                      v-model="analysisForm.maxPaths"
+                      :min="1"
+                      :max="10000"
+                      style="width: 100%"
+                  />
+                </el-form-item>
 
                 <!-- 执行按钮 -->
                 <el-form-item>
@@ -164,26 +135,6 @@
             </el-tab-pane>
 
           </el-tabs>
-
-          <!-- 分析结果展示 -->
-          <div v-if="analysisResult && !analysisLoading && (activeAlgorithmTab === 'pathQuery' || analysisForm.algorithm === 'shortestPath')" class="result-section">
-            <el-divider>分析结果</el-divider>
-            <div class="result-content">
-              <template v-if="activeAlgorithmTab === 'pathQuery' || analysisForm.algorithm === 'shortestPath'">
-                <h4>最短路径</h4>
-                <p>路径长度: {{ analysisResult.pathLength }}</p>
-                <p>路径顶点数: {{ analysisResult.vertexCount }}</p>
-                <el-button
-                    type="primary"
-                    size="small"
-                    @click="highlightPath"
-                    v-if="analysisResult.path && analysisResult.path.length > 0"
-                >
-                  高亮显示路径
-                </el-button>
-              </template>
-            </div>
-          </div>
         </div>
       </el-col>
 

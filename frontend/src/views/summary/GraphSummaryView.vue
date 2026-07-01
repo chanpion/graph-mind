@@ -8,7 +8,11 @@
       <template #header>
         <div class="card-header">
           <div class="header-left">
-            <span v-if="currentGraph">当前图：{{ currentGraph.graphName || currentGraph.name }}</span>
+            <span v-if="currentGraph">当前图：{{ currentGraph.graphName || currentGraph.name }}
+              <span v-if="currentGraph.code || currentGraph.graphId" class="graph-id-badge">
+                ({{ currentGraph.code || 'ID: ' + currentGraph.graphId }})
+              </span>
+            </span>
             <span v-else>未选择图</span>
           </div>
           <div class="header-right">
@@ -31,7 +35,7 @@
             <el-col :span="6">
               <div class="stat-item">
                 <div class="stat-value">{{ statistics.vertexCount || 0 }}</div>
-                <div class="stat-label">节点总数</div>
+                <div class="stat-label">顶点总数</div>
               </div>
             </el-col>
             <el-col :span="6">
@@ -43,7 +47,7 @@
             <el-col :span="6">
               <div class="stat-item">
                 <div class="stat-value">{{ Object.keys(statistics.vertexLabelCount || {}).length }}</div>
-                <div class="stat-label">节点标签数</div>
+                <div class="stat-label">顶点类型数</div>
               </div>
             </el-col>
             <el-col :span="6">
@@ -54,18 +58,18 @@
             </el-col>
           </el-row>
 
-          <!-- 节点标签统计 & 边类型统计 左右结构 -->
+          <!-- 顶点标签统计 & 边类型统计 左右结构 -->
           <el-row :gutter="20" class="detail-stats">
             <el-col :span="12">
               <el-card class="detail-card" shadow="never">
                 <template #header>
                   <div class="detail-header">
-                    <span>节点类型统计</span>
+                    <span>顶点类型统计</span>
                   </div>
                 </template>
                 <el-table :data="vertexLabelStats" class="full-width-table">
-                  <el-table-column prop="label" label="类型名称" />
-                  <el-table-column prop="count" label="节点数" />
+                  <el-table-column prop="label" label="类型" />
+                  <el-table-column prop="count" label="总数" />
                 </el-table>
               </el-card>
             </el-col>
@@ -77,8 +81,8 @@
                   </div>
                 </template>
                 <el-table :data="edgeLabelStats" class="full-width-table">
-                  <el-table-column prop="label" label="边类型" />
-                  <el-table-column prop="count" label="边数" />
+                  <el-table-column prop="label" label="类型" />
+                  <el-table-column prop="count" label="总数" />
                 </el-table>
               </el-card>
             </el-col>
@@ -263,5 +267,11 @@ watch(() => graphsStore.currentGraph, (newGraph) => {
 
 .full-width-table {
   width: 100%;
+}
+
+.graph-id-badge {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  font-weight: normal;
 }
 </style>

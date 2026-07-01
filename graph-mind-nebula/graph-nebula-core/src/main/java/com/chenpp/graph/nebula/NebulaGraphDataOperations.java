@@ -350,19 +350,21 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                     }
                 }
             }
+            Set<String> vertexIds = vertexMap.values().stream().filter(v -> v.getProperties() == null)
+                    .map(GraphVertex::getUid).collect(Collectors.toSet());
             GraphData graphData = new GraphData();
             graphData.setVertices(new ArrayList<>(vertexMap.values()));
             graphData.setEdges(new ArrayList<>(edgeMap.values()));
 
             if (CollectionUtils.isNotEmpty(graphData.getEdges()) && CollectionUtils.isEmpty(graphData.getVertices())) {
-                Set<String> vertexIds = new HashSet<>();
                 graphData.getEdges().forEach(e -> {
                     vertexIds.add(e.getStartUid());
                     vertexIds.add(e.getEndUid());
                 });
-                List<GraphVertex> vertices = this.getVerticesByIds(vertexIds);
-                graphData.setVertices(vertices);
+
             }
+            List<GraphVertex> vertices = this.getVerticesByIds(vertexIds);
+            graphData.setVertices(vertices);
             return graphData;
         } catch (Exception e) {
             log.error("Failed to execute query: {}", cypher, e);
