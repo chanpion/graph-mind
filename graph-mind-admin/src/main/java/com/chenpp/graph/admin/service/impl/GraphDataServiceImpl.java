@@ -727,50 +727,53 @@ public class GraphDataServiceImpl implements GraphDataService {
         }
     }
 
+    /**
+     * 获取图数据操作对象
+     * 优化：使用 GraphClientFactory.resolveGraphConf 简化逻辑
+     */
     private GraphDataOperations getGraphDataOperations(Long graphId, Long connectionId, String graphCode) {
-        GraphConf graphConf;
-        if (graphId != null && graphId > 0) {
-            GraphInfo graphInfo = graphService.getById(graphId);
-            if (graphInfo == null) {
-                throw new RuntimeException("图不存在，graphId=" + graphId);
-            }
-            GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
-            if (connection == null) {
-                throw new RuntimeException("图数据库连接不存在，connectionId=" + graphInfo.getConnectionId());
-            }
-            graphConf = GraphClientFactory.createGraphConf(connection, graphInfo.getCode());
-        } else {
-            graphConf = GraphClientFactory.resolveGraphConf(graphId, connectionId, graphCode, graphService, connectionService);
-        }
+        GraphConf graphConf = GraphClientFactory.resolveGraphConf(graphId, connectionId, graphCode, graphService, connectionService);
         GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
         return graphClient.opsForGraphData();
     }
 
 
-    private String buildLabelQuery(Long graphId, Long connectionId, String label, int skip, int size) {
+    /**
+     * 构建图查询语句（统一处理顶点和边）
+     *
+     * @param graphId      图ID
+     * @param connectionId 连接ID
+     * @param label        标签名称
+     * @param isVertex     true=查询顶点，false=查询边
+     * @param skip         跳过条数
+     * @param size         返回条数
+     * @return 查询语句
+     */
+    private String buildGraphQuery(Long graphId, Long connectionId, String label, boolean isVertex, int skip, int size) {
         GraphInfo graphInfo = graphService.getById(graphId);
-        GraphTypeEnum graphType = null;
-        if (graphInfo == null) {
-            GraphConnection connection = connectionService.getById(connectionId);
-            graphType = connection.getGraphTypeEnum();
-        } else {
-            graphType = graphInfo.getGraphType();
-        }
+        GraphTypeEnum graphType = graphInfo != null
+                ? graphInfo.getGraphType()
+                : connectionService.getById(connectionId).getGraphTypeEnum();
 
-        return switch (graphType) {
-            case janus -> String.format("g.V().hasLabel(\"%s\").skip(%d).limit(%d)", label, skip, size);
-            case nebula -> String.format("MATCH (n:`%s`) RETURN n SKIP %d LIMIT %d", label, skip, size);
-            case neo4j -> String.format("MATCH (n:`%s`) RETURN n SKIP %d LIMIT %d", label, skip, size);
-        };
+        if (isVertex) {
+            return switch (graphType) {
+                case janus -> String.format("g.V().hasLabel(\"%s\").skip(%d).limit(%d)", label, skip, size);
+                case nebula, neo4j -> String.format("MATCH (n:`%s`) RETURN n SKIP %d LIMIT %d", label, skip, size);
+            };
+        } else {
+            return switch (graphType) {
+                case janus -> String.format("g.E().hasLabel(\"%s\").skip(%d).limit(%d)", label, skip, size);
+                case nebula, neo4j -> String.format("MATCH (a)-[r:`%s`]->(b) RETURN a, r, b SKIP %d LIMIT %d", label, skip, size);
+            };
+        }
+    }
+
+    private String buildLabelQuery(Long graphId, Long connectionId, String label, int skip, int size) {
+        return buildGraphQuery(graphId, connectionId, label, true, skip, size);
     }
 
     private String buildEdgeLabelQuery(Long graphId, Long connectionId, String label, int skip, int size) {
-        GraphInfo graphInfo = graphService.getById(graphId);
-        return switch (graphInfo.getGraphType()) {
-            case janus -> String.format("g.E().hasLabel(\"%s\").skip(%d).limit(%d)", label, skip, size);
-            case nebula -> String.format("MATCH (a)-[r:`%s`]->(b) RETURN a, r, b SKIP %d LIMIT %d", label, skip, size);
-            case neo4j -> String.format("MATCH (a)-[r:`%s`]->(b) RETURN a, r, b SKIP %d LIMIT %d", label, skip, size);
-        };
+        return buildGraphQuery(graphId, connectionId, label, false, skip, size);
     }
 
 

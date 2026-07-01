@@ -1,12 +1,6 @@
 package com.chenpp.graph.admin.controller;
 
-import com.chenpp.graph.admin.model.GraphEdgeDef;
-import com.chenpp.graph.admin.model.GraphEntityDef;
-import com.chenpp.graph.admin.model.GraphPropertyDef;
-import com.chenpp.graph.admin.model.GraphVertexDef;
-import com.chenpp.graph.admin.model.Result;
-import com.chenpp.graph.admin.model.SchemaExportDTO;
-import com.chenpp.graph.admin.model.SchemaImportDTO;
+import com.chenpp.graph.admin.model.*;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
 import com.chenpp.graph.admin.service.GraphSchemaService;
 import com.chenpp.graph.admin.service.GraphVertexDefService;
@@ -177,13 +171,13 @@ public class GraphSchemaController {
     }
 
     @GetMapping("/export")
-    public Result<SchemaExportDTO> exportSchema(@RequestParam Long graphId) {
+    public Result<SchemaExportResponse> exportSchema(@RequestParam Long graphId) {
         return Result.success(graphSchemaService.exportSchema(graphId));
     }
 
     @PostMapping("/import")
-    public Result<String> importSchema(@RequestParam Long graphId, @RequestBody SchemaImportDTO importDTO) {
-        graphSchemaService.importSchema(graphId, importDTO);
+    public Result<String> importSchema(@RequestParam Long graphId, @RequestBody SchemaImportRequest importRequest) {
+        graphSchemaService.importSchema(graphId, importRequest);
         return Result.success("导入成功");
     }
 
