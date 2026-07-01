@@ -21,8 +21,8 @@
                   :rules="analysisRules"
                   label-position="top"
               >
-                <!-- 目标实体 -->
-                <el-form-item label="目标实体" prop="targetEntity">
+                <!-- 目标顶点 -->
+                <el-form-item label="目标顶点" prop="targetEntity">
                   <el-cascader
                     v-model="analysisForm.targetEntity"
                     placeholder="请选择目标顶点类型和属性"
@@ -36,52 +36,23 @@
                   <el-input v-model="analysisForm.queryValue" placeholder="请输入查询值"/>
                 </el-form-item>
 
-                <!-- 拓展配置 -->
-                <el-collapse v-model="expandConfigVisible" accordion>
-                  <el-collapse-item title="拓展配置" name="1">
-                    <div class="config-item">
-                      <el-form-item label="返回最大路径数：" prop="maxPaths">
-                        <el-input-number
-                            v-model="analysisForm.maxPaths"
-                            :min="1"
-                            :max="10000"
-                            style="width: 100%"
-                        />
-                      </el-form-item>
+                <el-form-item label="拓展层数" prop="layers">
+                  <el-input-number
+                      v-model="analysisForm.layers"
+                      :min="1"
+                      :max="10"
+                      style="width: 100%"
+                  />
+                </el-form-item>
 
-                      <el-form-item label="拓展层数：" prop="layers">
-                        <el-input-number
-                            v-model="analysisForm.layers"
-                            :min="1"
-                            :max="10"
-                            style="width: 100%"
-                        />
-                      </el-form-item>
-
-                      <el-form-item label="拓展实体：" prop="expandEntities">
-                        <el-select
-                            v-model="analysisForm.expandEntities"
-                            multiple
-                            placeholder="选择拓展实体"
-                            style="width: 100%"
-                        >
-                          <el-option label="全部" value="all"/>
-                        </el-select>
-                      </el-form-item>
-
-                      <el-form-item label="拓展关系：" prop="expandRelations">
-                        <el-select
-                            v-model="analysisForm.expandRelations"
-                            multiple
-                            placeholder="选择拓展关系"
-                            style="width: 100%"
-                        >
-                          <el-option label="全部" value="all"/>
-                        </el-select>
-                      </el-form-item>
-                    </div>
-                  </el-collapse-item>
-                </el-collapse>
+                <el-form-item label="返回最大路径数" prop="maxPaths">
+                  <el-input-number
+                      v-model="analysisForm.maxPaths"
+                      :min="1"
+                      :max="10000"
+                      style="width: 100%"
+                  />
+                </el-form-item>
 
                 <!-- 执行按钮 -->
                 <el-form-item>
@@ -166,10 +137,10 @@
           </el-tabs>
 
           <!-- 分析结果展示 -->
-          <div v-if="analysisResult && !analysisLoading && (activeAlgorithmTab === 'pathQuery' || analysisForm.algorithm === 'shortestPath')" class="result-section">
+          <div v-if="analysisResult && !analysisLoading && analysisForm.algorithm === 'shortestPath'" class="result-section">
             <el-divider>分析结果</el-divider>
             <div class="result-content">
-              <template v-if="activeAlgorithmTab === 'pathQuery' || analysisForm.algorithm === 'shortestPath'">
+              <template v-if="analysisForm.algorithm === 'shortestPath'">
                 <h4>最短路径</h4>
                 <p>路径长度: {{ analysisResult.pathLength }}</p>
                 <p>路径顶点数: {{ analysisResult.vertexCount }}</p>
@@ -540,7 +511,7 @@ const analysisRules = {
     {required: true, message: '请输入终点ID', trigger: 'blur'}
   ],
   targetEntity: [
-    {required: true, message: '请选择目标实体和属性', trigger: 'change', type: 'array', min: 2}
+    {required: true, message: '请选择目标顶点和属性', trigger: 'change', type: 'array', min: 2}
   ],
   queryValue: [
     {required: true, message: '请输入查询值', trigger: 'blur'}
@@ -565,7 +536,7 @@ const analysisRules = {
 // K层展开专用验证规则
 const kLayerExpandRules = {
   targetEntity: [
-    {required: true, message: '请选择目标实体和属性', trigger: 'change', type: 'array', min: 2}
+    {required: true, message: '请选择目标顶点和属性', trigger: 'change', type: 'array', min: 2}
   ],
   queryValue: [
     {required: true, message: '请输入查询值', trigger: 'blur'}
@@ -671,8 +642,7 @@ watch(vertexDisplayPropMap, () => {
   updateVertexLabels()
 }, { deep: true })
 
-// 拓展配置可见性
-const expandConfigVisible = ref([])
+
 
 // 处理算法选择变化
 const handleAlgorithmChange = (value) => {
@@ -921,10 +891,16 @@ const executeAnalysis = async () => {
       const transformedData = transformApiResponseToGraphData(apiResponse);
       // 标记种子顶点
       if (algorithm === 'kLayerExpand') {
-        transformedData.nodes = transformedData.nodes.map(n => ({
-          ...n,
-          group: n.id === analysisForm.queryValue ? 'center' : (n.group || 'normal')
-        }));
+        const targetEntityProp = analysisForm.targetEntity[1];
+        transformedData.nodes = transformedData.nodes.map(n => {
+          const propValue = n.properties?.[targetEntityProp] ?? n[targetEntityProp];
+          const isTarget = String(propValue) === String(analysisForm.queryValue) || 
+                          n.id === analysisForm.queryValue;
+          return {
+            ...n,
+            group: isTarget ? 'center' : (n.group || 'normal')
+          };
+        });
       } else if (algorithm === 'shortestPath') {
         transformedData.nodes = transformedData.nodes.map(n => ({
           ...n,
@@ -1051,8 +1027,8 @@ const generateKLayerExpandData = () => {
 
 // 获取顶点半径
 const getVertexRadius = (node) => {
-  if (node.id === analysisForm.sourceId || node.id === analysisForm.targetId) return 22;
-  if (node.group === 'center') return 22;
+  if (node.id === analysisForm.sourceId || node.id === analysisForm.targetId) return 24;
+  if (node.group === 'center') return 24;
   if (node.group === 'path') return 16;
   return 16;
 };
@@ -1091,6 +1067,19 @@ const drawGraph = () => {
 
   // 定义箭头标记
   const defs = g.append("defs");
+
+  defs.append("filter")
+    .attr("id", "glow")
+    .attr("x", "-50%")
+    .attr("y", "-50%")
+    .attr("width", "200%")
+    .attr("height", "200%")
+    .append("feGaussianBlur")
+    .attr("stdDeviation", "4")
+    .attr("result", "coloredBlur");
+  const feMerge = defs.select("#glow").append("feMerge");
+  feMerge.append("feMergeNode").attr("in", "coloredBlur");
+  feMerge.append("feMergeNode").attr("in", "SourceGraphic");
   
   // 为每条边创建独立的箭头标记，以适应不同颜色和大小
   const isPathScene = activeAlgorithmTab.value === 'pathQuery' || analysisForm.algorithm === 'shortestPath';
@@ -1154,13 +1143,12 @@ const drawGraph = () => {
       .enter()
       .append('circle')
       .attr('r', d => {
-        if (d.id === analysisForm.sourceId || d.id === analysisForm.targetId) return 22
-        if (d.group === 'center') return 22
+        if (d.id === analysisForm.sourceId || d.id === analysisForm.targetId) return 24
+        if (d.group === 'center') return 24
         if (d.group === 'path') return 16
         return 16
       })
       .attr('fill', d => {
-        // sourceId/targetId 优先于 group
         if (d.id === analysisForm.sourceId) return 'var(--el-color-success)'
         if (d.id === analysisForm.targetId) return 'var(--el-color-warning)'
         if (d.group === 'path') return 'var(--el-color-danger)'
@@ -1169,8 +1157,22 @@ const drawGraph = () => {
         if (d.group === 'layer2') return 'var(--el-color-success)'
         return 'var(--el-color-primary)'
       })
-      .attr('stroke', '#fff')
-      .attr('stroke-width', 1.5)
+      .attr('stroke', d => {
+        if (d.group === 'center') return 'var(--el-color-warning)'
+        if (d.id === analysisForm.sourceId) return 'var(--el-color-success)'
+        if (d.id === analysisForm.targetId) return 'var(--el-color-warning)'
+        return '#fff'
+      })
+      .attr('stroke-width', d => {
+        if (d.group === 'center' || d.id === analysisForm.sourceId || d.id === analysisForm.targetId) return 3
+        return 1.5
+      })
+      .attr('filter', d => {
+        if (d.group === 'center' || d.id === analysisForm.sourceId || d.id === analysisForm.targetId) {
+          return 'url(#glow)'
+        }
+        return null
+      })
       .attr('cursor', 'pointer')
       .call(d3.drag()
           .on('start', dragstarted)
@@ -1199,8 +1201,14 @@ const drawGraph = () => {
       .attr('text-anchor', 'middle')
       .attr('dy', '0.35em')
       .attr('fill', '#fff')
-      .attr('font-size', '10px')
-      .attr('font-weight', 600)
+      .attr('font-size', d => {
+        if (d.group === 'center') return '11px'
+        return '10px'
+      })
+      .attr('font-weight', d => {
+        if (d.group === 'center') return 700
+        return 600
+      })
       .attr('pointer-events', 'none')
 
   // 力导向模拟tick函数 - 使用requestAnimationFrame批量化DOM更新
