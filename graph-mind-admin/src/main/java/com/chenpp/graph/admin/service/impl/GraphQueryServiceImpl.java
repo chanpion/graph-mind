@@ -87,7 +87,7 @@ public class GraphQueryServiceImpl implements GraphQueryService {
             pq.setStartProperty(new PathQuery.Condition(request.getStartLabel(), request.getStartProp(), request.getStartValue()));
             pq.setEndProperty(new PathQuery.Condition(request.getEndLabel(), request.getEndProp(), request.getEndValue()));
             pq.setMaxDepth(maxDepth);
-            pq.setLimit(10);
+            pq.setLimit(1000);
             return ops.findPath(pq);
         }
 

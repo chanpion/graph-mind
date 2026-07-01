@@ -274,8 +274,8 @@ register('post', '/api/graphs/expand', async (config) => {
   await mockDelay(400)
   return mockSuccess({
     vertices: [
-      { uid: 'expanded_1', label: 'Person', properties: { name: '展开节点1', relation: 'friend' } },
-      { uid: 'expanded_2', label: 'Person', properties: { name: '展开节点2', relation: 'colleague' } }
+      { uid: 'expanded_1', label: 'Person', properties: { name: '展开顶点1', relation: 'friend' } },
+      { uid: 'expanded_2', label: 'Person', properties: { name: '展开顶点2', relation: 'colleague' } }
     ],
     edges: [
       { id: 'exp_e_1', source: 'root', target: 'expanded_1', label: 'RELATES_TO' }
@@ -289,7 +289,7 @@ register('post', '/api/graphs/path', async () => {
     paths: [
       [
         { uid: 'start', label: 'Person', properties: { name: '起点' } },
-        { uid: 'mid', label: 'Company', properties: { name: '中间节点' } },
+        { uid: 'mid', label: 'Company', properties: { name: '中间顶点' } },
         { uid: 'end', label: 'Person', properties: { name: '终点' } }
       ]
     ],

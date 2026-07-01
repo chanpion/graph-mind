@@ -165,7 +165,7 @@
           <el-descriptions-item label="图名称">{{ currentGraphDetail.name || currentGraphDetail.graphName || '-' }}</el-descriptions-item>
           <el-descriptions-item label="连接名称">{{ getConnectionNameById(currentGraphDetail.connectionId) }}</el-descriptions-item>
           <el-descriptions-item label="数据库类型">{{ currentGraphDetail.graphType || '未知' }}</el-descriptions-item>
-          <el-descriptions-item label="节点数">{{ currentGraphDetail.vertexCount || 0 }}</el-descriptions-item>
+          <el-descriptions-item label="顶点数">{{ currentGraphDetail.vertexCount || 0 }}</el-descriptions-item>
           <el-descriptions-item label="边数">{{ currentGraphDetail.edgeCount || 0 }}</el-descriptions-item>
           <el-descriptions-item label="状态">
             <el-tag :type="currentGraphDetail.status === 'NORMAL' || currentGraphDetail.status === 0 ? 'success' : currentGraphDetail.status === 'ABNORMAL' || currentGraphDetail.status === 1 ? 'danger' : 'info'">
