@@ -84,7 +84,6 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
             log.warn("Vertices collection is empty, skipping batch insert");
             return;
         }
-        log.info("Batch adding {} vertices", vertices.size());
         Map<String, List<GraphVertex>> labelVerticesMap = vertices.stream().collect(Collectors.groupingBy(GraphVertex::getLabel));
         try (Session session = driver.session(sessionConfig)) {
             session.executeWrite(tx -> {
@@ -142,7 +141,6 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
             log.warn("Edges collection is empty, skipping batch insert");
             return;
         }
-        log.info("Batch adding {} edges", edges.size());
         Map<String, List<GraphEdge>> labelEdgesMap = edges.stream().collect(Collectors.groupingBy(e -> String.format("%s-%s-%s", e.getLabel(), e.getStartLabel(), e.getEndLabel())));
         try (Session session = driver.session(sessionConfig)) {
             session.executeWrite(tx -> {
@@ -214,7 +212,6 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
 
     @Override
     public GraphData expand(String vertexId, int depth) throws GraphException {
-        log.info("Expanding vertex: {}, depth: {}", vertexId, depth);
         String cypher = String.format("MATCH p = (n)-[*1..%d]-(m) WHERE n.uid = $vertexId OR elementId(n) = $vertexId RETURN p", depth);
         try (Session session = driver.session(sessionConfig)) {
             return session.executeRead(tx -> {
@@ -246,7 +243,6 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
 
     @Override
     public GraphData findPath(String startVertexId, String endVertexId, int maxDepth) throws GraphException {
-        log.info("Finding path from: {} to: {}, maxDepth: {}", startVertexId, endVertexId, maxDepth);
         String cypher = String.format(
                 "MATCH p = shortestPath((a {uid: $startVertexId})-[*..%d]-(b {uid: $endVertexId})) RETURN p", maxDepth);
         try (Session session = driver.session(sessionConfig)) {
@@ -264,9 +260,6 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
     public GraphData findPath(PathQuery pathQuery) throws GraphException {
         PathQuery.Condition start = pathQuery.getStartProperty();
         PathQuery.Condition end = pathQuery.getEndProperty();
-        log.info("Finding path: start={}:{}=\"{}\", end={}:{}=\"{}\", maxDepth={}",
-                start.getLabel(), start.getProperty(), start.getValue(),
-                end.getLabel(), end.getProperty(), end.getValue(), pathQuery.getMaxDepth());
         String cypher = String.format(
                 "MATCH p = (a:`%s` {`%s`: $startVal})-[*1..%d]-(b:`%s` {`%s`: $endVal}) RETURN p LIMIT %d",
                 start.getLabel(), start.getProperty(), pathQuery.getMaxDepth(),
@@ -285,7 +278,6 @@ public class Neo4jGraphDataOperations implements GraphDataOperations {
 
     @Override
     public GraphSummary getSummary() throws GraphException {
-        log.info("Getting graph summary");
         GraphSummary summary = new GraphSummary();
 
         try (Session session = driver.session(sessionConfig)) {

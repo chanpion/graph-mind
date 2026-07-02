@@ -4,7 +4,6 @@ import com.chenpp.graph.core.GraphOperations;
 import com.chenpp.graph.core.exception.ErrorCode;
 import com.chenpp.graph.core.exception.GraphException;
 import com.chenpp.graph.core.model.GraphConf;
-import com.chenpp.graph.core.schema.DataType;
 import com.chenpp.graph.core.schema.Graph;
 import com.chenpp.graph.core.schema.GraphEntity;
 import com.chenpp.graph.core.schema.GraphIndex;
@@ -14,7 +13,6 @@ import com.chenpp.graph.core.schema.GraphSchema;
 import com.chenpp.graph.neo4j.util.Neo4jUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.Record;
 import org.neo4j.driver.Result;
@@ -43,7 +41,7 @@ public class Neo4jGraphOperations implements GraphOperations {
 
     @Override
     public void createGraph(GraphConf graphConf) throws GraphException {
-        if (!Neo4jUtil.isEnterpriseEdition(driver)) {
+        if (Neo4jUtil.isEnterpriseEdition(driver)) {
             throw new GraphException(ErrorCode.UNSUPPORTED_OPERATION, "Neo4j 社区版不支持多数据库操作");
         }
 
@@ -59,9 +57,7 @@ public class Neo4jGraphOperations implements GraphOperations {
 
     @Override
     public void dropGraph(GraphConf graphConf) throws GraphException {
-        log.info("Dropping graph in Neo4j: {}", graphConf.getGraphCode());
-
-        if (!Neo4jUtil.isEnterpriseEdition(driver)) {
+        if (Neo4jUtil.isEnterpriseEdition(driver)) {
             throw new GraphException(ErrorCode.UNSUPPORTED_OPERATION, "Neo4j 社区版不支持多数据库操作");
         }
 
@@ -77,7 +73,6 @@ public class Neo4jGraphOperations implements GraphOperations {
 
     @Override
     public List<Graph> listGraphs(GraphConf graphConf) {
-        log.info("Listing graphs in Neo4j");
         List<Graph> result = new ArrayList<>();
 
         try (Session session = driver.session()) {
@@ -102,7 +97,6 @@ public class Neo4jGraphOperations implements GraphOperations {
 
     @Override
     public void applySchema(GraphConf graphConf, GraphSchema graphSchema) {
-        log.info("Applying schema to graph: {}", graphConf.getGraphCode());
         if (CollectionUtils.isNotEmpty(graphSchema.getIndexes())) {
             graphSchema.getIndexes().forEach(this::createIndex);
         }

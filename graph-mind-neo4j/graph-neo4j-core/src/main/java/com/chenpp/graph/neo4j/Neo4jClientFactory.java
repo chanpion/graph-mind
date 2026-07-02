@@ -70,16 +70,4 @@ public class Neo4jClientFactory {
         return driver;
     }
 
-    public static void closeAllDrivers() {
-        CACHE.forEach((key, driver) -> {
-            try {
-                driver.close();
-                CACHE.remove(key);
-                log.info("Closed Neo4j driver for: {}", key);
-            } catch (Exception e) {
-                log.warn("Error closing Neo4j driver", e);
-            }
-        });
-        log.info("Cleared Neo4j driver cache");
-    }
 }

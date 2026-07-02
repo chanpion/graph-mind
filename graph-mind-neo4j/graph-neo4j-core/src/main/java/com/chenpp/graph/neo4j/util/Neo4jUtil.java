@@ -28,7 +28,6 @@ import org.neo4j.driver.types.Relationship;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Function;
 
 /**
@@ -42,34 +41,6 @@ public class Neo4jUtil {
             indexName = String.format("idx_%s_%s", labelName, propertyName);
         }
         return String.format("CREATE INDEX %s FOR (n:%s) ON (n.%s)", indexName, labelName, propertyName);
-    }
-
-    public static String buildCreateCompositeIndex(String indexName, String labelName, String... propertyNames) {
-        if (propertyNames == null || propertyNames.length == 0) {
-            log.warn("Property names array is null or empty");
-            return "";
-        }
-
-        if (indexName == null || indexName.isEmpty()) {
-            indexName = String.format("idx_%s_%s", labelName, String.join("_", propertyNames));
-        }
-        StringBuilder sb = new StringBuilder();
-        sb.append("CREATE INDEX ").append(indexName).append(" ON ");
-
-        sb.append(labelName).append("(");
-        for (int i = 0; i < propertyNames.length; i++) {
-            if (propertyNames[i] == null || propertyNames[i].isEmpty()) {
-                log.warn("Property name at index {} is null or empty, skipping", i);
-                continue;
-            }
-
-            sb.append(propertyNames[i]);
-            if (i < propertyNames.length - 1) {
-                sb.append(",");
-            }
-        }
-        sb.append(")");
-        return sb.toString();
     }
 
     public static boolean isEnterpriseEdition(Driver driver) {
@@ -188,18 +159,6 @@ public class Neo4jUtil {
         edge.setProperties(relationship.asMap());
         edge.setLabel(relationship.type());
         return edge;
-    }
-
-    public static GraphData parseGraphData(Path path) {
-        if (path == null) {
-            log.warn("Attempted to parse null path");
-            return new GraphData();
-        }
-
-        GraphData graphData = new GraphData();
-        path.nodes().forEach(node -> graphData.addVertex(parseVertex(node)));
-        path.relationships().forEach(relationship -> graphData.addEdge(parseEdge(relationship)));
-        return graphData;
     }
 
     public static <T> Map<String, Object> convertToMap(T obj) {
@@ -346,5 +305,4 @@ public class Neo4jUtil {
         prop.setDataType(dataType);
         return prop;
     }
-
 }
