@@ -90,7 +90,7 @@ public class Neo4jUtil {
             Result dbResult = session.run("SHOW DEFAULT DATABASE");
             if (dbResult.hasNext()) {
                 String name = dbResult.next().get("name").asString();
-                if (name != null && !name.isEmpty()) {
+                if (StringUtils.isNotBlank(name)) {
                     return name;
                 }
             }
@@ -99,7 +99,7 @@ public class Neo4jUtil {
     }
 
     public static String resolveDatabase(Driver driver, String graphCode) {
-        if (graphCode != null && !graphCode.isEmpty()) {
+        if (StringUtils.isNotBlank(graphCode)) {
             try (Session session = driver.session(SessionConfig.builder().withDatabase(graphCode).build())) {
                 session.run("RETURN 1").consume();
                 return graphCode;

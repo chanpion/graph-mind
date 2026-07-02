@@ -1,6 +1,13 @@
 package com.chenpp.graph.admin.service.impl;
 
-import com.chenpp.graph.admin.model.*;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.chenpp.graph.admin.model.GraphConnection;
+import com.chenpp.graph.admin.model.GraphEdgeDef;
+import com.chenpp.graph.admin.model.GraphInfo;
+import com.chenpp.graph.admin.model.GraphPropertyDef;
+import com.chenpp.graph.admin.model.GraphVertexDef;
+import com.chenpp.graph.admin.model.SchemaExportResponse;
+import com.chenpp.graph.admin.model.SchemaImportRequest;
 import com.chenpp.graph.admin.service.GraphConnectionService;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
 import com.chenpp.graph.admin.service.GraphPropertyDefService;
@@ -22,6 +29,7 @@ import com.chenpp.graph.core.schema.GraphSchema;
 import com.chenpp.graph.core.schema.IndexType;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,10 +40,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 
 
 /**
@@ -112,9 +118,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * 构建顶点定义对象
-     */
     private GraphVertexDef buildVertexDef(GraphEntity entity, Long graphId, AtomicLong idCounter) {
         GraphVertexDef vertexDef = new GraphVertexDef();
         vertexDef.setId(idCounter.decrementAndGet());
@@ -126,9 +129,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         return vertexDef;
     }
 
-    /**
-     * 构建边定义对象
-     */
     private GraphEdgeDef buildEdgeDef(GraphRelation relation, Long graphId, AtomicLong idCounter) {
         GraphEdgeDef edgeDef = new GraphEdgeDef();
         edgeDef.setId(idCounter.decrementAndGet());
@@ -143,9 +143,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         return edgeDef;
     }
 
-    /**
-     * 构建属性定义列表
-     */
     private List<GraphPropertyDef> buildPropertyDefs(List<GraphProperty> properties) {
         if (CollectionUtils.isEmpty(properties)) {
             return new ArrayList<>();
@@ -224,10 +221,9 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
 
         GraphConf graphConf;
         GraphInfo graphInfo;
-        GraphConnection connection = null;
+        GraphConnection connection;
 
         if (graphId != null && graphId > 0) {
-            // 本地管理的图
             graphInfo = graphService.getById(graphId);
             if (graphInfo == null) {
                 log.warn("图不存在，跳过发布Schema，graphId={}", graphId);
@@ -253,12 +249,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
 
         GraphSchema graphSchema = getGraphSchema(graphId);
 
-        log.info("开始发布Schema，graphId={}, graphCode={}, 图数据库类型={}, 顶点类型数={}, 边类型数={}",
-                graphId, graphConf.getGraphCode(), graphConf.getType(),
-                graphSchema.getEntities() != null ? graphSchema.getEntities().size() : 0,
-                graphSchema.getRelations() != null ? graphSchema.getRelations().size() : 0);
-
-        // Step 1: 查询远程已发布的 Schema，对比后仅发布变更
         GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
         GraphOperations graphOperations = graphClient.opsForGraph();
 
@@ -313,12 +303,8 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             }
         }
 
-        Set<String> newEntityLabels = newEntities.stream()
-                .map(GraphEntity::getLabel)
-                .collect(Collectors.toSet());
-        Set<String> newRelationLabels = newRelations.stream()
-                .map(GraphRelation::getLabel)
-                .collect(Collectors.toSet());
+        Set<String> newEntityLabels = newEntities.stream().map(GraphEntity::getLabel).collect(Collectors.toSet());
+        Set<String> newRelationLabels = newRelations.stream().map(GraphRelation::getLabel).collect(Collectors.toSet());
         List<GraphIndex> newEntityIndexes = new ArrayList<>();
         List<GraphIndex> alterEntityIndexes = new ArrayList<>();
         for (GraphIndex idx : newIndexes) {
@@ -332,8 +318,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             }
         }
 
-        log.info("Schema diff: newTags={}, alterTags={}, newEdges={}, alterEdges={}, newIndexes={}, alterIndexes={}",
-                newEntities.size(), alterEntities.size(), newRelations.size(), alterRelations.size(), newEntityIndexes.size(), alterEntityIndexes.size());
 
         GraphSchema newSchema = new GraphSchema();
         newSchema.setEntities(newEntities);
@@ -356,32 +340,14 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         if (!alterEntityIndexes.isEmpty()) {
             GraphSchema alterIndexSchema = new GraphSchema();
             alterIndexSchema.setIndexes(alterEntityIndexes);
-            int maxRetries = 3;
-            for (int attempt = 0; attempt < maxRetries; attempt++) {
-                try {
-                    graphOperations.applySchema(graphConf, alterIndexSchema);
-                    break;
-                } catch (Exception e) {
-                    if (attempt < maxRetries - 1) {
-                        log.debug("索引创建失败，第{}次重试: {}", attempt + 1, e.getMessage());
-                        try {
-                            TimeUnit.MILLISECONDS.sleep(200L * (attempt + 1));
-                        } catch (InterruptedException ie) {
-                            Thread.currentThread().interrupt();
-                            break;
-                        }
-                    } else {
-                        throw e;
-                    }
-                }
+            try {
+                graphOperations.applySchema(graphConf, alterIndexSchema);
+                Thread.sleep(30 * 1000);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
             }
         }
-        if (!hasNew && !hasAlter) {
-            log.info("Schema 无变更，跳过发布，graphId={}", graphId);
-        }
-        log.info("Schema 已应用到图数据库，graphId={}", graphId);
 
-        // Step 2: 更新 MySQL 元数据状态为已发布（仅对本地管理的图，discovered graph 无需更新）
         if (graphInfo != null) {
             List<GraphPropertyDef> propertyList = new ArrayList<>();
             transactionTemplate.executeWithoutResult(status -> {
@@ -402,9 +368,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
                 graphInfo.setStatus(1);
                 graphService.updateById(graphInfo);
             });
-            log.info("Schema 发布完成，graphId={}", graphId);
-        } else {
-            log.info("Discovered graph Schema 已发布（无需更新 MySQL 元数据），graphId={}", graphId);
         }
     }
 
@@ -488,7 +451,6 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
         GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
         GraphOperations graphOperations = graphClient.opsForGraph();
 
-        // 获取远端已发布的 Schema 来判断新标签还是变更
         GraphSchema remoteSchema;
         try {
             remoteSchema = graphOperations.getPublishedSchema(graphConf);
@@ -558,7 +520,7 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             String typeStr = prop.getType();
             DataType dataType = DataType.instanceOf(typeStr);
             if (dataType == null) {
-                if (typeStr != null && !typeStr.isEmpty()) {
+                if (StringUtils.isNotBlank(typeStr)) {
                     log.warn("Failed to parse data type '{}' for property '{}', using String as default", typeStr, prop.getCode());
                 }
                 dataType = DataType.String; // 设置默认值，避免NPE
@@ -589,7 +551,8 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
 
     @Transactional(rollbackFor = Exception.class)
     @Override
-    public void importSchema(Long graphId, SchemaImportRequest importRequest) {
+    public void importSchema(SchemaImportRequest importRequest) {
+        Long graphId = importRequest.getGraphId();
         if (importRequest == null) {
             throw new GraphException("导入数据为空");
         }

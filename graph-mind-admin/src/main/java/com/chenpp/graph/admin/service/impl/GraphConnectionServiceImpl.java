@@ -11,6 +11,7 @@ import com.chenpp.graph.admin.util.GraphClientFactory;
 import com.chenpp.graph.core.GraphClient;
 import com.chenpp.graph.core.model.GraphConf;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 /**
@@ -26,10 +27,10 @@ public class GraphConnectionServiceImpl extends ServiceImpl<GraphConnectionDao, 
     @Override
     public Page<GraphConnection> queryConnections(Page<GraphConnection> page, String keyword, String type) {
         QueryWrapper<GraphConnection> queryWrapper = new QueryWrapper<>();
-        if (keyword != null && !keyword.isEmpty()) {
+        if (StringUtils.isNotBlank(keyword)) {
             queryWrapper.like("name", keyword).or().like("hosts", keyword);
         }
-        if (type != null && !type.isEmpty()) {
+        if (StringUtils.isNotBlank(type)) {
             queryWrapper.eq("graph_type", type);
         }
         queryWrapper.orderByDesc("create_time");

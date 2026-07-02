@@ -363,8 +363,10 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
                 });
 
             }
-            List<GraphVertex> vertices = this.getVerticesByIds(vertexIds);
-            graphData.setVertices(vertices);
+            if (CollectionUtils.isNotEmpty(vertexIds)){
+                List<GraphVertex> vertices = this.getVerticesByIds(vertexIds);
+                graphData.setVertices(vertices);
+            }
             return graphData;
         } catch (Exception e) {
             log.error("Failed to execute query: {}", cypher, e);

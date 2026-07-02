@@ -10,6 +10,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+import org.apache.commons.lang3.StringUtils;
+
 import java.time.LocalDateTime;
 import java.util.Arrays;
 
@@ -102,7 +104,7 @@ public class LogInterceptor implements HandlerInterceptor {
 
         return Arrays.stream(ipHeaders)
                 .map(request::getHeader)
-                .filter(ip -> ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip))
+                .filter(ip -> StringUtils.isNotBlank(ip) && !"unknown".equalsIgnoreCase(ip))
                 .map(ip -> ip.split(",")[0])
                 .findFirst()
                 .orElse(request.getRemoteAddr());

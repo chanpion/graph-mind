@@ -481,10 +481,10 @@ public class JanusGraphDataOperations implements GraphDataOperations {
         List<GraphVertex> vertices = convertVertex(vertexList);
         Map<String, GraphVertex> idVertexMap = new HashMap<>();
         for (GraphVertex v : vertices) {
-            if (v.getId() != null && !v.getId().isEmpty()) {
+            if (StringUtils.isNotBlank(v.getId())) {
                 idVertexMap.put(v.getId(), v);
             }
-            if (v.getUid() != null && !v.getUid().isEmpty()) {
+            if (StringUtils.isNotBlank(v.getUid())) {
                 idVertexMap.put(v.getUid(), v);
             }
         }
@@ -495,14 +495,14 @@ public class JanusGraphDataOperations implements GraphDataOperations {
             GraphVertex endVertex = findVertex(edge.getEndUid(), idVertexMap, vertices);
             if (startVertex != null) {
                 String uid = startVertex.getUid();
-                if (uid != null && !uid.isEmpty()) {
+                if (StringUtils.isNotBlank(uid)) {
                     edge.setStartUid(uid);
                 }
                 edge.setStartLabel(startVertex.getLabel());
             }
             if (endVertex != null) {
                 String uid = endVertex.getUid();
-                if (uid != null && !uid.isEmpty()) {
+                if (StringUtils.isNotBlank(uid)) {
                     edge.setEndUid(uid);
                 }
                 edge.setEndLabel(endVertex.getLabel());

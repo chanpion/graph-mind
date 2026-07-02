@@ -1542,14 +1542,22 @@ const transformApiResponseToGraphData = (apiResponse) => {
 
   // 优先处理 vertices/edges 格式
   if (rawData.vertices && rawData.edges) {
-    return {
-      nodes: rawData.vertices.map(v => ({
-        id: v.uid || v.id,
-        label: v.label,
-        properties: v.properties || {},
-        group: v.group || 'normal'
-      })),
-      edges: rawData.edges.map(e => ({
+    const nodes = rawData.vertices.map(v => ({
+      id: v.uid || v.id,
+      label: v.label,
+      properties: v.properties || {},
+      group: v.group || 'normal'
+    }))
+    
+    const nodeIds = new Set(nodes.map(n => n.id))
+    
+    const edges = rawData.edges
+      .filter(e => {
+        const sourceId = e.startUid
+        const targetId = e.endUid
+        return nodeIds.has(sourceId) && nodeIds.has(targetId)
+      })
+      .map(e => ({
         id: e.uid || e.id,
         source: e.startUid,
         target: e.endUid,
@@ -1557,7 +1565,8 @@ const transformApiResponseToGraphData = (apiResponse) => {
         properties: e.properties || {},
         value: e.value || 1
       }))
-    }
+
+    return { nodes, edges }
   }
 
   // 如果返回的是标准图数据结构

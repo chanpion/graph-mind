@@ -1,15 +1,13 @@
 package com.chenpp.graph.janus.util;
 
 import com.chenpp.graph.core.constant.GraphConstants;
-import com.chenpp.graph.core.exception.GraphException;
 import com.chenpp.graph.core.model.GraphEdge;
 import com.chenpp.graph.core.model.GraphVertex;
 import com.chenpp.graph.core.schema.DataType;
 import com.chenpp.graph.core.util.DataTypeConverter;
 import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.time.DateFormatUtils;
-import org.apache.tinkerpop.gremlin.structure.Property;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.janusgraph.core.JanusGraph;
 import org.janusgraph.core.JanusGraphEdge;
@@ -137,7 +135,7 @@ public class JanusUtil {
         try {
             if (vertex.property(GraphConstants.UID).isPresent()) {
                 Object uid = vertex.property(GraphConstants.UID).value();
-                if (uid != null && !uid.toString().isEmpty()) {
+                if (StringUtils.isNotBlank(uid.toString())) {
                     return uid.toString();
                 }
             }

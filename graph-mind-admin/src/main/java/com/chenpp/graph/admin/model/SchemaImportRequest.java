@@ -12,6 +12,7 @@ import java.util.List;
 @Data
 public class SchemaImportRequest {
 
+    private Long graphId;
     /**
      * 导入模式: merge(合并/追加) | replace(替换/覆盖)
      */

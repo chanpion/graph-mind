@@ -52,22 +52,14 @@ public class GraphSchemaController {
             vertexDefs = new ArrayList<>();
         }
 
-        try {
-            List<GraphVertexDef> discovered = graphSchemaService.discoverVertexDefs(graphId, connectionId, graphCode);
-            mergeDiscoveredDefs(vertexDefs, discovered);
-        } catch (Exception e) {
-            log.warn("从图数据库发现节点类型失败", e);
-        }
+        List<GraphVertexDef> discovered = graphSchemaService.discoverVertexDefs(graphId, connectionId, graphCode);
+        mergeDiscoveredDefs(vertexDefs, discovered);
 
         return Result.success(vertexDefs);
     }
 
-    /**
-     * 新增节点定义
-     */
     @PostMapping("/vertices")
-    public Result<String> addVertexDef(@RequestParam Long graphId, @RequestBody GraphVertexDef vertexDef) {
-        vertexDef.setGraphId(graphId);
+    public Result<String> addVertexDef(@RequestBody GraphVertexDef vertexDef) {
         boolean success = vertexDefService.saveVertexDefWithProperties(vertexDef);
         if (success) {
             return Result.success("新增节点定义成功");
@@ -75,15 +67,9 @@ public class GraphSchemaController {
         return Result.error("新增节点定义失败");
     }
 
-    /**
-     * 新增或更新节点定义
-     */
     @PutMapping("/vertex")
     public Result<String> updateVertexDef(
             @RequestParam Long vertexId,
-            @RequestParam(required = false) Long graphId,
-            @RequestParam(required = false) Long connectionId,
-            @RequestParam(required = false) String graphCode,
             @RequestBody GraphVertexDef vertexDef) {
         boolean success;
         if (vertexId != null && vertexId > 0) {
@@ -119,19 +105,14 @@ public class GraphSchemaController {
             edgeDefs = new ArrayList<>();
         }
 
-        try {
-            List<GraphEdgeDef> discovered = graphSchemaService.discoverEdgeDefs(graphId, connectionId, graphCode);
-            mergeDiscoveredDefs(edgeDefs, discovered);
-        } catch (Exception e) {
-            log.warn("从图数据库发现边类型失败", e);
-        }
+        List<GraphEdgeDef> discovered = graphSchemaService.discoverEdgeDefs(graphId, connectionId, graphCode);
+        mergeDiscoveredDefs(edgeDefs, discovered);
 
         return Result.success(edgeDefs);
     }
 
     @PostMapping("/edges")
-    public Result<String> addEdgeDef(@RequestParam Long graphId, @RequestBody GraphEdgeDef edgeDef) {
-        edgeDef.setGraphId(graphId);
+    public Result<String> addEdgeDef(@RequestBody GraphEdgeDef edgeDef) {
         boolean success = edgeDefService.saveEdgeDefWithProperties(edgeDef);
         if (success) {
             return Result.success("新增边定义成功");
@@ -140,9 +121,8 @@ public class GraphSchemaController {
     }
 
     @PutMapping("/edge")
-    public Result<String> updateEdgeDef(@RequestParam Long graphId, @RequestParam Long edgeId, @RequestBody GraphEdgeDef edgeDef) {
+    public Result<String> updateEdgeDef(@RequestParam Long edgeId, @RequestBody GraphEdgeDef edgeDef) {
         edgeDef.setId(edgeId);
-        edgeDef.setGraphId(graphId);
         boolean success = edgeDefService.updateEdgeDefWithProperties(edgeDef);
         if (success) {
             return Result.success("更新边定义成功");
@@ -176,14 +156,11 @@ public class GraphSchemaController {
     }
 
     @PostMapping("/import")
-    public Result<String> importSchema(@RequestParam Long graphId, @RequestBody SchemaImportRequest importRequest) {
-        graphSchemaService.importSchema(graphId, importRequest);
+    public Result<String> importSchema(@RequestBody SchemaImportRequest importRequest) {
+        graphSchemaService.importSchema(importRequest);
         return Result.success("导入成功");
     }
 
-    /**
-     * 合并发现的实体定义到本地列表，包括新增类型和补全属性
-     */
     private <T extends GraphEntityDef> void mergeDiscoveredDefs(List<T> localDefs, List<T> discovered) {
         if (discovered == null || discovered.isEmpty()) {
             return;
@@ -194,7 +171,6 @@ public class GraphSchemaController {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
-        // 补充图库原有的，平台未创建的类型
         for (T d : discovered) {
             if (d.getLabel() != null && !localLabels.contains(d.getLabel())) {
                 localDefs.add(d);
@@ -202,7 +178,6 @@ public class GraphSchemaController {
             }
         }
 
-        // 合并属性：对本地已有类型，补全图库中存在的属性
         Map<String, List<GraphPropertyDef>> discoveredProps = discovered.stream()
                 .filter(d -> d.getLabel() != null && d.getProperties() != null)
                 .collect(Collectors.toMap(GraphEntityDef::getLabel, GraphEntityDef::getProperties, (a, b) -> a));

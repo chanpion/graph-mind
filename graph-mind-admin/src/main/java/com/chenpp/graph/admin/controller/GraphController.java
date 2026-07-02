@@ -64,13 +64,8 @@ public class GraphController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String creator = authentication != null ? authentication.getName() : "unknown";
         graphInfo.setCreator(creator);
-        try {
-            Long graphId = graphSchemaService.createGraphInDatabase(graphInfo);
-            return Result.success(graphId);
-        } catch (Exception e) {
-            log.error("创建图失败: {}", e.getMessage());
-            return Result.error("创建图失败: " + e.getMessage());
-        }
+        Long graphId = graphSchemaService.createGraphInDatabase(graphInfo);
+        return Result.success(graphId);
     }
 
     @PutMapping("/{id}")
@@ -80,10 +75,6 @@ public class GraphController {
         return Result.success("更新成功");
     }
 
-    /**
-     * 删除图
-     * <p>对于平台创建的图，传 graphId 即可；对于从图数据库发现的已有图，需额外传 connectionId + graphCode。</p>
-     */
     @DeleteMapping("/{id}")
     public Result<String> deleteGraph(
             @PathVariable Long id,

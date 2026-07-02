@@ -73,7 +73,7 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, GraphInfo> implement
     @Override
     public Page<GraphInfo> queryGraphs(Page<GraphInfo> page, String keyword) {
         QueryWrapper<GraphInfo> queryWrapper = new QueryWrapper<>();
-        if (keyword != null && !keyword.isEmpty()) {
+        if (StringUtils.isNotBlank(keyword)) {
             queryWrapper.like("name", keyword).or().like("code", keyword);
         }
         queryWrapper.orderByDesc("create_time");
@@ -92,12 +92,10 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, GraphInfo> implement
 
         fillGraphCounts(pageResult.getRecords());
 
-        // 标记本地图为平台创建
         for (GraphInfo g : pageResult.getRecords()) {
             g.setSourceType("PLATFORM");
         }
 
-        // 从图数据库发现已有图并获取所有图的实时类型计数
         List<GraphInfo> allGraphInfos = new ArrayList<>(pageResult.getRecords());
         List<GraphInfo> discovered = discoverRemoteGraphs(connectionId);
         Set<String> localCodes = pageResult.getRecords().stream().map(GraphInfo::getCode).collect(Collectors.toSet());
@@ -107,7 +105,6 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, GraphInfo> implement
             }
         }
 
-        // 从图数据库获取所有图（含 PLATFORM）的实时节点/边类型计数
         fillCountsFromRemote(connectionId, allGraphInfos);
 
         Page<GraphInfo> resultPage = new Page<>(page.getCurrent(), page.getSize(), allGraphInfos.size());
@@ -132,7 +129,6 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, GraphInfo> implement
         GraphInfo graphInfo = new GraphInfo();
         graphInfo.setConnectionId(connectionId);
 
-        // 对于 JanusGraph，无法发现已有图（架构不支持），直接返回
         if (GraphTypeEnum.janus.name().equalsIgnoreCase(connection.getGraphType())) {
             log.debug("JanusGraph does not support listing existing graphs, skipping discovery");
             return result;
@@ -159,9 +155,7 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, GraphInfo> implement
                 result.add(g);
             }
         } catch (Exception e) {
-            // 仅记录简要错误信息，避免过多堆栈跟踪
-            String briefMsg = e.getMessage() != null ? e.getMessage().split("\n")[0] : e.getClass().getSimpleName();
-            log.warn("发现远程图失败，connectionId={}: {}", connectionId, briefMsg);
+            log.warn("发现远程图失败", e);
         }
         return result;
     }
@@ -194,26 +188,22 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, GraphInfo> implement
             connection = connectionService.getById(connectionId);
         }
 
-        if (connection != null && graphCode != null && !graphCode.isEmpty()) {
+        if (connection != null && StringUtils.isNotBlank(graphCode)) {
             GraphConf graphConf = GraphClientFactory.createGraphConf(connection, graphCode);
             GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
             GraphOperations graphOperations = graphClient.opsForGraph();
             graphOperations.dropGraph(graphConf);
             log.info("已删除图数据库中的图，code={}, connectionId={}", graphCode, connection.getId());
-        } else {
-            log.info("缺少图数据库连接或图标识，跳过删除远程图，graphId={}", graphId);
         }
 
         if (graphInfo != null && graphInfo.getId() != null && graphInfo.getId() > 0) {
             Long gId = graphInfo.getId();
-            return transactionTemplate.execute(status -> {
+            return Boolean.TRUE.equals(transactionTemplate.execute(status -> {
                 vertexDefService.remove(new QueryWrapper<GraphVertexDef>().eq("graph_id", gId));
                 edgeDefService.remove(new QueryWrapper<GraphEdgeDef>().eq("graph_id", gId));
                 propertyDefService.remove(new QueryWrapper<GraphPropertyDef>().eq("graph_id", gId));
-                boolean result = removeById(gId);
-                log.info("已删除本地图元数据，graphId={}, result={}", gId, result);
-                return result;
-            });
+                return removeById(gId);
+            }));
         }
 
         return true;
@@ -281,7 +271,6 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, GraphInfo> implement
             return;
         }
 
-        // JanusGraph 不支持按图名独立获取 schema，跳过
         if (GraphTypeEnum.janus.name().equalsIgnoreCase(connection.getGraphType())) {
             log.debug("JanusGraph does not support fetching schema stats per graph, skipping");
             return;
@@ -289,28 +278,22 @@ public class GraphServiceImpl extends ServiceImpl<GraphDao, GraphInfo> implement
 
         GraphConf graphConf = GraphClientFactory.createGraphConf(connection, "");
 
-        try {
-            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
-            GraphOperations graphOperations = graphClient.opsForGraph();
-            for (GraphInfo g : graphInfos) {
-                if (g.getCode() == null) {
-                    continue;
-                }
-                try {
-                    GraphConf schemaConf = GraphClientFactory.createGraphConf(connection, g.getCode());
-                    com.chenpp.graph.core.schema.GraphSchema schema = graphOperations.getPublishedSchema(schemaConf);
-                    if (schema != null) {
-                        g.setVertexTypeCount(schema.getEntities() != null ? schema.getEntities().size() : 0);
-                        g.setEdgeTypeCount(schema.getRelations() != null ? schema.getRelations().size() : 0);
-                    }
-                } catch (Exception e) {
-                    log.debug("获取图类型数量失败，code={}: {}", g.getCode(), e.getMessage());
-                }
+        GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+        GraphOperations graphOperations = graphClient.opsForGraph();
+        for (GraphInfo g : graphInfos) {
+            if (g.getCode() == null) {
+                continue;
             }
-        } catch (Exception e) {
-            log.warn("获取图类型数量失败，connectionId={}: {}", connectionId, e.getMessage());
+            try {
+                GraphConf schemaConf = GraphClientFactory.createGraphConf(connection, g.getCode());
+                com.chenpp.graph.core.schema.GraphSchema schema = graphOperations.getPublishedSchema(schemaConf);
+                if (schema != null) {
+                    g.setVertexTypeCount(schema.getEntities() != null ? schema.getEntities().size() : 0);
+                    g.setEdgeTypeCount(schema.getRelations() != null ? schema.getRelations().size() : 0);
+                }
+            } catch (Exception e) {
+                log.debug("获取图类型数量失败，code={}: {}", g.getCode(), e.getMessage());
+            }
         }
     }
-
-
 }
