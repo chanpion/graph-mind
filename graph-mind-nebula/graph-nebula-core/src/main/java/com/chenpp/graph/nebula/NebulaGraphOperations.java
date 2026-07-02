@@ -56,9 +56,8 @@ public class NebulaGraphOperations implements GraphOperations {
         String nql = NebulaUtil.buildCreateSpace(nebulaConf);
         ResultSet resultSet = execute(nebulaConf, nql);
         assertSuccess(resultSet, "create graph");
-        log.info("Create graph {} success, waiting for space to be ready...", nebulaConf.getGraphCode());
         waitForSpaceReady(nebulaConf.getGraphCode());
-        log.info("Space {} is ready", nebulaConf.getGraphCode());
+        log.info("Nebula space {} is ready", nebulaConf.getGraphCode());
     }
 
     private void waitForSpaceReady(String spaceName) {
@@ -88,7 +87,6 @@ public class NebulaGraphOperations implements GraphOperations {
 
     @Override
     public void dropGraph(GraphConf graphConf) throws GraphException {
-        log.info("Dropping graph: {}", graphConf.getGraphCode());
         String nql = NebulaUtil.buildDropSpace(this.nebulaConf.getGraphCode());
         ResultSet resultSet = execute(this.nebulaConf, nql);
         assertSuccess(resultSet, "drop graph");
@@ -97,7 +95,6 @@ public class NebulaGraphOperations implements GraphOperations {
 
     @Override
     public List<Graph> listGraphs(GraphConf graphConf) {
-        log.info("Listing graphs");
         String nql = NebulaUtil.buildShowSpaces();
         ResultSet resultSet = execute(nebulaConf, nql);
         assertSuccess(resultSet, "list graphs");
@@ -112,8 +109,6 @@ public class NebulaGraphOperations implements GraphOperations {
 
     @Override
     public void applySchema(GraphConf graphConf, GraphSchema graphSchema) {
-        log.info("Begin apply graph schema for: {}", graphConf.getGraphCode());
-
         List<Graph> graphs = listGraphs(graphConf);
         if (graphs.stream().noneMatch(graph -> Objects.equals(graph.getCode(), nebulaConf.getGraphCode()))) {
             createGraph(graphConf);
@@ -141,8 +136,6 @@ public class NebulaGraphOperations implements GraphOperations {
             log.info("No entities or relations to alter");
             return;
         }
-
-        log.info("Begin alter graph schema for: {}", graphConf.getGraphCode());
 
         try {
             withSession(session -> {
@@ -188,7 +181,6 @@ public class NebulaGraphOperations implements GraphOperations {
                 continue;
             }
             Set<String> existingProps = remoteProps.getOrDefault(entity.getLabel(), Set.of());
-            // 找出本地有新但远程没有的属性
             List<GraphProperty> newProps = entity.getProperties().stream()
                     .filter(p -> p.getCode() != null && !existingProps.contains(p.getCode()))
                     .toList();
@@ -197,7 +189,6 @@ public class NebulaGraphOperations implements GraphOperations {
                 continue;
             }
 
-            // 构建只含新属性的GraphEntity用于生成ALTER语句
             GraphEntity alterEntity = new GraphEntity();
             alterEntity.setLabel(entity.getLabel());
             alterEntity.setProperties(newProps);
@@ -215,9 +206,6 @@ public class NebulaGraphOperations implements GraphOperations {
         }
     }
 
-    /**
-     * 增量更新边类型：为已存在的边类型添加新属性
-     */
     private void alterEdges(List<GraphRelation> relations, Session session, GraphSchema publishedSchema) {
         if (relations == null || relations.isEmpty()) {
             return;
@@ -254,7 +242,6 @@ public class NebulaGraphOperations implements GraphOperations {
 
             try {
                 String nql = NebulaUtil.buildAlterEdgeAdd(alterRelation);
-                log.info("Altering edge {} with new properties: {}", relation.getLabel(), newProps.stream().map(GraphProperty::getCode).collect(Collectors.joining(", ")));
                 ResultSet resultSet = session.execute(nql);
                 throwIfFailed(resultSet, "alter edge " + relation.getLabel());
                 log.info("Successfully altered edge: {}", relation.getLabel());
@@ -309,7 +296,6 @@ public class NebulaGraphOperations implements GraphOperations {
             return;
         }
 
-        log.info("Creating {} tags", entities.size());
         entities.forEach(entity -> {
             try {
                 String nql = NebulaUtil.buildCreateTag(entity);
@@ -434,7 +420,6 @@ public class NebulaGraphOperations implements GraphOperations {
             return;
         }
 
-        log.info("Creating {} indices", indices.size());
         indices.forEach(i -> log.info("Creating index: name={}, label={}, schemaType={}, property={}, propertyNames={}", i.getName(), i.getLabel(), i.getSchemaType(), i.getProperty(), i.getPropertyNames()));
         indices.forEach(index -> {
             try {
@@ -459,9 +444,6 @@ public class NebulaGraphOperations implements GraphOperations {
 
                 String nql = NebulaUtil.buildCreateIndex(nebulaIndex);
                 log.info("Execute create index NGQL: {}", nql);
-                log.info("Index details: indexType={}, indexName={}, typeName={}, propNameList={}, propTypeMap={}",
-                        nebulaIndex.getIndexType(), nebulaIndex.getIndexName(),
-                        nebulaIndex.getTypeName(), nebulaIndex.getPropNameList(), nebulaIndex.getPropTypeMap());
 
                 ResultSet resultSet = session.execute(nql);
                 if (!resultSet.isSucceeded()) {
@@ -471,7 +453,7 @@ public class NebulaGraphOperations implements GraphOperations {
                 log.info("Successfully created index: {}", index.getName());
 
             } catch (Exception e) {
-                log.error("Error creating index: " + index.getName(), e);
+                log.error("Error creating index: {}", index.getName(), e);
                 throw new GraphException("Error creating index: " + index.getName(), e);
             }
         });
@@ -631,9 +613,7 @@ public class NebulaGraphOperations implements GraphOperations {
         try {
             withSession(session -> {
                 useSpace(session, graphCode);
-                // 先删除与该标签相关的所有索引
                 dropIndexesForLabel(session, label, SchemaType.TAG);
-                // 然后删除标签
                 String ngql = "DROP TAG IF EXISTS `" + label + "`";
                 log.info("Execute drop tag NGQL: {}", ngql);
                 ResultSet rs = session.execute(ngql);
@@ -651,9 +631,7 @@ public class NebulaGraphOperations implements GraphOperations {
         try {
             withSession(session -> {
                 useSpace(session, graphCode);
-                // 先删除与该边类型相关的所有索引
                 dropIndexesForLabel(session, label, SchemaType.EDGE);
-                // 然后删除边类型
                 String ngql = "DROP EDGE IF EXISTS `" + label + "`";
                 log.info("Execute drop edge NGQL: {}", ngql);
                 ResultSet rs = session.execute(ngql);
@@ -665,15 +643,7 @@ public class NebulaGraphOperations implements GraphOperations {
         }
     }
 
-    /**
-     * 删除与指定标签相关的所有索引
-     *
-     * @param session   会话对象
-     * @param labelName 标签名称
-     * @param schemaType  schema类型 (TAG 或 EDGE)
-     */
     private void dropIndexesForLabel(Session session, String labelName, SchemaType schemaType) {
-        log.info("Dropping indexes for label: {}, type: {}", labelName, schemaType);
         String nql = "SHOW " + schemaType + " INDEXES";
         
         try {

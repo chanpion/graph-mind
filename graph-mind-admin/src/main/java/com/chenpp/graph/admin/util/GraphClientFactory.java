@@ -19,6 +19,8 @@ import com.chenpp.graph.admin.service.GraphService;
 import com.chenpp.graph.admin.service.GraphConnectionService;
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.Objects;
+
 /**
  * 图客户端工厂类，用于根据数据库类型动态创建对应的图客户端实例
  *
@@ -68,7 +70,7 @@ public class GraphClientFactory {
                     cassandraConf.setHostname(graphConf.getHost());
                     cassandraConf.setPort(graphConf.getPort());
                     janusConf.setCassandraConf(cassandraConf);
-                } else {
+                } else if (Objects.equals(JanusConstants.BACKEND_HBASE, storageBackend)) {
                     HBaseConf hBaseConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), HBaseConf.class);
                     hBaseConf.setHbaseHost(graphConf.getHost());
                     hBaseConf.setHbasePort(graphConf.getPort());

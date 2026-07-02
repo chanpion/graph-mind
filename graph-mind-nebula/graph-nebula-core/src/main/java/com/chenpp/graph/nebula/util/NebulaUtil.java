@@ -30,7 +30,6 @@ import java.util.stream.Collectors;
 @Slf4j
 public class NebulaUtil {
 
-    // ========== Space 操作 ==========
 
     public static String buildCreateSpace(NebulaConf nebulaConf) {
         return "CREATE SPACE IF NOT EXISTS " + quoteIdentifier(nebulaConf.getGraphCode()) + " (PARTITION_NUM = " + nebulaConf.getPartitionNum() + ", REPLICA_FACTOR = " + nebulaConf.getReplicaFactor() + ", VID_TYPE = FIXED_STRING(" + nebulaConf.getVidFixedStrLength() + "))";
@@ -48,7 +47,6 @@ public class NebulaUtil {
         return "SHOW SPACES";
     }
 
-    // ========== Tag 操作 ==========
 
     public static String buildCreateTag(GraphEntity entity) {
         StringBuilder tagBuilder = new StringBuilder();
@@ -71,9 +69,6 @@ public class NebulaUtil {
         return "DROP TAG IF EXISTS " + quoteIdentifier(tagName);
     }
 
-    /**
-     * 构建 ALTER TAG ADD 语句，为已有标签添加新属性
-     */
     public static String buildAlterTagAdd(GraphEntity entity) {
         String properties = entity.getProperties().stream()
                 .map(prop -> prop.getCode() + " " + convertToNebulaDataType(prop.getDataType()))
@@ -81,7 +76,6 @@ public class NebulaUtil {
         return "ALTER TAG " + quoteIdentifier(entity.getLabel()) + " ADD (" + properties + ")";
     }
 
-    // ========== Edge 操作 ==========
 
     public static String buildCreateEdge(GraphRelation relation) {
         StringBuilder edgeBuilder = new StringBuilder();
@@ -111,7 +105,6 @@ public class NebulaUtil {
         return "ALTER EDGE " + quoteIdentifier(relation.getLabel()) + " ADD (" + properties + ")";
     }
 
-    // ========== Index 操作 ==========
 
     public static String buildCreateIndex(NebulaIndex index) {
         StringBuilder builder = new StringBuilder();
@@ -145,15 +138,11 @@ public class NebulaUtil {
         return "DROP " + schemaType + " INDEX IF EXISTS " + quoteIdentifier(indexName);
     }
 
-    // ========== Vertex 数据操作 ==========
 
     public static String buildInsertVertex(GraphVertex vertex) {
         return buildInsertVertex(vertex, null);
     }
 
-    /**
-     * 构建插入顶点的NGQL语句，支持根据属性类型格式化值
-     */
     public static String buildInsertVertex(GraphVertex vertex, Map<String, DataType> propertyTypes) {
         String uid = vertex.getUid();
         String keys = String.join(",", vertex.getProperties().keySet());
@@ -165,9 +154,6 @@ public class NebulaUtil {
         return String.format("INSERT VERTEX %s(%s) VALUES %s", quoteIdentifier(label), keys, valuesClause);
     }
 
-    /**
-     * 构建批量插入顶点的值子句，支持根据属性类型格式化值
-     */
     public static String buildInsertVertexValuesClause(GraphVertex vertex, Map<String, DataType> propertyTypes) {
         String propValues = buildPropertyValuesClause(vertex.getProperties(), propertyTypes);
         return String.format("\"%s\":(%s)", vertex.getUid(), propValues);
@@ -181,7 +167,6 @@ public class NebulaUtil {
         return String.format("DELETE VERTEX \"%s\" WITH EDGE;", uid);
     }
 
-    // ========== Edge 数据操作 ==========
 
     public static String buildInsertEdge(String label, String keys, String startUid, String endUid, String propValues) {
         return String.format("INSERT EDGE %s (%s) VALUES \"%s\" -> \"%s\":(%s);", quoteIdentifier(label), keys, startUid, endUid, propValues);
@@ -199,7 +184,6 @@ public class NebulaUtil {
         return String.format("DELETE EDGE %s \"%s\" -> \"%s\";", quoteIdentifier(label), startUid, endUid);
     }
 
-    // ========== 查询操作 ==========
 
     public static String buildMatchVertices(String idListStr) {
         return String.format("MATCH (v) WHERE id(v) IN [%s] RETURN v LIMIT 1000", idListStr);
@@ -221,15 +205,11 @@ public class NebulaUtil {
         return String.format("MATCH ()-[e:%s]->() RETURN count(e) AS count;", quoteIdentifier(label));
     }
 
-    /**
-     * 根据标签、属性名和属性值构建查找顶点的NGQL语句
-     */
     public static String buildFindVertexByProperty(String label, String property, String value) {
         String escapedValue = value.replace("'", "\\'");
         return String.format("MATCH (n:`%s`) WHERE n.`%s`.`%s` == '%s' RETURN n", label, label, property, escapedValue);
     }
 
-    // ========== 统计作业 ==========
 
     public static String buildSubmitJobStats() {
         return "SUBMIT JOB STATS";
@@ -243,7 +223,6 @@ public class NebulaUtil {
         return "SHOW STATS";
     }
 
-    // ========== 工具方法 ==========
 
     /**
      * 为 NGQL 标识符（标签名、边类型名、属性名等）添加反引号转义
@@ -254,17 +233,11 @@ public class NebulaUtil {
 
     public static String buildPropertyValuesClause(Map<String, Object> properties) {
         return properties.values().stream()
-                .map(NebulaUtil::formatValue)
+                .map(p -> formatValue(p, null))
                 .reduce((a, b) -> a + ", " + b)
                 .orElse("");
     }
 
-    /**
-     * 根据属性类型映射构建属性值子句
-     * @param properties 属性键值对
-     * @param propertyTypes 属性类型映射（key为属性名，value为数据类型）
-     * @return 属性值子句字符串
-     */
     public static String buildPropertyValuesClause(Map<String, Object> properties, Map<String, DataType> propertyTypes) {
         return properties.entrySet().stream()
                 .map(entry -> formatValue(entry.getValue(), propertyTypes != null ? propertyTypes.get(entry.getKey()) : null))
@@ -272,34 +245,19 @@ public class NebulaUtil {
                 .orElse("");
     }
 
-    /**
-     * 格式化属性值，用于构建NGQL语句
-     */
-    public static String formatValue(Object value) {
-        return formatValue(value, null);
-    }
-
-    /**
-     * 根据指定的数据类型格式化属性值，用于构建NGQL语句
-     * @param value 属性值
-     * @param dataType 期望的数据类型，如果为null则根据值的实际类型推断
-     * @return 格式化后的字符串
-     */
     public static String formatValue(Object value, DataType dataType) {
         if (value == null) {
             return "NULL";
         }
-        
-        // 如果指定了目标类型，先进行类型转换
+
         if (dataType != null && value instanceof String) {
             String strValue = ((String) value).trim();
             if ("null".equalsIgnoreCase(strValue) || "NULL".equals(strValue)) {
                 return "NULL";
             }
-            
+
             return switch (dataType) {
                 case Short, Integer, Int, Long -> {
-                    // 转换为整数类型
                     try {
                         if (strValue.contains(".")) {
                             yield String.valueOf((long) Double.parseDouble(strValue));
@@ -312,7 +270,6 @@ public class NebulaUtil {
                     }
                 }
                 case Float, Double -> {
-                    // 转换为浮点类型
                     try {
                         yield String.valueOf(Double.parseDouble(strValue));
                     } catch (NumberFormatException e) {
@@ -340,23 +297,16 @@ public class NebulaUtil {
                         yield "\"" + strValue.replace("\"", "\\\"") + "\"";
                     }
                 }
-                case String, Array -> {
-                    // 字符串类型直接返回，添加引号
-                    yield "\"" + strValue.replace("\"", "\\\"") + "\"";
-                }
-                default -> {
-                    yield "\"" + strValue.replace("\"", "\\\"") + "\"";
-                }
+                case String, Array ->
+                        "\"" + strValue.replace("\"", "\\\"") + "\"";
             };
         }
-        
-        // 没有指定类型或值不是字符串，使用原有的逻辑
+
         if (value instanceof String) {
             String str = ((String) value).trim();
             if ("null".equalsIgnoreCase(str) || "NULL".equals(str)) {
                 return "NULL";
             }
-            // 检查日期格式
             if (DataTypeConverter.isDateString(str)) {
                 if (str.matches("\\d{4}-\\d{2}-\\d{2}")) {
                     return "DATETIME('" + str + " 00:00:00')";
@@ -393,10 +343,6 @@ public class NebulaUtil {
             case String -> "STRING";
             case Date, Datetime -> "DATETIME";
             case Array -> "STRING";
-            default -> {
-                log.warn("Unsupported data type: {}, using STRING as default", dataType);
-                yield "STRING";
-            }
         };
     }
 
@@ -485,9 +431,7 @@ public class NebulaUtil {
             } else if (value.isBoolean()) {
                 return value.asBoolean();
             } else if (value.isDateTime()) {
-                // 处理日期时间类型，提取标准格式字符串
                 String datetimeStr = value.toString();
-                // 从 "utc datetime: 2020-09-09T00:00:00.000000, timezoneOffset: 0" 中提取日期时间部分
                 int startIdx = datetimeStr.indexOf("datetime: ");
                 if (startIdx >= 0) {
                     startIdx += "datetime: ".length();

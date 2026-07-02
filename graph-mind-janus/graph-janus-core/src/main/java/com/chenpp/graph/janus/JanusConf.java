@@ -14,7 +14,7 @@ public class JanusConf extends GraphConf {
     private static final long serialVersionUID = -2304451347285714889L;
 
     /**
-     * 存储后端类型，如cql、hbase等
+     * 存储后端类型，cql、hbase
      */
     private String storageBackend;
 

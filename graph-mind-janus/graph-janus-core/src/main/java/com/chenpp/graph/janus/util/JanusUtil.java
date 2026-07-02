@@ -219,9 +219,6 @@ public class JanusUtil {
     }
 
 
-    /**
-     * 安全回滚 JanusGraphManagement 事务
-     */
     public static void safeRollback(JanusGraphManagement management) {
         if (management != null) {
             try {

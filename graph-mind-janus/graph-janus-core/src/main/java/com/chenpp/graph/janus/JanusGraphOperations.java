@@ -46,7 +46,6 @@ import java.util.Set;
  */
 @Slf4j
 public class JanusGraphOperations implements GraphOperations {
-    private static final String BACKING_INDEX = "search";
     private JanusConf janusConf;
     private JanusGraph graph;
 
@@ -96,7 +95,6 @@ public class JanusGraphOperations implements GraphOperations {
     public List<Graph> listGraphs(GraphConf graphConf) throws GraphException {
         try {
             Graph graph = new Graph();
-            // 检查后端中是否存在对应的 keyspace/namespace
             if (janusConf.getCassandraConf() != null) {
                 CassandraClient cassandraClient = new CassandraClient(janusConf.getCassandraConf());
                 if (!cassandraClient.keyspaceExists(janusConf.getGraphCode())) {
@@ -106,7 +104,6 @@ public class JanusGraphOperations implements GraphOperations {
                 graph.setCode(janusConf.getCassandraConf().getKeyspace());
                 graph.setName(graph.getCode());
             } else if (janusConf.getHBaseConf() != null) {
-                // HBase 命名空间检查暂未实现，默认返回配置中的图
                 log.warn("HBase namespace existence check not implemented, returning configured graph");
             }
             log.debug("Listed graphs, returning single graph: {}", graphConf.getGraphCode());
@@ -122,21 +119,15 @@ public class JanusGraphOperations implements GraphOperations {
         JanusGraphManagement management = null;
         try {
             management = graph.openManagement();
-            // 创建顶点标签
             createVertexLabels(management, graphSchema.getEntities());
 
-            // 创建边标签
             createEdgeLabels(management, graphSchema.getRelations());
 
-            // 创建属性键
             createPropertyKeys(management, graphSchema.getEntities(), graphSchema.getRelations());
 
-            // 确保系统属性键 uid 存在（用于顶点/边查询）
             ensureSystemPropertyKeys(management);
 
-            // 创建索引
             createIndices(management, graphSchema.getIndexes());
-            // 确保 uid 索引存在
             ensureSystemIndices(management);
 
             management.commit();
@@ -166,8 +157,6 @@ public class JanusGraphOperations implements GraphOperations {
             List<GraphIndex> indexes = getIndices(management);
             schema.setIndexes(indexes);
 
-            log.debug("Retrieved published schema for graph: {}, entities: {}, relations: {}, indexes: {}",
-                    graphConf.getGraphCode(), entities.size(), relations.size(), indexes.size());
             return schema;
         } catch (Exception e) {
             log.error("Failed to get published schema for graph: {}", graphConf.getGraphCode(), e);
@@ -209,7 +198,6 @@ public class JanusGraphOperations implements GraphOperations {
         for (EdgeLabel edgeLabel : edgeLabels) {
             GraphRelation relation = new GraphRelation();
             relation.setLabel(edgeLabel.name());
-            // 获取边的起点和终点顶点标签（从 mappedConnections 中获取）
             Collection<org.janusgraph.core.Connection> connections = edgeLabel.mappedConnections();
             if (connections != null && !connections.isEmpty()) {
                 org.janusgraph.core.Connection firstConn = connections.iterator().next();
@@ -253,7 +241,6 @@ public class JanusGraphOperations implements GraphOperations {
     }
 
     private List<GraphIndex> getIndices(JanusGraphManagement mgmt) {
-        log.debug("Retrieved indices (currently returning empty list due to API limitations)");
         Iterable<JanusGraphIndex> indexes = mgmt.getGraphIndexes(Vertex.class);
         List<GraphIndex> graphIndices = new ArrayList<>();
         indexes.forEach(index -> {
@@ -270,42 +257,26 @@ public class JanusGraphOperations implements GraphOperations {
         return graphIndices;
     }
 
-    /**
-     * 创建顶点标签
-     *
-     * @param management 图管理对象
-     * @param entities   实体列表
-     */
     private void createVertexLabels(JanusGraphManagement management, List<GraphEntity> entities) {
         if (entities == null || entities.isEmpty()) {
             log.info("No vertex labels to create");
             return;
         }
 
-        int createdCount = 0;
         for (GraphEntity entity : entities) {
             if (!management.containsVertexLabel(entity.getLabel())) {
                 management.makeVertexLabel(entity.getLabel()).make();
                 log.info("Created vertex label: {}", entity.getLabel());
-                createdCount++;
             }
         }
-        log.debug("Created {} vertex labels", createdCount);
     }
 
-    /**
-     * 创建边标签
-     *
-     * @param management 图管理对象
-     * @param relations  关系列表
-     */
     private void createEdgeLabels(JanusGraphManagement management, List<GraphRelation> relations) {
         if (relations == null || relations.isEmpty()) {
             log.info("No edge labels to create");
             return;
         }
 
-        int createdCount = 0;
         for (GraphRelation relation : relations) {
             if (!management.containsEdgeLabel(relation.getLabel())) {
                 Multiplicity multiplicity = relation.getMultiple() ? Multiplicity.MULTI : Multiplicity.SIMPLE;
@@ -313,22 +284,11 @@ public class JanusGraphOperations implements GraphOperations {
                         .multiplicity(multiplicity)
                         .make();
                 log.info("Created edge label: {}", relation.getLabel());
-                createdCount++;
             }
         }
-        log.debug("Created {} edge labels", createdCount);
     }
 
-    /**
-     * 创建属性键
-     *
-     * @param management 图管理对象
-     * @param entities   实体列表
-     * @param relations  关系列表
-     */
     private void createPropertyKeys(JanusGraphManagement management, List<GraphEntity> entities, List<GraphRelation> relations) {
-
-        // 收集所有属性
         Set<GraphProperty> allProperties = new java.util.HashSet<>();
 
         if (entities != null) {
@@ -350,8 +310,6 @@ public class JanusGraphOperations implements GraphOperations {
             return;
         }
 
-        int createdCount = 0;
-        // 创建属性键
         for (GraphProperty property : allProperties) {
             if (!management.containsPropertyKey(property.getCode())) {
                 Class<?> clazz = JanusUtil.getJanusDataType(property.getDataType());
@@ -359,24 +317,15 @@ public class JanusGraphOperations implements GraphOperations {
                     log.info("property ({}) data type ({}) is not supported, skip.", property.getCode(), property.getDataType());
                     continue;
                 }
-                // 根据数据类型创建属性键
                 PropertyKey propertyKey = management.makePropertyKey(property.getCode())
                         .dataType(clazz)
                         .cardinality(Cardinality.SINGLE)
                         .make();
                 log.info("Created property key: {} with type: {}, propertyKey: {}", property.getCode(), property.getDataType(), propertyKey);
-                createdCount++;
             }
         }
-        log.info("Created {} property keys", createdCount);
     }
 
-    /**
-     * 创建索引
-     *
-     * @param management 图管理对象
-     * @param indexes    索引列表
-     */
     private void createIndices(JanusGraphManagement management, List<GraphIndex> indexes) {
         if (indexes == null || indexes.isEmpty()) {
             log.info("No indices to create");
@@ -411,20 +360,15 @@ public class JanusGraphOperations implements GraphOperations {
             return;
         }
 
-        JanusGraphManagement.IndexBuilder builder;
+        JanusGraphManagement.IndexBuilder builder = null;
         if (Objects.equals(index.getSchemaType(), GraphConstants.VERTEX)) {
             builder = mgmt.buildIndex(name, Vertex.class);
         } else if (Objects.equals(index.getSchemaType(), GraphConstants.EDGE)) {
             builder = mgmt.buildIndex(name, Edge.class);
-        } else {
-            // never happen
-            log.error("the schema type ({}) of index ({}) is not support!", index.getType(), index.getName());
-            throw new IllegalArgumentException("the schema type (" + index.getType() + ") of index (" + index.getName() + ") is not support!");
         }
 
         addPropertyKeyForIndex(builder, index, mgmt);
 
-        // 仅 组合索引支持 唯一配置
         if (isCompositeIndex(index.getType()) && index.isUnique()) {
             builder.unique();
         }
@@ -475,9 +419,6 @@ public class JanusGraphOperations implements GraphOperations {
         log.info("Created relation index: {} for edge label: {}", name, edgeLabel.name());
     }
 
-    /**
-     * 确保系统属性键存在（如uid）
-     */
     private void ensureSystemPropertyKeys(JanusGraphManagement management) {
         if (!management.containsPropertyKey(GraphConstants.UID)) {
             management.makePropertyKey(GraphConstants.UID)
@@ -488,9 +429,6 @@ public class JanusGraphOperations implements GraphOperations {
         }
     }
 
-    /**
-     * 确保系统索引存在（如uid索引）
-     */
     private void ensureSystemIndices(JanusGraphManagement management) {
         String uidIndexName = "byUid";
         if (!management.containsGraphIndex(uidIndexName)) {
@@ -508,7 +446,6 @@ public class JanusGraphOperations implements GraphOperations {
 
         JanusGraphManagement management = null;
         try {
-            // 删除数据
             graph.traversal().V().hasLabel(label).drop().iterate();
             graph.tx().commit();
 
@@ -536,7 +473,6 @@ public class JanusGraphOperations implements GraphOperations {
         log.info("Dropping edge label: {}", label);
         JanusGraphManagement management = null;
         try {
-            // 1. 删除所有 label 类型的边
             graph.traversal().E().hasLabel(label).drop().iterate();
             graph.tx().commit();
             management = graph.openManagement();
