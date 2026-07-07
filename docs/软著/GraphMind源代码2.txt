@@ -1,0 +1,3038 @@
+package com.chenpp.graph.admin.controller;
+
+import com.chenpp.graph.admin.model.ImportResult;
+import com.chenpp.graph.admin.model.Result;
+import com.chenpp.graph.admin.model.GraphVertexDef;
+import com.chenpp.graph.admin.model.GraphEdgeDef;
+import com.chenpp.graph.admin.model.PageResult;
+import com.chenpp.graph.admin.service.GraphDataService;
+import com.chenpp.graph.admin.service.GraphSchemaService;
+import com.chenpp.graph.core.model.GraphEdge;
+import com.chenpp.graph.core.model.GraphSummary;
+import com.chenpp.graph.core.model.GraphVertex;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 图数据管理API
+ */
+@SuppressWarnings("unchecked")
+@RestController
+@RequestMapping("/api/graph/data")
+public class GraphDataController {
+
+    @Autowired
+    private GraphDataService graphDataService;
+
+    @Autowired
+    private GraphSchemaService graphSchemaService;
+
+    @PostMapping("/importVertices")
+    public Result<ImportResult> importVertexData(
+            @RequestParam(required = false) Long graphId,
+            @RequestParam(required = false) Long vertexTypeId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode,
+            @RequestParam(required = false) String label,
+            @RequestPart("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return Result.error("CSV文件不能为空");
+        }
+        if (!((connectionId != null && graphCode != null && label != null) || (graphId != null && vertexTypeId != null))) {
+            return Result.error("需要提供 (graphId + vertexTypeId) 或 (connectionId + graphCode + label)");
+        }
+        ImportResult result = graphDataService.importVertexData(graphId, vertexTypeId, connectionId, graphCode, label, file);
+        return Result.success(result);
+    }
+
+    @PostMapping("/importEdges")
+    public Result<ImportResult> importEdgeData(
+            @RequestParam(required = false) Long graphId,
+            @RequestParam(required = false) Long edgeTypeId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode,
+            @RequestParam(required = false) String label,
+            @RequestPart("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return Result.error("CSV文件不能为空");
+        }
+        if (!((connectionId != null && graphCode != null && label != null) || (graphId != null && edgeTypeId != null))) {
+            return Result.error("需要提供 (graphId + edgeTypeId) 或 (connectionId + graphCode + label)");
+        }
+        ImportResult result = graphDataService.importEdgeData(graphId, edgeTypeId, connectionId, graphCode, label, file);
+        return Result.success(result);
+    }
+
+    @GetMapping("/vertices")
+    public Result<PageResult<GraphVertex>> getVertexDataList(
+            @RequestParam Long graphId,
+            @RequestParam Long vertexTypeId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) {
+        String label = null;
+        if (vertexTypeId != null && vertexTypeId < 0) {
+            if (connectionId != null && graphCode != null) {
+                List<GraphVertexDef> vertexDefs = graphSchemaService.discoverVertexDefs(graphId, connectionId, graphCode);
+                for (GraphVertexDef vd : vertexDefs) {
+                    if (vd.getId().equals(vertexTypeId)) {
+                        label = vd.getLabel();
+                        break;
+                    }
+                }
+            }
+            if (label == null) {
+                return Result.success(PageResult.empty(page, size));
+            }
+        }
+
+        PageResult<GraphVertex> data = graphDataService.queryVertexDataList(graphId, vertexTypeId, label, page, size, connectionId, graphCode);
+        return Result.success(data);
+    }
+
+    @GetMapping("/edges")
+    public Result<PageResult<GraphEdge>> getEdgeDataList(
+            @RequestParam Long graphId,
+            @RequestParam Long edgeTypeId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) {
+        String label = null;
+        if (edgeTypeId != null && edgeTypeId < 0) {
+            if (connectionId != null && graphCode != null) {
+                List<GraphEdgeDef> edgeDefs = graphSchemaService.discoverEdgeDefs(graphId, connectionId, graphCode);
+                for (GraphEdgeDef ed : edgeDefs) {
+                    if (ed.getId().equals(edgeTypeId)) {
+                        label = ed.getLabel();
+                        break;
+                    }
+                }
+            }
+            if (label == null) {
+                return Result.success(PageResult.empty(page, size));
+            }
+        }
+
+        PageResult<GraphEdge> data = graphDataService.queryEdgeDataList(graphId, edgeTypeId, label, page, size, connectionId, graphCode);
+        return Result.success(data);
+    }
+
+    @PostMapping("/vertex")
+    public Result<Boolean> addVertexData(
+            @RequestParam Long graphId,
+            @RequestParam Long vertexTypeId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode,
+            @RequestBody Map<String, Object> data) {
+        boolean result = graphDataService.addVertexData(graphId, vertexTypeId, connectionId, graphCode, data);
+        if (!result) {
+            return Result.error("新增顶点数据失败");
+        }
+        return Result.success(true);
+    }
+
+    @PostMapping("/edge")
+    public Result<Boolean> addEdgeData(
+            @RequestParam Long graphId,
+            @RequestParam Long edgeTypeId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode,
+            @RequestBody Map<String, Object> data) {
+        boolean result = graphDataService.addEdgeData(graphId, edgeTypeId, connectionId, graphCode, data);
+        if (!result) {
+            return Result.error("新增边数据失败");
+        }
+        return Result.success(true);
+    }
+
+    @PutMapping("/vertex")
+    public Result<Boolean> updateVertexData(
+            @RequestParam Long graphId,
+            @RequestParam String vertexId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode,
+            @RequestBody Map<String, Object> data) {
+        boolean result = graphDataService.updateVertexData(graphId, vertexId, connectionId, graphCode, data);
+        if (!result) {
+            return Result.error("更新顶点数据失败");
+        }
+        return Result.success(true);
+    }
+
+    @PutMapping("/edge")
+    public Result<Boolean> updateEdgeData(
+            @RequestParam Long graphId,
+            @RequestParam String edgeId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode,
+            @RequestBody Map<String, Object> data) {
+        boolean result = graphDataService.updateEdgeData(graphId, edgeId, connectionId, graphCode, data);
+        if (!result) {
+            return Result.error("更新边数据失败");
+        }
+        return Result.success(true);
+    }
+
+    @DeleteMapping("/vertex")
+    public Result<Boolean> deleteVertex(
+            @RequestParam Long graphId,
+            @RequestParam String vertexId,
+            @RequestParam(required = false) String label,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode) {
+        boolean result = graphDataService.deleteVertex(graphId, vertexId, label, connectionId, graphCode);
+        if (!result) {
+            return Result.error("删除顶点失败");
+        }
+        return Result.success(true);
+    }
+
+    @DeleteMapping("/edge")
+    public Result<Boolean> deleteEdge(
+            @RequestParam Long graphId,
+            @RequestParam String edgeId,
+            @RequestParam(required = false) String label,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode) {
+        boolean result = graphDataService.deleteEdge(graphId, edgeId, label, connectionId, graphCode);
+        if (!result) {
+            return Result.error("删除边失败");
+        }
+        return Result.success(true);
+    }
+
+    @GetMapping("/summary")
+    public Result<GraphSummary> getGraphSummary(
+            @RequestParam Long graphId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode) {
+        GraphSummary summary = graphDataService.getGraphSummary(graphId, connectionId, graphCode);
+        return Result.success(summary);
+    }
+}
+
+package com.chenpp.graph.admin.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.chenpp.graph.admin.enums.GraphTypeEnum;
+import com.chenpp.graph.admin.model.GraphInfo;
+import com.chenpp.graph.admin.model.GraphConnection;
+import com.chenpp.graph.admin.model.GraphEdgeDef;
+import com.chenpp.graph.admin.model.GraphVertexDef;
+import com.chenpp.graph.admin.model.GraphPropertyDef;
+import com.chenpp.graph.admin.model.ImportResult;
+import com.chenpp.graph.admin.model.PageResult;
+import com.chenpp.graph.admin.service.GraphDataService;
+import com.chenpp.graph.admin.service.GraphConnectionService;
+import com.chenpp.graph.admin.service.GraphEdgeDefService;
+import com.chenpp.graph.admin.service.GraphVertexDefService;
+import com.chenpp.graph.admin.service.GraphPropertyDefService;
+import com.chenpp.graph.admin.service.GraphService;
+import com.chenpp.graph.admin.util.GraphClientFactory;
+import com.chenpp.graph.core.GraphClient;
+import com.chenpp.graph.core.GraphDataOperations;
+import com.chenpp.graph.core.constant.GraphConstants;
+import com.chenpp.graph.core.model.GraphConf;
+import com.chenpp.graph.core.model.GraphData;
+import com.chenpp.graph.core.model.GraphEdge;
+import com.chenpp.graph.core.model.GraphSummary;
+import com.chenpp.graph.core.model.GraphVertex;
+import com.chenpp.graph.core.util.DataTypeConverter;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
+
+/**
+ * 图数据服务实现类, 处理图数据的导入、查询等操作
+ */
+@Slf4j
+@Service
+public class GraphDataServiceImpl implements GraphDataService {
+
+    @Autowired
+    private GraphService graphService;
+
+    @Autowired
+    private GraphConnectionService connectionService;
+
+    @Autowired
+    private GraphVertexDefService vertexDefService;
+
+    @Autowired
+    private GraphEdgeDefService edgeDefService;
+
+    @Autowired
+    private GraphPropertyDefService propertyDefService;
+
+    private final Map<String, ReentrantLock> importLocks = new ConcurrentHashMap<>();
+
+    private static final int BATCH_SIZE = 100;
+
+    private ReentrantLock getImportLock(Long graphId, String graphCode) {
+        String key = graphId != null ? "graphId:" + graphId : "graphCode:" + graphCode;
+        return importLocks.computeIfAbsent(key, k -> new ReentrantLock());
+    }
+
+    private void releaseImportLock(Long graphId, String graphCode) {
+        String key = graphId != null ? "graphId:" + graphId : "graphCode:" + graphCode;
+        importLocks.remove(key);
+    }
+
+    @Override
+    public ImportResult importVertexData(Long graphId, Long vertexTypeId, Long connectionId, String graphCode, String label, MultipartFile file) {
+        return doImportData(graphId, vertexTypeId, connectionId, graphCode, label, file, true);
+    }
+
+    @Override
+    public ImportResult importEdgeData(Long graphId, Long edgeTypeId, Long connectionId, String graphCode, String label, MultipartFile file) {
+        return doImportData(graphId, edgeTypeId, connectionId, graphCode, label, file, false);
+    }
+
+    private ImportResult doImportData(Long graphId, Long typeId, Long connectionId, String graphCode,
+                                      String label, MultipartFile file, boolean isVertex) {
+        String dataType = isVertex ? "顶点" : "边";
+        ImportResult result = new ImportResult();
+        result.setTotalCount(0);
+        result.setSuccessCount(0);
+        result.setFailureCount(0);
+        List<String> errorMessages = new ArrayList<>();
+
+        ReentrantLock importLock = getImportLock(graphId, graphCode);
+        boolean lockAcquired = false;
+        try {
+            if (!importLock.tryLock(30, TimeUnit.SECONDS)) {
+                errorMessages.add("系统繁忙，请稍后再试");
+                result.setErrorMessages(errorMessages.toArray(new String[0]));
+                return result;
+            }
+            lockAcquired = true;
+            log.info("获取导入锁成功，graphId={}, graphCode={}", graphId, graphCode);
+
+            ImportContext context = prepareImportContext(graphId, typeId, connectionId, graphCode, label, isVertex);
+            if (context.hasError()) {
+                result.setErrorMessages(context.getErrors().toArray(new String[0]));
+                return result;
+            }
+
+            List<Map<String, String>> dataList = parseDataCsv(file);
+            result.setTotalCount(dataList.size());
+
+            GraphClient graphClient = GraphClientFactory.createGraphClient(context.getGraphConf());
+            GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
+
+            int successCount = isVertex
+                    ? batchImportVertices(graphDataOperations, dataList, context.getLabel(), errorMessages)
+                    : batchImportEdges(graphDataOperations, dataList, context.getLabel(), errorMessages);
+
+            result.setSuccessCount(successCount);
+            result.setFailureCount(dataList.size() - successCount);
+            result.setErrorMessages(errorMessages.toArray(new String[0]));
+
+            log.info("导入{}数据完成，总数={}，成功={}，失败={}", dataType, dataList.size(), successCount, dataList.size() - successCount);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("获取导入锁被中断", e);
+            errorMessages.add("导入操作被中断");
+            result.setErrorMessages(errorMessages.toArray(new String[0]));
+        } catch (Exception e) {
+            log.error("导入{}数据失败", dataType, e);
+            errorMessages.add("导入" + dataType + "数据失败: " + e.getMessage());
+            result.setErrorMessages(errorMessages.toArray(new String[0]));
+        } finally {
+            if (lockAcquired) {
+                importLock.unlock();
+                releaseImportLock(graphId, graphCode);
+                log.info("释放导入锁，graphId={}, graphCode={}", graphId, graphCode);
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * 批量导入顶点数据
+     */
+    private int batchImportVertices(GraphDataOperations graphDataOperations, List<Map<String, String>> dataList, String label, List<String> errorMessages) {
+        int successCount = 0;
+        List<GraphVertex> batch = new ArrayList<>(BATCH_SIZE);
+
+        for (int i = 0; i < dataList.size(); i++) {
+            Map<String, String> dataRow = dataList.get(i);
+            try {
+                GraphVertex vertex = new GraphVertex();
+                vertex.setUid(dataRow.get(GraphConstants.UID));
+                vertex.setLabel(label);
+                vertex.setProperties(extractProperties(new HashMap<>(dataRow), Set.of(GraphConstants.LABEL)));
+                batch.add(vertex);
+
+                if (batch.size() >= BATCH_SIZE || i == dataList.size() - 1) {
+                    try {
+                        if (batch.size() > 1) {
+                            graphDataOperations.addVertices(batch);
+                            successCount += batch.size();
+                        } else {
+                            graphDataOperations.addVertex(batch.get(0));
+                            successCount++;
+                        }
+                    } catch (Exception batchEx) {
+                        log.warn("批量导入失败，尝试逐条插入: {}", batchEx.getMessage());
+                        for (int j = 0; j < batch.size(); j++) {
+                            GraphVertex v = batch.get(j);
+                            try {
+                                graphDataOperations.addVertex(v);
+                                successCount++;
+                            } catch (Exception singleEx) {
+                                int rowNum = (i - batch.size() + j + 2);
+                                log.error("导入顶点数据失败，第{}行: {}", rowNum, singleEx.getMessage(), singleEx);
+                                errorMessages.add(String.format("第%d行导入失败: %s", rowNum, singleEx.getMessage()));
+                            }
+                        }
+                    }
+                    batch.clear();
+                }
+            } catch (Exception e) {
+                log.error("导入顶点数据失败，第{}行: {}", i + 2, e.getMessage(), e);
+                errorMessages.add(String.format("第%d行导入失败: %s", i + 2, e.getMessage()));
+            }
+        }
+
+        return successCount;
+    }
+
+    /**
+     * 导入上下文，用于复用导入逻辑
+     */
+    private static class ImportContext {
+        private GraphConnection connection;
+        private String graphCode;
+        private String label;
+        private List<String> errors = new ArrayList<>();
+
+        public ImportContext(GraphConnection connection, String graphCode, String label) {
+            this.connection = connection;
+            this.graphCode = graphCode;
+            this.label = label;
+        }
+
+        public boolean hasError() {
+            return !errors.isEmpty();
+        }
+
+        public List<String> getErrors() {
+            return errors;
+        }
+
+        public GraphConnection getConnection() {
+            return connection;
+        }
+
+        public String getGraphCode() {
+            return graphCode;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+
+        public GraphConf getGraphConf() {
+            return GraphClientFactory.createGraphConf(connection, graphCode);
+        }
+
+        public void addError(String error) {
+            errors.add(error);
+        }
+    }
+
+    /**
+     * 准备导入上下文
+     */
+    private ImportContext prepareImportContext(Long graphId, Long typeId, Long connectionId, String graphCode, String label, boolean isVertex) {
+        ImportContext context;
+
+        if (connectionId != null && graphCode != null && label != null) {
+            GraphConnection connection = connectionService.getById(connectionId);
+            if (connection == null) {
+                context = new ImportContext(null, null, null);
+                context.addError("图数据库连接不存在，connectionId=" + connectionId);
+                return context;
+            }
+            context = new ImportContext(connection, graphCode, label);
+        } else if (graphId != null && typeId != null) {
+            GraphInfo graphInfo = graphService.getById(graphId);
+            if (graphInfo == null) {
+                context = new ImportContext(null, null, null);
+                context.addError("图不存在，graphId=" + graphId);
+                return context;
+            }
+
+            GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
+            if (connection == null) {
+                context = new ImportContext(null, null, null);
+                context.addError("图数据库连接不存在，connectionId=" + graphInfo.getConnectionId());
+                return context;
+            }
+
+            String targetLabel;
+            if (isVertex) {
+                GraphVertexDef vertexDef = vertexDefService.getById(typeId);
+                if (vertexDef == null) {
+                    context = new ImportContext(null, null, null);
+                    context.addError("顶点类型不存在，vertexTypeId=" + typeId);
+                    return context;
+                }
+                targetLabel = vertexDef.getLabel();
+            } else {
+                GraphEdgeDef edgeDef = edgeDefService.getById(typeId);
+                if (edgeDef == null) {
+                    context = new ImportContext(null, null, null);
+                    context.addError("边类型不存在，edgeTypeId=" + typeId);
+                    return context;
+                }
+                targetLabel = edgeDef.getLabel();
+            }
+
+            context = new ImportContext(connection, graphInfo.getCode(), targetLabel);
+        } else {
+            context = new ImportContext(null, null, null);
+            context.addError("缺少必要参数，需要提供 (graphId + typeId) 或 (connectionId + graphCode + label)");
+        }
+
+        return context;
+    }
+
+
+    /**
+     * 检测字符串中是否包含中文乱码（出现非法 UTF-8 替换字符 U+FFFD）
+     */
+    private boolean containsGarbledChinese(String text) {
+        if (text == null || text.isEmpty()) {
+            return false;
+        }
+        if (text.contains("\uFFFD")) {
+            return true;
+        }
+        int strangeCount = 0;
+        for (char c : text.toCharArray()) {
+            if (c == '\uFFFD' || (c > 0x7F && c < 0xA0)) {
+                strangeCount++;
+            }
+        }
+        return strangeCount > 3;
+    }
+
+    private List<Map<String, String>> parseDataCsv(MultipartFile file) throws Exception {
+        List<Map<String, String>> dataList = new ArrayList<>();
+
+        byte[] rawBytes = file.getBytes();
+        String content = new String(rawBytes, StandardCharsets.UTF_8);
+        Charset charset = StandardCharsets.UTF_8;
+        if (containsGarbledChinese(content)) {
+            charset = Charset.forName("GBK");
+        }
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), charset));
+             CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.builder()
+                     .setHeader()
+                     .setSkipHeaderRecord(true)
+                     .setIgnoreHeaderCase(true)
+                     .setTrim(true)
+                     .build())) {
+
+            List<String> headers = csvParser.getHeaderNames();
+
+            for (CSVRecord record : csvParser) {
+                Map<String, String> dataMap = new HashMap<>();
+                for (String header : headers) {
+                    String value = record.get(header);
+                    dataMap.put(header, value != null ? value.trim() : null);
+                }
+                dataList.add(dataMap);
+            }
+        }
+
+        return dataList;
+    }
+
+
+    private int batchImportEdges(GraphDataOperations graphDataOperations, List<Map<String, String>> dataList, String label, List<String> errorMessages) {
+        int successCount = 0;
+        List<GraphEdge> batch = new ArrayList<>(BATCH_SIZE);
+
+        for (int i = 0; i < dataList.size(); i++) {
+            Map<String, String> dataRow = dataList.get(i);
+            try {
+                GraphEdge edge = new GraphEdge();
+                edge.setUid(dataRow.get(GraphConstants.UID));
+                edge.setLabel(label);
+                edge.setStartUid(dataRow.get(GraphConstants.START_UID));
+                edge.setEndUid(dataRow.get(GraphConstants.END_UID));
+                edge.setProperties(extractProperties(dataRow, Set.of(GraphConstants.START_UID, GraphConstants.END_UID, GraphConstants.LABEL)));
+                batch.add(edge);
+
+                if (batch.size() >= BATCH_SIZE || i == dataList.size() - 1) {
+                    try {
+                        if (batch.size() > 1) {
+                            graphDataOperations.addEdges(batch);
+                            successCount += batch.size();
+                        } else {
+                            graphDataOperations.addEdge(batch.get(0));
+                            successCount++;
+                        }
+                    } catch (Exception batchEx) {
+                        log.warn("批量导入失败，尝试逐条插入: {}", batchEx.getMessage());
+                        for (int j = 0; j < batch.size(); j++) {
+                            GraphEdge e = batch.get(j);
+                            try {
+                                graphDataOperations.addEdge(e);
+                                successCount++;
+                            } catch (Exception singleEx) {
+                                int rowNum = (i - batch.size() + j + 2);
+                                log.error("导入边数据失败，第{}行: {}", rowNum, singleEx.getMessage(), singleEx);
+                                errorMessages.add(String.format("第%d行导入失败: %s", rowNum, singleEx.getMessage()));
+                            }
+                        }
+                    }
+                    batch.clear();
+                }
+            } catch (Exception e) {
+                log.error("导入边数据失败，第{}行: {}", i + 2, e.getMessage(), e);
+                errorMessages.add(String.format("第%d行导入失败: %s", i + 2, e.getMessage()));
+            }
+        }
+
+        return successCount;
+    }
+
+
+    public PageResult<GraphVertex> queryVertexDataList(Long graphId, Long vertexTypeId, String label, Integer page, Integer size, Long connectionId, String graphCode) {
+        try {
+            if (label == null) {
+                GraphVertexDef vertexDef = vertexDefService.getById(vertexTypeId);
+                if (vertexDef == null) {
+                    log.error("顶点类型不存在，vertexTypeId={}", vertexTypeId);
+                    return PageResult.empty(page, size);
+                }
+                label = vertexDef.getLabel();
+            }
+
+            GraphDataOperations ops = getGraphDataOperations(graphId, connectionId, graphCode);
+            int skip = (page - 1) * size;
+
+            long total = ops.countVertices(label);
+
+            String query = buildLabelQuery(graphId, connectionId, label, skip, size);
+            GraphData graphData = ops.query(query);
+
+            List<GraphVertex> records = (graphData == null || graphData.getVertices() == null)
+                    ? new ArrayList<>()
+                    : graphData.getVertices();
+
+            return new PageResult<>(records, total, page, size);
+        } catch (Exception e) {
+            log.error("查询顶点数据列表失败，graphId={}, vertexTypeId={}", graphId, vertexTypeId, e);
+            return PageResult.empty(page, size);
+        }
+    }
+
+    public PageResult<GraphEdge> queryEdgeDataList(Long graphId, Long edgeTypeId, String label, Integer page, Integer size, Long connectionId, String graphCode) {
+        try {
+            if (label == null) {
+                GraphEdgeDef edgeDef = edgeDefService.getById(edgeTypeId);
+                if (edgeDef == null) {
+                    log.error("边类型不存在，edgeTypeId={}", edgeTypeId);
+                    return PageResult.empty(page, size);
+                }
+                label = edgeDef.getLabel();
+            }
+
+            GraphDataOperations ops = getGraphDataOperations(graphId, connectionId, graphCode);
+            int skip = (page - 1) * size;
+
+            long total = ops.countEdges(label);
+
+            String query = buildEdgeLabelQuery(graphId, connectionId, label, skip, size);
+            GraphData graphData = ops.query(query);
+            List<GraphEdge> records = (graphData == null || graphData.getEdges() == null)
+                    ? new ArrayList<>()
+                    : graphData.getEdges();
+            return new PageResult<>(records, total, page, size);
+        } catch (Exception e) {
+            log.error("查询边数据列表失败，graphId={}, edgeTypeId={}", graphId, edgeTypeId, e);
+            return PageResult.empty(page, size);
+        }
+    }
+
+    @Override
+    public boolean addVertexData(Long graphId, Long vertexTypeId, Long connectionId, String graphCode, Map<String, Object> data) {
+        try {
+            GraphVertexDef vertexDef = vertexDefService.getById(vertexTypeId);
+            if (vertexDef == null) {
+                log.error("顶点类型不存在，vertexTypeId={}", vertexTypeId);
+                return false;
+            }
+            GraphDataOperations ops = getGraphDataOperations(graphId, connectionId, graphCode);
+            GraphVertex vertex = new GraphVertex();
+            vertex.setLabel(vertexDef.getLabel());
+            Map<String, Object> properties = handleProperties(data, vertexDef.getProperties());
+            String uid = data.get(GraphConstants.UID).toString();
+            vertex.setProperties(properties);
+            vertex.setUid(uid);
+            ops.addVertex(vertex);
+            return true;
+        } catch (Exception e) {
+            log.error("新增顶点数据失败，graphId={}, vertexTypeId={}", graphId, vertexTypeId, e);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean addEdgeData(Long graphId, Long edgeTypeId, Long connectionId, String graphCode, Map<String, Object> data) {
+        try {
+            GraphEdgeDef edgeDef = edgeDefService.getById(edgeTypeId);
+            if (edgeDef == null) {
+                log.error("边类型不存在，edgeTypeId={}", edgeTypeId);
+                return false;
+            }
+            GraphDataOperations ops = getGraphDataOperations(graphId, connectionId, graphCode);
+
+            Map<String, Object> properties = handleProperties(data, edgeDef.getProperties());
+            String uid = data.get(GraphConstants.UID).toString();
+            GraphEdge edge = new GraphEdge();
+            edge.setLabel(edgeDef.getLabel());
+            edge.setUid(uid);
+            edge.setStartLabel(edgeDef.getStartLabel());
+            edge.setEndLabel(edgeDef.getEndLabel());
+            edge.setProperties(properties);
+            ops.addEdge(edge);
+            return true;
+        } catch (Exception e) {
+            log.error("新增边数据失败，graphId={}, edgeTypeId={}", graphId, edgeTypeId, e);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean updateVertexData(Long graphId, String vertexId, Long connectionId, String graphCode, Map<String, Object> data) {
+        try {
+            GraphDataOperations ops = getGraphDataOperations(graphId, connectionId, graphCode);
+
+            GraphVertex vertex = new GraphVertex();
+            vertex.setUid(vertexId);
+            if (data.containsKey(GraphConstants.LABEL)) {
+                vertex.setLabel(data.get(GraphConstants.LABEL).toString());
+            }
+
+            String label = vertex.getLabel();
+            List<GraphPropertyDef> propDefs = new ArrayList<>();
+            if (label != null) {
+                GraphVertexDef vertexDef = vertexDefService.getOne(
+                        new QueryWrapper<GraphVertexDef>().eq("graph_id", graphId).eq("label", label)
+                );
+                if (vertexDef != null && vertexDef.getProperties() != null) {
+                    propDefs = vertexDef.getProperties();
+                }
+            }
+
+            Map<String, Object> properties = handleProperties(data, propDefs);
+            vertex.setProperties(properties);
+            ops.updateVertex(vertex);
+            log.info("更新顶点成功，vertexId={}", vertexId);
+            return true;
+        } catch (Exception e) {
+            log.error("更新顶点数据失败，graphId={}, vertexId={}", graphId, vertexId, e);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean updateEdgeData(Long graphId, String edgeId, Long connectionId, String graphCode, Map<String, Object> data) {
+        try {
+            GraphDataOperations ops = getGraphDataOperations(graphId, connectionId, graphCode);
+
+            GraphEdge edge = new GraphEdge();
+            edge.setUid(edgeId);
+            if (data.containsKey(GraphConstants.LABEL)) {
+                edge.setLabel(data.get(GraphConstants.LABEL).toString());
+            }
+
+            String label = edge.getLabel();
+            List<GraphPropertyDef> propDefs = new ArrayList<>();
+            if (label != null) {
+                GraphEdgeDef edgeDef = edgeDefService.getOne(
+                        new QueryWrapper<GraphEdgeDef>().eq("graph_id", graphId).eq("label", label)
+                );
+                if (edgeDef != null && edgeDef.getProperties() != null) {
+                    propDefs = edgeDef.getProperties();
+                }
+            }
+
+            // 处理嵌套属性结构
+            Map<String, Object> properties = handleProperties(data, propDefs);
+            if (data.containsKey(GraphConstants.START_UID)) {
+                edge.setStartUid(data.get(GraphConstants.START_UID).toString());
+            } else if (properties.containsKey(GraphConstants.START_UID)) {
+                edge.setStartUid(properties.get(GraphConstants.START_UID).toString());
+            }
+            if (data.containsKey(GraphConstants.END_UID)) {
+                edge.setEndUid(data.get(GraphConstants.END_UID).toString());
+            } else if (properties.containsKey(GraphConstants.END_UID)) {
+                edge.setEndUid(properties.get(GraphConstants.END_UID).toString());
+            }
+            // 根据属性定义进行类型转换
+            for (GraphPropertyDef propDef : propDefs) {
+                String code = propDef.getCode();
+                if (properties.containsKey(code)) {
+                    properties.put(code, DataTypeConverter.convertValue(properties.get(code), propDef.getType()));
+                }
+            }
+            edge.setProperties(properties);
+
+            ops.updateEdge(edge);
+            log.info("更新边成功，edgeId={}", edgeId);
+            return true;
+        } catch (Exception e) {
+            log.error("更新边数据失败，graphId={}, edgeId={}", graphId, edgeId, e);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean deleteVertex(Long graphId, String vertexId, String label, Long connectionId, String graphCode) {
+        if (graphId == null || vertexId == null) {
+            return false;
+        }
+
+        try {
+            GraphConf graphConf = GraphClientFactory.resolveGraphConf(graphId, connectionId, graphCode, graphService, connectionService);
+            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+            GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
+
+            String vertexLabel = label;
+            if (graphId > 0) {
+                GraphVertexDef vertexDef = vertexDefService.getOne(new QueryWrapper<GraphVertexDef>().eq("graph_id", graphId).eq("label", label));
+                if (vertexDef != null) {
+                    vertexLabel = vertexDef.getLabel();
+                }
+            }
+            if (vertexLabel == null) {
+                log.warn("顶点类型不存在，graphId={}, label={}", graphId, label);
+                return false;
+            }
+
+            GraphVertex vertex = new GraphVertex();
+            vertex.setUid(vertexId);
+            vertex.setLabel(vertexLabel);
+            graphDataOperations.deleteVertex(vertex);
+            log.info("成功删除顶点，vertexId={}", vertexId);
+            return true;
+        } catch (Exception e) {
+            log.error("删除顶点失败，graphId={}, vertexId={}", graphId, vertexId, e);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean deleteEdge(Long graphId, String edgeId, String label, Long connectionId, String graphCode) {
+        if (graphId == null || edgeId == null) {
+            return false;
+        }
+
+        try {
+            GraphConf graphConf = GraphClientFactory.resolveGraphConf(graphId, connectionId, graphCode, graphService, connectionService);
+
+            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+            GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
+
+            String edgeLabel = label;
+            if (graphId > 0) {
+                GraphEdgeDef edgeDef = edgeDefService.getOne(new QueryWrapper<GraphEdgeDef>().eq("graph_id", graphId).eq("label", label));
+                if (edgeDef != null) {
+                    edgeLabel = edgeDef.getLabel();
+                }
+            }
+            if (edgeLabel == null) {
+                log.warn("边类型不存在，graphId={}, label={}", graphId, label);
+                return false;
+            }
+
+            GraphEdge edge = new GraphEdge();
+            edge.setUid(edgeId);
+            edge.setLabel(edgeLabel);
+
+            // 解析 edgeId，格式：startUid -> endUid @label 或 复合uid
+            if (edgeId.contains("->") && edgeId.contains("@")) {
+                int arrowIdx = edgeId.indexOf("->");
+                int atIdx = edgeId.indexOf("@");
+                if (atIdx > arrowIdx) {
+                    edge.setStartUid(edgeId.substring(0, arrowIdx));
+                    edge.setEndUid(edgeId.substring(arrowIdx + 2, atIdx));
+                }
+            } else if (edgeId.contains("->")) {
+                int arrowIdx = edgeId.indexOf("->");
+                edge.setStartUid(edgeId.substring(0, arrowIdx));
+                edge.setEndUid(edgeId.substring(arrowIdx + 2));
+            }
+
+            if (edge.getStartUid() == null || edge.getEndUid() == null) {
+                try {
+                    String query = String.format("MATCH ()-[e:%s]->() WHERE e.uid == '%s' OR id(e) == '%s' RETURN e", edgeLabel, edgeId, edgeId);
+                    GraphData graphData = graphDataOperations.query(query);
+                    if (graphData != null && graphData.getEdges() != null && !graphData.getEdges().isEmpty()) {
+                        GraphEdge foundEdge = graphData.getEdges().get(0);
+                        edge.setStartUid(foundEdge.getStartUid());
+                        edge.setEndUid(foundEdge.getEndUid());
+                    }
+                } catch (Exception qe) {
+                    log.warn("查询边数据失败，edgeId={}: {}", edgeId, qe.getMessage());
+                }
+            }
+
+            if (edge.getStartUid() == null || edge.getEndUid() == null) {
+                log.error("无法获取边的起点和终点信息，edgeId={}", edgeId);
+                return false;
+            }
+
+            graphDataOperations.deleteEdge(edge);
+            log.info("成功删除边，edgeId={}", edgeId);
+            return true;
+        } catch (Exception e) {
+            log.error("删除边失败，graphId={}, edgeId={}", graphId, edgeId, e);
+            return false;
+        }
+    }
+
+    @Override
+    public GraphSummary getGraphSummary(Long graphId, Long connectionId, String graphCode) {
+        try {
+            GraphConf graphConf = GraphClientFactory.resolveGraphConf(graphId, connectionId, graphCode, graphService, connectionService);
+
+            GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+            GraphDataOperations graphDataOperations = graphClient.opsForGraphData();
+            GraphSummary summary = graphDataOperations.getSummary();
+            summary.setGraphCode(graphConf.getGraphCode());
+            return summary;
+        } catch (Exception e) {
+            log.error("获取图统计信息失败，graphId={}", graphId, e);
+            throw new RuntimeException("获取图统计信息失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 获取图数据操作对象
+     * 优化：使用 GraphClientFactory.resolveGraphConf 简化逻辑
+     */
+    private GraphDataOperations getGraphDataOperations(Long graphId, Long connectionId, String graphCode) {
+        GraphConf graphConf = GraphClientFactory.resolveGraphConf(graphId, connectionId, graphCode, graphService, connectionService);
+        GraphClient graphClient = GraphClientFactory.createGraphClient(graphConf);
+        return graphClient.opsForGraphData();
+    }
+
+
+    /**
+     * 构建图查询语句（统一处理顶点和边）
+     *
+     * @param graphId      图ID
+     * @param connectionId 连接ID
+     * @param label        标签名称
+     * @param isVertex     true=查询顶点，false=查询边
+     * @param skip         跳过条数
+     * @param size         返回条数
+     * @return 查询语句
+     */
+    private String buildGraphQuery(Long graphId, Long connectionId, String label, boolean isVertex, int skip, int size) {
+        GraphInfo graphInfo = graphService.getById(graphId);
+        GraphTypeEnum graphType = graphInfo != null
+                ? graphInfo.getGraphType()
+                : connectionService.getById(connectionId).getGraphTypeEnum();
+
+        if (isVertex) {
+            return switch (graphType) {
+                case janus -> String.format("g.V().hasLabel(\"%s\").skip(%d).limit(%d)", label, skip, size);
+                case nebula, neo4j -> String.format("MATCH (n:`%s`) RETURN n SKIP %d LIMIT %d", label, skip, size);
+            };
+        } else {
+            return switch (graphType) {
+                case janus -> String.format("g.E().hasLabel(\"%s\").skip(%d).limit(%d)", label, skip, size);
+                case nebula, neo4j -> String.format("MATCH (a)-[r:`%s`]->(b) RETURN a, r, b SKIP %d LIMIT %d", label, skip, size);
+            };
+        }
+    }
+
+    private String buildLabelQuery(Long graphId, Long connectionId, String label, int skip, int size) {
+        return buildGraphQuery(graphId, connectionId, label, true, skip, size);
+    }
+
+    private String buildEdgeLabelQuery(Long graphId, Long connectionId, String label, int skip, int size) {
+        return buildGraphQuery(graphId, connectionId, label, false, skip, size);
+    }
+
+
+    private Map<String, Object> handleProperties(Map<String, Object> data, List<GraphPropertyDef> propertyDefList) {
+        Map<String, Object> properties = (Map<String, Object>) data.get("properties");
+        if (propertyDefList != null) {
+            for (GraphPropertyDef propDef : propertyDefList) {
+                String code = propDef.getCode();
+                if (properties.containsKey(code)) {
+                    properties.put(code, DataTypeConverter.convertValue(properties.get(code), propDef.getType()));
+                }
+            }
+        }
+        properties.put(GraphConstants.UID, data.get(GraphConstants.UID));
+        return properties;
+    }
+
+
+    public static Map<String, Object> extractProperties(Map<String, ?> raw, Set<String> excludeKeys) {
+        Map<String, Object> result = new HashMap<>();
+        if (raw == null) {
+            return result;
+        }
+        raw.forEach((key, value) -> {
+            if (excludeKeys == null || !excludeKeys.contains(key)) {
+                result.put(key, value);
+            }
+        });
+        return result;
+    }
+}
+
+package com.chenpp.graph.admin.util;
+
+import com.alibaba.fastjson2.JSON;
+import com.chenpp.graph.admin.enums.GraphTypeEnum;
+import com.chenpp.graph.admin.model.GraphConnection;
+import com.chenpp.graph.admin.model.GraphInfo;
+import com.chenpp.graph.core.GraphClient;
+import com.chenpp.graph.core.model.GraphConf;
+import com.chenpp.graph.janus.CassandraConf;
+import com.chenpp.graph.janus.HBaseConf;
+import com.chenpp.graph.janus.JanusClient;
+import com.chenpp.graph.janus.JanusConf;
+import com.chenpp.graph.janus.JanusConstants;
+import com.chenpp.graph.nebula.NebulaClient;
+import com.chenpp.graph.nebula.NebulaConf;
+import com.chenpp.graph.neo4j.Neo4jClient;
+import com.chenpp.graph.neo4j.Neo4jConf;
+import com.chenpp.graph.admin.service.GraphService;
+import com.chenpp.graph.admin.service.GraphConnectionService;
+import org.apache.commons.lang3.StringUtils;
+
+import java.util.Objects;
+
+/**
+ * 图客户端工厂类，用于根据数据库类型动态创建对应的图客户端实例
+ *
+ * @author April.Chen
+ * @date 2025/8/13 10:00
+ */
+public class GraphClientFactory {
+
+    /**
+     * 根据数据库类型创建对应的图客户端实例
+     *
+     * @param graphConf 图配置信息
+     * @return GraphClient 图客户端实例
+     */
+    public static GraphClient createGraphClient(GraphConf graphConf) {
+        String type = graphConf.getType();
+        switch (GraphTypeEnum.valueOf(type.toLowerCase())) {
+            case neo4j:
+                Neo4jConf neo4jConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), Neo4jConf.class);
+                neo4jConf.setGraphCode(graphConf.getGraphCode());
+                neo4jConf.setUsername(graphConf.getUsername());
+                neo4jConf.setPassword(graphConf.getPassword());
+                if (graphConf.getHost() != null) {
+                    neo4jConf.setUri(String.format("neo4j://%s:%s", graphConf.getHost(), graphConf.getPort()));
+                } else {
+                    neo4jConf.setUri(String.format("neo4j://%s:%s", graphConf.getParams().get("host"), graphConf.getParams().get("port")));
+                }
+                return new Neo4jClient(neo4jConf);
+
+            case nebula:
+                NebulaConf nebulaConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), NebulaConf.class);
+                nebulaConf.setGraphCode(graphConf.getGraphCode());
+                nebulaConf.setHosts(graphConf.getHost());
+                nebulaConf.setPort(graphConf.getPort());
+                nebulaConf.setUsername(graphConf.getUsername());
+                nebulaConf.setPassword(graphConf.getPassword());
+                nebulaConf.setGraphCode(graphConf.getGraphCode());
+                return new NebulaClient(nebulaConf);
+            case janus:
+                JanusConf janusConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), JanusConf.class);
+                janusConf.setGraphCode(graphConf.getGraphCode());
+                janusConf.setUsername(graphConf.getUsername());
+                janusConf.setPassword(graphConf.getPassword());
+                String storageBackend = janusConf.getStorageBackend();
+                if (StringUtils.equalsAny(storageBackend, JanusConstants.BACKEND_CASSANDRA, JanusConstants.CQL)) {
+                    CassandraConf cassandraConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), CassandraConf.class);
+                    cassandraConf.setHostname(graphConf.getHost());
+                    cassandraConf.setPort(graphConf.getPort());
+                    janusConf.setCassandraConf(cassandraConf);
+                } else if (Objects.equals(JanusConstants.BACKEND_HBASE, storageBackend)) {
+                    HBaseConf hBaseConf = JSON.parseObject(JSON.toJSONString(graphConf.getParams()), HBaseConf.class);
+                    hBaseConf.setHbaseHost(graphConf.getHost());
+                    hBaseConf.setHbasePort(graphConf.getPort());
+                    janusConf.setHBaseConf(hBaseConf);
+                }
+                return new JanusClient(janusConf);
+
+            default:
+                throw new IllegalArgumentException("Unsupported graph database type: " + type);
+        }
+    }
+
+    public static GraphConf resolveGraphConf(Long graphId, Long connectionId, String graphCode,
+                                             GraphService graphService, GraphConnectionService connectionService) {
+        if (graphId != null && graphId > 0) {
+            GraphInfo graphInfo = graphService.getById(graphId);
+            if (graphInfo != null && graphInfo.getConnectionId() != null) {
+                GraphConnection connection = connectionService.getById(graphInfo.getConnectionId());
+                if (connection != null) {
+                    return createGraphConf(connection, graphInfo.getCode());
+                }
+            }
+        }
+        if (connectionId != null && graphCode != null) {
+            GraphConnection connection = connectionService.getById(connectionId);
+            if (connection != null) {
+                return createGraphConf(connection, graphCode);
+            }
+        }
+        throw new IllegalArgumentException("无法解析图连接配置，请检查 graphId/connectionId/graphCode");
+    }
+
+    public static GraphConf createGraphConf(GraphConnection connection, String graphCode) {
+        GraphConf graphConf = new GraphConf();
+        graphConf.setGraphCode(graphCode);
+        graphConf.setType(connection.getGraphType());
+        graphConf.setHost(connection.getHosts());
+        graphConf.setPort(connection.getPort());
+        graphConf.setUsername(connection.getUsername());
+        graphConf.setPassword(connection.getPassword());
+        if (connection.getParams() != null) {
+            graphConf.setParams(JSON.parseObject(connection.getParams()));
+        } else {
+            graphConf.setParams(JSON.parseObject(JSON.toJSONString(connection)));
+        }
+
+        if (graphConf.getUsername() == null && graphConf.getParams() != null) {
+            Object username = graphConf.getParams().get("username");
+            if (username != null) {
+                graphConf.setUsername(username.toString());
+            }
+        }
+        if (graphConf.getPassword() == null && graphConf.getParams() != null) {
+            Object password = graphConf.getParams().get("password");
+            if (password != null) {
+                graphConf.setPassword(password.toString());
+            }
+        }
+        return graphConf;
+    }
+}
+
+package com.chenpp.graph.core;
+
+public interface GraphClient {
+
+    /**
+     * 图操作
+     *
+     * @return GraphOperations
+     */
+    GraphOperations opsForGraph();
+
+    /**
+     * 图数据操作
+     *
+     * @return GraphDataOperations
+     */
+    GraphDataOperations opsForGraphData();
+
+    /**
+     * 检查连接
+     *
+     * @return true:连接正常, false:连接异常
+     */
+    boolean checkConnection();
+}
+
+package com.chenpp.graph.core.model;
+
+import com.google.common.collect.Lists;
+import lombok.Data;
+
+import java.io.Serializable;
+import java.util.List;
+
+/**
+ * @author April.Chen
+ * @date 2024/5/31 10:47
+ */
+@Data
+public class GraphData implements Serializable {
+
+    private static final long serialVersionUID = -6719770439482247866L;
+
+    private List<GraphVertex> vertices;
+    private List<GraphEdge> edges;
+
+    public void addVertex(GraphVertex vertex) {
+        if (this.vertices == null) {
+            this.vertices = Lists.newArrayList();
+        }
+        this.vertices.add(vertex);
+    }
+
+    public void addEdge(GraphEdge edge) {
+        if (this.edges == null) {
+            this.edges = Lists.newArrayList();
+        }
+        this.edges.add(edge);
+    }
+}
+package com.chenpp.graph.core.model;
+
+import lombok.Data;
+
+import java.io.Serializable;
+import java.util.Map;
+
+/**
+ * 点数据
+ *
+ * @author April.Chen
+ * @date 2023/10/11 3:51 下午
+ **/
+@Data
+public class GraphVertex implements Serializable {
+
+    /**
+     * 图库id
+     */
+    private String id;
+    /**
+     * 唯一标识
+     */
+    private String uid;
+    /**
+     * 类型
+     */
+    private String label;
+    /**
+     * 属性
+     */
+    private Map<String, Object> properties;
+}
+
+
+package com.chenpp.graph.core.model;
+
+import lombok.Data;
+
+import java.io.Serializable;
+import java.util.Map;
+
+/**
+ * @author April.Chen
+ * @date 2023/10/11 3:51 下午
+ **/
+@Data
+public class GraphEdge implements Serializable {
+    private static final long serialVersionUID = -7475762228551385446L;
+
+    /**
+     * 图库id
+     */
+    private Serializable id;
+    private String uid;
+    /**
+     * 类型
+     */
+    private String label;
+    /**
+     * 属性
+     */
+    private Map<String, Object> properties;
+    private String startUid;
+    private String startLabel;
+    private String endUid;
+    private String endLabel;
+}
+
+package com.chenpp.graph.nebula;
+
+import com.chenpp.graph.core.GraphOperations;
+import com.chenpp.graph.core.constant.GraphConstants;
+import com.chenpp.graph.core.exception.GraphException;
+import com.chenpp.graph.core.model.GraphConf;
+import com.chenpp.graph.core.schema.DataType;
+import com.chenpp.graph.core.schema.Graph;
+import com.chenpp.graph.core.schema.GraphEntity;
+import com.chenpp.graph.core.schema.GraphIndex;
+import com.chenpp.graph.core.schema.GraphProperty;
+import com.chenpp.graph.core.schema.GraphRelation;
+import com.chenpp.graph.core.schema.GraphSchema;
+import com.chenpp.graph.nebula.schema.NebulaDataType;
+import com.chenpp.graph.nebula.schema.NebulaEdge;
+import com.chenpp.graph.nebula.schema.NebulaIndex;
+import com.chenpp.graph.nebula.schema.NebulaProperty;
+import com.chenpp.graph.nebula.schema.NebulaTag;
+import com.chenpp.graph.nebula.schema.SchemaType;
+import com.chenpp.graph.nebula.util.NebulaUtil;
+import com.vesoft.nebula.client.graph.data.ResultSet;
+import com.vesoft.nebula.client.graph.data.ValueWrapper;
+import com.vesoft.nebula.client.graph.exception.IOErrorException;
+import com.vesoft.nebula.client.graph.net.NebulaPool;
+import com.vesoft.nebula.client.graph.net.Session;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
+
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+/**
+ * @author April.Chen
+ * @date 2025/4/9 15:23
+ */
+@Slf4j
+public class NebulaGraphOperations implements GraphOperations {
+
+    private NebulaConf nebulaConf;
+
+    public NebulaGraphOperations(NebulaConf nebulaConf) {
+        this.nebulaConf = nebulaConf;
+    }
+
+    @Override
+    public void createGraph(GraphConf graphConf) {
+        log.info("Creating graph: {}", graphConf.getGraphCode());
+        String nql = NebulaUtil.buildCreateSpace(nebulaConf);
+        ResultSet resultSet = execute(nebulaConf, nql);
+        assertSuccess(resultSet, "create graph");
+        waitForSpaceReady(nebulaConf.getGraphCode());
+        log.info("Nebula space {} is ready", nebulaConf.getGraphCode());
+    }
+
+    private void waitForSpaceReady(String spaceName) {
+        int maxRetries = 30;
+        for (int i = 0; i < maxRetries; i++) {
+            try {
+                String useSpace = NebulaUtil.buildUseSpace(spaceName);
+                NebulaPool nebulaPool = NebulaClientFactory.getNebulaPool(nebulaConf);
+                try (Session session = nebulaPool.getSession(nebulaConf.getUsername(), nebulaConf.getPassword(), false)) {
+                    ResultSet rs = session.execute(useSpace);
+                    if (rs.isSucceeded()) {
+                        return;
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("Space not ready yet, retry {}/{}: {}", i + 1, maxRetries, e.getMessage());
+            }
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new GraphException("Interrupted while waiting for space to be ready");
+            }
+        }
+        throw new GraphException("Space " + spaceName + " not ready after " + maxRetries + " retries");
+    }
+
+    @Override
+    public void dropGraph(GraphConf graphConf) throws GraphException {
+        String nql = NebulaUtil.buildDropSpace(this.nebulaConf.getGraphCode());
+        ResultSet resultSet = execute(this.nebulaConf, nql);
+        assertSuccess(resultSet, "drop graph");
+        log.info("Drop graph {} success", this.nebulaConf.getGraphCode());
+    }
+
+    @Override
+    public List<Graph> listGraphs(GraphConf graphConf) {
+        String nql = NebulaUtil.buildShowSpaces();
+        ResultSet resultSet = execute(nebulaConf, nql);
+        assertSuccess(resultSet, "list graphs");
+        return resultSet.getRows().stream().map(row -> {
+            String space = new String(row.getValues().get(0).getSVal(), StandardCharsets.UTF_8);
+            Graph graph = new Graph();
+            graph.setCode(space);
+            graph.setName(space);
+            return graph;
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    public void applySchema(GraphConf graphConf, GraphSchema graphSchema) {
+        List<Graph> graphs = listGraphs(graphConf);
+        if (graphs.stream().noneMatch(graph -> Objects.equals(graph.getCode(), nebulaConf.getGraphCode()))) {
+            createGraph(graphConf);
+        }
+
+        try {
+            withSession(session -> {
+                useSpace(session, nebulaConf.getGraphCode());
+                createTags(graphSchema.getEntities(), session);
+                createEdges(graphSchema.getRelations(), session);
+                checkSuccessOrWarn(session.execute(NebulaUtil.buildUseSpace(nebulaConf.getGraphCode())),
+                        "re-use space after creating tags/edges");
+                createIndices(graphSchema.getIndexes(), session);
+                log.info("Successfully applied schema for graph: {}", graphConf.getGraphCode());
+            });
+        } catch (Exception e) {
+            log.error("Nebula create schema error", e);
+            throw new GraphException("nebula create schema error", e);
+        }
+    }
+
+    @Override
+    public void alterSchema(GraphConf graphConf, GraphSchema alterSchema) {
+        if (CollectionUtils.isEmpty(alterSchema.getEntities()) && CollectionUtils.isEmpty(alterSchema.getRelations())) {
+            log.info("No entities or relations to alter");
+            return;
+        }
+
+        try {
+            withSession(session -> {
+                useSpace(session, nebulaConf.getGraphCode());
+
+                GraphSchema publishedSchema = new GraphSchema();
+                publishedSchema.setEntities(showTags(session));
+                publishedSchema.setRelations(showEdges(session));
+
+                alterTags(alterSchema.getEntities(), session, publishedSchema);
+                alterEdges(alterSchema.getRelations(), session, publishedSchema);
+
+                log.info("Successfully altered schema for graph: {}", graphConf.getGraphCode());
+            });
+        } catch (Exception e) {
+            log.error("Nebula alter schema error", e);
+            throw new GraphException("nebula alter schema error", e);
+        }
+    }
+
+    /**
+     * 增量更新标签：为已存在的标签添加新属性
+     */
+    private void alterTags(List<GraphEntity> entities, Session session, GraphSchema publishedSchema) {
+        if (entities == null || entities.isEmpty()) {
+            return;
+        }
+
+        Map<String, Set<String>> remoteProps = publishedSchema.getEntities() == null ? Map.of() :
+                publishedSchema.getEntities().stream()
+                        .filter(e -> e.getLabel() != null)
+                        .collect(Collectors.toMap(
+                                GraphEntity::getLabel,
+                                e -> e.getProperties() == null ? Set.of() :
+                                        e.getProperties().stream()
+                                                .map(GraphProperty::getCode)
+                                                .filter(Objects::nonNull)
+                                                .collect(Collectors.toSet())
+                        ));
+
+        for (GraphEntity entity : entities) {
+            if (entity.getProperties() == null || entity.getProperties().isEmpty()) {
+                continue;
+            }
+            Set<String> existingProps = remoteProps.getOrDefault(entity.getLabel(), Set.of());
+            List<GraphProperty> newProps = entity.getProperties().stream()
+                    .filter(p -> p.getCode() != null && !existingProps.contains(p.getCode()))
+                    .toList();
+
+            if (newProps.isEmpty()) {
+                continue;
+            }
+
+            GraphEntity alterEntity = new GraphEntity();
+            alterEntity.setLabel(entity.getLabel());
+            alterEntity.setProperties(newProps);
+
+            try {
+                String nql = NebulaUtil.buildAlterTagAdd(alterEntity);
+                log.info("Altering tag {} with new properties: {}", entity.getLabel(), newProps.stream().map(GraphProperty::getCode).collect(Collectors.joining(", ")));
+                ResultSet resultSet = session.execute(nql);
+                throwIfFailed(resultSet, "alter tag " + entity.getLabel());
+                log.info("Successfully altered tag: {}", entity.getLabel());
+            } catch (Exception e) {
+                log.error("Error altering tag: " + entity.getLabel(), e);
+                throw new GraphException("Error altering tag: " + entity.getLabel(), e);
+            }
+        }
+    }
+
+    private void alterEdges(List<GraphRelation> relations, Session session, GraphSchema publishedSchema) {
+        if (relations == null || relations.isEmpty()) {
+            return;
+        }
+
+        Map<String, Set<String>> remoteProps = publishedSchema.getRelations() == null ? Map.of() :
+                publishedSchema.getRelations().stream()
+                        .filter(r -> r.getLabel() != null)
+                        .collect(Collectors.toMap(
+                                GraphRelation::getLabel,
+                                r -> r.getProperties() == null ? Set.of() :
+                                        r.getProperties().stream()
+                                                .map(GraphProperty::getCode)
+                                                .filter(Objects::nonNull)
+                                                .collect(Collectors.toSet())
+                        ));
+
+        for (GraphRelation relation : relations) {
+            if (CollectionUtils.isEmpty(relation.getProperties())) {
+                continue;
+            }
+            Set<String> existingProps = remoteProps.getOrDefault(relation.getLabel(), Set.of());
+            List<GraphProperty> newProps = relation.getProperties().stream()
+                    .filter(p -> p.getCode() != null && !existingProps.contains(p.getCode()))
+                    .toList();
+
+            if (newProps.isEmpty()) {
+                continue;
+            }
+
+            GraphRelation alterRelation = new GraphRelation();
+            alterRelation.setLabel(relation.getLabel());
+            alterRelation.setProperties(newProps);
+
+            try {
+                String nql = NebulaUtil.buildAlterEdgeAdd(alterRelation);
+                ResultSet resultSet = session.execute(nql);
+                throwIfFailed(resultSet, "alter edge " + relation.getLabel());
+                log.info("Successfully altered edge: {}", relation.getLabel());
+            } catch (Exception e) {
+                log.error("Error altering edge: " + relation.getLabel(), e);
+                throw new GraphException("Error altering edge: " + relation.getLabel(), e);
+            }
+        }
+    }
+
+    @Override
+    public GraphSchema getPublishedSchema(GraphConf graphConf) throws GraphException {
+        String graphCode = graphConf.getGraphCode();
+        log.info("Getting published schema for: {}", graphCode);
+        GraphSchema schema = new GraphSchema();
+
+        try {
+            withSession(session -> {
+                useSpace(session, graphCode);
+                List<GraphEntity> entities = showTags(session);
+                schema.setEntities(entities);
+                List<GraphRelation> relations = showEdges(session);
+                schema.setRelations(relations);
+                List<GraphIndex> indexes = showIndexes(session);
+                schema.setIndexes(indexes);
+                return null;
+            });
+        } catch (Exception e) {
+            log.error("Failed to get published schema from nebula", e);
+            throw new GraphException("nebula get published schema error", e);
+        }
+
+        return schema;
+    }
+
+
+    private ResultSet execute(NebulaConf nebulaConf, String nql) {
+        log.info("Execute ngql: {}", nql);
+        NebulaPool nebulaPool = NebulaClientFactory.getNebulaPool(nebulaConf);
+        try (Session session = nebulaPool.getSession(nebulaConf.getUsername(), nebulaConf.getPassword(), false)) {
+            return session.execute(nql);
+        } catch (Exception e) {
+            log.error("Nebula execute error for query: {}", nql, e);
+            throw new GraphException("Nebula execute error", e);
+        }
+    }
+
+
+    public void createTags(List<GraphEntity> entities, Session session) {
+        if (entities == null || entities.isEmpty()) {
+            log.info("No tags to create");
+            return;
+        }
+
+        entities.forEach(entity -> {
+            try {
+                String nql = NebulaUtil.buildCreateTag(entity);
+                ResultSet resultSet = session.execute(nql);
+                throwIfFailed(resultSet, "create tag " + entity.getLabel());
+                log.info("Successfully created tag: {}", entity.getLabel());
+            } catch (Exception e) {
+                log.error("Error creating tag: " + entity.getLabel(), e);
+                throw new GraphException(e);
+            }
+        });
+    }
+
+    public void createEdges(List<GraphRelation> edges, Session session) {
+        if (edges == null || edges.isEmpty()) {
+            log.info("No edges to create");
+            return;
+        }
+
+        log.info("Creating {} edges", edges.size());
+        edges.forEach(edge -> {
+            try {
+                String nql = NebulaUtil.buildCreateEdge(edge);
+                ResultSet resultSet = session.execute(nql);
+                throwIfFailed(resultSet, "create edge " + edge.getLabel());
+                log.info("Successfully created edge: {}", edge.getLabel());
+            } catch (Exception e) {
+                log.error("Error creating edge: " + edge.getLabel(), e);
+                throw new GraphException(e);
+            }
+        });
+    }
+
+    public List<GraphEntity> showTags(Session session) throws GraphException {
+        String nql = NebulaUtil.buildShowTags();
+
+        ResultSet rs;
+        try {
+            rs = session.execute(nql);
+        } catch (IOErrorException e) {
+            throw new GraphException("Failed to show tags", e);
+        }
+
+        assertSuccess(rs, "show tags");
+
+        List<GraphEntity> entities = new ArrayList<>();
+        for (int i = 0; i < rs.rowsSize(); i++) {
+            ResultSet.Record record = rs.rowValues(i);
+            ValueWrapper tagValue = record.get(0);
+            String tagName;
+            try {
+                tagName = tagValue.asString();
+            } catch (UnsupportedEncodingException e) {
+                log.error("Failed to parse tag name", e);
+                throw new GraphException("Failed to parse tag name", e);
+            }
+
+            GraphEntity entity = new GraphEntity();
+            entity.setLabel(tagName);
+            entities.add(entity);
+
+
+            try {
+                NebulaTag nebulaTag = describeTag(tagName, session);
+                List<GraphProperty> properties = nebulaTag.getProperties().stream()
+                    .map(NebulaUtil::toGraphProperty)
+                    .toList();
+                entity.setProperties(properties);
+            } catch (Exception e) {
+                log.warn("Failed to describe tag: {}", tagName, e);
+            }
+        }
+
+        return entities;
+    }
+
+    public List<GraphRelation> showEdges(Session session) throws GraphException {
+        String nql = NebulaUtil.buildShowEdges();
+
+        ResultSet rs;
+        try {
+            rs = session.execute(nql);
+        } catch (IOErrorException e) {
+            throw new GraphException("Failed to show edges", e);
+        }
+
+        assertSuccess(rs, "show edges");
+
+        List<GraphRelation> relations = new ArrayList<>();
+        for (int i = 0; i < rs.rowsSize(); i++) {
+            ResultSet.Record record = rs.rowValues(i);
+            ValueWrapper edgeValue = record.get(0);
+            String edgeName;
+            try {
+                edgeName = edgeValue.asString();
+            } catch (UnsupportedEncodingException e) {
+                log.error("Failed to parse edge name", e);
+                throw new GraphException("Failed to parse edge name", e);
+            }
+
+            GraphRelation relation = new GraphRelation();
+            relation.setLabel(edgeName);
+            relations.add(relation);
+
+            try {
+                NebulaEdge nebulaEdge = describeEdge(edgeName, session);
+                List<GraphProperty> properties = nebulaEdge.getProperties().stream()
+                    .map(NebulaUtil::toGraphProperty)
+                    .toList();
+                relation.setProperties(properties);
+            } catch (Exception e) {
+                log.warn("Failed to describe edge: {}", edgeName, e);
+            }
+        }
+
+        return relations;
+    }
+
+    public void createIndices(List<GraphIndex> indices, Session session) {
+        if (indices == null || indices.isEmpty()) {
+            log.info("No indices to create");
+            return;
+        }
+
+        indices.forEach(i -> log.info("Creating index: name={}, label={}, schemaType={}, property={}, propertyNames={}", i.getName(), i.getLabel(), i.getSchemaType(), i.getProperty(), i.getPropertyNames()));
+        indices.forEach(index -> {
+            try {
+                Map<String, String> propTypeMap = index.getProperties().stream().collect(Collectors.toMap(
+                        GraphProperty::getCode, p-> NebulaUtil.convertToNebulaDataType(p.getDataType())
+
+                ));
+
+                NebulaIndex.NebulaIndexBuilder indexBuilder = NebulaIndex.builder()
+                        .indexName(index.getName())
+                        .typeName(index.getLabel())
+                        .propNameList(index.getPropertyNames())
+                        .propTypeMap(propTypeMap);
+
+                if (GraphConstants.VERTEX.equalsIgnoreCase(index.getSchemaType())) {
+                    indexBuilder.indexType(SchemaType.TAG);
+                } else if (GraphConstants.EDGE.equalsIgnoreCase(index.getSchemaType())) {
+                    indexBuilder.indexType(SchemaType.EDGE);
+                }
+
+                NebulaIndex nebulaIndex = indexBuilder.build();
+
+                String nql = NebulaUtil.buildCreateIndex(nebulaIndex);
+                log.info("Execute create index NGQL: {}", nql);
+
+                ResultSet resultSet = session.execute(nql);
+                if (!resultSet.isSucceeded()) {
+                    log.error("Failed to create index: indexName={}, nql={}", index.getName(), nql);
+                    throwIfFailed(resultSet, "create index " + index.getName());
+                }
+                log.info("Successfully created index: {}", index.getName());
+
+            } catch (Exception e) {
+                log.error("Error creating index: {}", index.getName(), e);
+                throw new GraphException("Error creating index: " + index.getName(), e);
+            }
+        });
+    }
+
+    public List<GraphIndex> showIndexes(Session session) throws GraphException {
+        List<GraphIndex> tagIndex = showIndexes(session, GraphConstants.VERTEX);
+        List<GraphIndex> edgeIndex = showIndexes(session, GraphConstants.EDGE);
+        return Stream.concat(tagIndex.stream(), edgeIndex.stream()).toList();
+    }
+
+    public List<GraphIndex> showIndexes(Session session, String type) throws GraphException {
+        String indexType = type.equalsIgnoreCase(GraphConstants.VERTEX) ? "TAG" : "EDGE";
+        String nql = NebulaUtil.buildShowIndexes(SchemaType.valueOf(indexType));
+
+        ResultSet rs;
+        try {
+            rs = session.execute(nql);
+        } catch (IOErrorException e) {
+            throw new GraphException("Failed to show tag indexes", e);
+        }
+
+        assertSuccess(rs, "show indexes");
+
+        List<GraphIndex> indexes = new ArrayList<>();
+        for (int i = 0; i < rs.rowsSize(); i++) {
+            ResultSet.Record record = rs.rowValues(i);
+            ValueWrapper indexValue = record.get(0);
+            String indexName;
+            try {
+                indexName = indexValue.asString();
+            } catch (UnsupportedEncodingException e) {
+                log.error("Failed to parse index name", e);
+                throw new GraphException("Failed to parse index name", e);
+            }
+
+            GraphIndex index = new GraphIndex();
+            index.setName(indexName);
+            indexes.add(index);
+        }
+
+        return indexes;
+    }
+
+
+    public NebulaTag describeTag(String tagName, Session session) throws GraphException {
+        String nql = NebulaUtil.buildDescribeTag(tagName);
+        ResultSet rs;
+        try {
+            rs = session.execute(nql);
+            List<NebulaProperty> properties = new ArrayList<>();
+
+            for (int i = 0; i < rs.rowsSize(); i++) {
+                ResultSet.Record record = rs.rowValues(i);
+                ValueWrapper field = record.get(0);
+                ValueWrapper type = record.get(1);
+                String fieldName = field.asString();
+                String typeName = type.asString();
+
+                NebulaProperty nebulaProperty = new NebulaProperty();
+                nebulaProperty.setName(fieldName);
+                nebulaProperty.setDataType(NebulaDataType.getDataType(typeName));
+                properties.add(nebulaProperty);
+            }
+
+            return NebulaTag.builder().name(tagName).properties(properties).build();
+        } catch (IOException | IOErrorException e) {
+            throw new GraphException("Desc tag error", e);
+        }
+    }
+
+    public NebulaEdge describeEdge(String edgeName, Session session) throws GraphException {
+        String nql = NebulaUtil.buildDescribeEdge(edgeName);
+        ResultSet rs;
+        try {
+            rs = session.execute(nql);
+            List<NebulaProperty> properties = new ArrayList<>();
+
+            for (int i = 0; i < rs.rowsSize(); i++) {
+                ResultSet.Record record = rs.rowValues(i);
+                ValueWrapper field = record.get(0);
+                ValueWrapper type = record.get(1);
+                String fieldName = field.asString();
+                String typeName = type.asString();
+
+                NebulaProperty nebulaProperty = new NebulaProperty();
+                nebulaProperty.setName(fieldName);
+                nebulaProperty.setDataType(NebulaDataType.getDataType(typeName));
+                properties.add(nebulaProperty);
+            }
+
+            return NebulaEdge.builder().name(edgeName).properties(properties).build();
+        } catch (IOException | IOErrorException e) {
+            throw new GraphException("Desc edge error", e);
+        }
+    }
+
+    private void assertSuccess(ResultSet rs, String operation) {
+        if (!rs.isSucceeded()) {
+            String msg = String.format("%s failed, errorCode: %s, errorMessage: %s",
+                    operation, rs.getErrorCode(), rs.getErrorMessage());
+            log.error(msg);
+            throw new GraphException(msg);
+        }
+    }
+
+    private void throwIfFailed(ResultSet rs, String operation) {
+        if (!rs.isSucceeded()) {
+            throw new GraphException(String.format("%s failed, errorCode: %s, errorMessage: %s",
+                    operation, rs.getErrorCode(), rs.getErrorMessage()));
+        }
+    }
+
+    private boolean checkSuccessOrWarn(ResultSet rs, String operation) {
+        if (!rs.isSucceeded()) {
+            log.warn("{} failed, errorCode: {}, errorMessage: {}", operation,
+                    rs.getErrorCode(), rs.getErrorMessage());
+            return false;
+        }
+        return true;
+    }
+
+    @FunctionalInterface
+    private interface SessionFunction<T> {
+        T apply(Session session) throws Exception;
+    }
+
+    @FunctionalInterface
+    private interface SessionConsumer {
+        void accept(Session session) throws Exception;
+    }
+
+    private <T> T withSession(SessionFunction<T> fn) throws Exception {
+        NebulaPool nebulaPool = NebulaClientFactory.getNebulaPool(nebulaConf);
+        try (Session session = nebulaPool.getSession(
+                nebulaConf.getUsername(), nebulaConf.getPassword(), false)) {
+            return fn.apply(session);
+        }
+    }
+
+    private void withSession(SessionConsumer fn) throws Exception {
+        NebulaPool nebulaPool = NebulaClientFactory.getNebulaPool(nebulaConf);
+        try (Session session = nebulaPool.getSession(
+                nebulaConf.getUsername(), nebulaConf.getPassword(), false)) {
+            fn.accept(session);
+        }
+    }
+
+    private void useSpace(Session session, String spaceName) throws IOErrorException {
+        ResultSet rs = session.execute(NebulaUtil.buildUseSpace(spaceName));
+        assertSuccess(rs, "use space " + spaceName);
+    }
+
+    @Override
+    public void dropVertexLabel(String graphCode, String label) {
+        log.info("Dropping vertex label: {}", label);
+        try {
+            withSession(session -> {
+                useSpace(session, graphCode);
+                dropIndexesForLabel(session, label, SchemaType.TAG);
+                String ngql = "DROP TAG IF EXISTS `" + label + "`";
+                log.info("Execute drop tag NGQL: {}", ngql);
+                ResultSet rs = session.execute(ngql);
+                assertSuccess(rs, "drop tag " + label);
+            });
+        } catch (Exception e) {
+            log.error("Failed to drop vertex label: {}", label, e);
+            throw new GraphException("Failed to drop vertex label: " + label, e);
+        }
+    }
+
+    @Override
+    public void dropEdgeLabel(String graphCode, String label) {
+        log.info("Dropping edge label: {}", label);
+        try {
+            withSession(session -> {
+                useSpace(session, graphCode);
+                dropIndexesForLabel(session, label, SchemaType.EDGE);
+                String ngql = "DROP EDGE IF EXISTS `" + label + "`";
+                log.info("Execute drop edge NGQL: {}", ngql);
+                ResultSet rs = session.execute(ngql);
+                assertSuccess(rs, "drop edge " + label);
+            });
+        } catch (Exception e) {
+            log.error("Failed to drop edge label: {}", label, e);
+            throw new GraphException("Failed to drop edge label: " + label, e);
+        }
+    }
+
+    private void dropIndexesForLabel(Session session, String labelName, SchemaType schemaType) {
+        String nql = "SHOW " + schemaType + " INDEXES";
+
+        try {
+            ResultSet rs = session.execute(nql);
+            if (!rs.isSucceeded()) {
+                log.warn("Failed to show indexes for label: {}, error: {}", labelName, rs.getErrorMessage());
+                return;
+            }
+
+            for (int i = 0; i < rs.rowsSize(); i++) {
+                ResultSet.Record record = rs.rowValues(i);
+                try {
+                    String indexName = record.get(0).asString();
+                    String indexedLabel = record.get(1).asString();
+
+                    if (labelName.equalsIgnoreCase(indexedLabel)) {
+                        String dropNql = "DROP " + schemaType + " INDEX IF EXISTS `" + indexName + "`";
+                        log.info("Execute drop index NGQL: {}", dropNql);
+                        ResultSet dropRs = session.execute(dropNql);
+                        if (dropRs.isSucceeded()) {
+                            log.info("Successfully dropped index: {}", indexName);
+                        } else {
+                            log.warn("Failed to drop index: {}, error: {}", indexName, dropRs.getErrorMessage());
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to parse index record, skipping: {}", e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to drop indexes for label: {}", labelName, e);
+        }
+    }
+}
+
+package com.chenpp.graph.nebula;
+
+import com.chenpp.graph.core.GraphDataOperations;
+import com.chenpp.graph.core.constant.GraphConstants;
+import com.chenpp.graph.core.exception.ErrorCode;
+import com.chenpp.graph.core.exception.GraphException;
+import com.chenpp.graph.core.model.GraphData;
+import com.chenpp.graph.core.model.GraphEdge;
+import com.chenpp.graph.core.model.GraphSummary;
+import com.chenpp.graph.core.model.GraphVertex;
+import com.chenpp.graph.core.model.PathQuery;
+import com.chenpp.graph.core.schema.DataType;
+import com.chenpp.graph.core.schema.GraphEntity;
+import com.chenpp.graph.core.schema.GraphProperty;
+import com.chenpp.graph.core.schema.GraphRelation;
+import com.chenpp.graph.nebula.schema.NebulaEdge;
+import com.chenpp.graph.nebula.schema.NebulaProperty;
+import com.chenpp.graph.nebula.schema.NebulaTag;
+import com.chenpp.graph.nebula.util.NebulaUtil;
+import com.vesoft.nebula.client.graph.SessionPool;
+import com.vesoft.nebula.client.graph.data.PathWrapper;
+import com.vesoft.nebula.client.graph.data.ResultSet;
+import com.vesoft.nebula.client.graph.data.ValueWrapper;
+import com.vesoft.nebula.client.graph.exception.IOErrorException;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * @author April.Chen
+ * @date 2025/8/13 11:18
+ */
+@Slf4j
+public class NebulaGraphDataOperations implements GraphDataOperations {
+    private final NebulaConf nebulaConf;
+    private final SessionPool sessionPool;
+
+    public NebulaGraphDataOperations(NebulaConf nebulaConf) {
+        this.nebulaConf = nebulaConf;
+        this.sessionPool = NebulaClientFactory.getSessionPool(nebulaConf);
+    }
+
+    @Override
+    public GraphVertex addVertex(GraphVertex vertex) throws GraphException {
+        if (MapUtils.isEmpty(vertex.getProperties())) {
+            throw new GraphException(ErrorCode.BAD_REQUEST, "Vertex properties cannot be empty");
+        }
+        try {
+            Map<String, DataType> propertyTypes = getPropertyTypes(vertex.getLabel(), true);
+
+            String nql = NebulaUtil.buildInsertVertex(vertex, propertyTypes);
+            log.info("Execute NGQL: {}", nql);
+
+            ResultSet resultSet = sessionPool.execute(nql);
+            if (!resultSet.isSucceeded()) {
+                log.error("Failed to add vertex, errorCode: {}, errorMessage: {}",
+                        resultSet.getErrorCode(), resultSet.getErrorMessage());
+                throw new GraphException("Failed to add vertex, errorCode: " + resultSet.getErrorCode()
+                        + ", errorMessage: " + resultSet.getErrorMessage());
+            }
+
+            return vertex;
+        } catch (Exception e) {
+            log.error("Failed to add vertex: {}", vertex, e);
+            throw new GraphException("Failed to add vertex", e);
+        }
+    }
+
+    @Override
+    public GraphVertex updateVertex(GraphVertex vertex) throws GraphException {
+        if (MapUtils.isEmpty(vertex.getProperties())) {
+            throw new GraphException(ErrorCode.BAD_REQUEST, "Vertex properties cannot be empty");
+        }
+        try {
+            String vid = vertex.getUid();
+            Map<String, DataType> propertyTypes = getPropertyTypes(vertex.getLabel(), true);
+            String setClause = vertex.getProperties().entrySet().stream()
+                    .map(entry -> entry.getKey() + " = " + NebulaUtil.formatValue(entry.getValue(), propertyTypes != null ? propertyTypes.get(entry.getKey()) : null))
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("");
+            String nql = NebulaUtil.buildUpdateVertex(vertex.getLabel(), vid, setClause);
+            log.info("Execute NGQL: {}", nql);
+
+            ResultSet resultSet = sessionPool.execute(nql);
+            if (!resultSet.isSucceeded()) {
+                log.error("Failed to update vertex, errorCode: {}, errorMessage: {}",
+                        resultSet.getErrorCode(), resultSet.getErrorMessage());
+                throw new GraphException("Failed to update vertex, errorCode: " + resultSet.getErrorCode()
+                        + ", errorMessage: " + resultSet.getErrorMessage());
+            }
+
+            return vertex;
+        } catch (Exception e) {
+            log.error("Failed to update vertex: {}", vertex, e);
+            throw new GraphException("Failed to update vertex", e);
+        }
+    }
+
+    @Override
+    public void addVertices(Collection<GraphVertex> vertices) throws GraphException {
+        if (CollectionUtils.isEmpty(vertices)) {
+            log.info("Vertices collection is empty, skipping batch insert");
+            return;
+        }
+
+        try {
+            Map<String, List<GraphVertex>> verticesByLabel = vertices.stream()
+                    .filter(vertex -> MapUtils.isNotEmpty(vertex.getProperties()))
+                    .collect(Collectors.groupingBy(GraphVertex::getLabel));
+
+            verticesByLabel.forEach((label, vertexList) -> {
+                if (CollectionUtils.isEmpty(vertexList)) {
+                    return;
+                }
+                String keys = String.join(",", vertexList.get(0).getProperties().keySet());
+
+                Map<String, DataType> propertyTypes = getPropertyTypes(label, true);
+
+                String valuesClause = vertexList.stream().map(vertex -> {
+                    String propValues = NebulaUtil.buildPropertyValuesClause(vertex.getProperties(), propertyTypes);
+                    return String.format("\"%s\":(%s)", vertex.getUid(), propValues);
+                }).collect(Collectors.joining(","));
+
+                String nql = NebulaUtil.buildInsertVertexBatch(label, keys, valuesClause);
+                log.info("Execute batch insert NGQL: {}", nql);
+
+                ResultSet resultSet;
+                try {
+                    resultSet = sessionPool.execute(nql);
+                    if (!resultSet.isSucceeded()) {
+                        log.error("Failed to batch insert vertices, errorCode: {}, errorMessage: {}",
+                                resultSet.getErrorCode(), resultSet.getErrorMessage());
+                        throw new GraphException("Failed to batch insert vertices, errorCode: " + resultSet.getErrorCode()
+                                + ", errorMessage: " + resultSet.getErrorMessage());
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to batch insert vertices", e);
+                    throw new GraphException("Failed to batch insert vertices", e);
+                }
+
+            });
+        } catch (Exception e) {
+            log.error("Failed to batch insert vertices", e);
+            throw new GraphException("Failed to batch insert vertices", e);
+        }
+    }
+
+    @Override
+    public boolean deleteVertex(GraphVertex vertex) throws GraphException {
+        try {
+            String nql = NebulaUtil.buildDeleteVertex(vertex.getUid());
+            log.info("Execute NGQL: {}", nql);
+
+            ResultSet resultSet = sessionPool.execute(nql);
+            if (!resultSet.isSucceeded()) {
+                log.error("Failed to delete vertex, errorCode: {}, errorMessage: {}",
+                        resultSet.getErrorCode(), resultSet.getErrorMessage());
+                throw new GraphException("Failed to delete vertex, errorCode: " + resultSet.getErrorCode()
+                        + ", errorMessage: " + resultSet.getErrorMessage());
+            }
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to delete vertex: {}", vertex, e);
+            throw new GraphException("Failed to delete vertex", e);
+        }
+    }
+
+    @Override
+    public GraphEdge addEdge(GraphEdge edge) throws GraphException {
+        try {
+            Map<String, DataType> propertyTypes = getPropertyTypes(edge.getLabel(), false);
+
+            // 构建插入边的NGQL语句
+            // 语法: INSERT EDGE edge_type (prop1, prop2) VALUES src_vid -> dst_vid @rank: (val1, val2)
+            String keys = String.join(",", edge.getProperties().keySet());
+            String propValues = NebulaUtil.buildPropertyValuesClause(edge.getProperties(), propertyTypes);
+            String nql = NebulaUtil.buildInsertEdge(edge.getLabel(), keys, edge.getStartUid(), edge.getEndUid(), propValues);
+
+
+            log.info("Execute NGQL: {}", nql);
+
+            ResultSet resultSet = sessionPool.execute(nql);
+            if (!resultSet.isSucceeded()) {
+                log.error("Failed to add edge, errorCode: {}, errorMessage: {}",
+                        resultSet.getErrorCode(), resultSet.getErrorMessage());
+                throw new GraphException("Failed to add edge, errorCode: " + resultSet.getErrorCode()
+                        + ", errorMessage: " + resultSet.getErrorMessage());
+            }
+            return edge;
+        } catch (Exception e) {
+            log.error("Failed to add edge: {}", edge, e);
+            throw new GraphException("Failed to add edge", e);
+        }
+    }
+
+    @Override
+    public void addEdges(Collection<GraphEdge> edges) throws GraphException {
+        if (CollectionUtils.isEmpty(edges)) {
+            log.info("Edges collection is empty, skipping batch insert");
+            return;
+        }
+
+        try {
+            Map<String, List<GraphEdge>> edgesByLabel = edges.stream()
+                    .collect(Collectors.groupingBy(GraphEdge::getLabel));
+
+            for (Map.Entry<String, List<GraphEdge>> entry : edgesByLabel.entrySet()) {
+                String label = entry.getKey();
+                List<GraphEdge> edgeList = entry.getValue();
+
+                if (edgeList.isEmpty()) {
+                    continue;
+                }
+
+                GraphEdge firstEdge = edgeList.get(0);
+                String propKeys = "";
+                if (firstEdge.getProperties() != null && !firstEdge.getProperties().isEmpty()) {
+                    propKeys = String.join(", ", firstEdge.getProperties().keySet());
+                }
+
+                Map<String, DataType> propertyTypes = getPropertyTypes(label, false);
+
+                StringBuilder valuesBuilder = new StringBuilder();
+                String valuesStr = edgeList.stream().map(edge -> {
+                    String propValues = NebulaUtil.buildPropertyValuesClause(edge.getProperties(), propertyTypes);
+                    return String.format("\"%s\" -> \"%s\":(%s)", edge.getStartUid(), edge.getEndUid(), propValues);
+                }).collect(Collectors.joining(", "));
+                valuesBuilder.append(valuesStr);
+
+                String nql = NebulaUtil.buildInsertEdgeBatch(label, propKeys, valuesBuilder.toString());
+                log.info("Execute batch insert NGQL: {}", nql);
+
+                ResultSet resultSet = sessionPool.execute(nql);
+                if (!resultSet.isSucceeded()) {
+                    log.error("Failed to batch insert edges, errorCode: {}, errorMessage: {}",
+                            resultSet.getErrorCode(), resultSet.getErrorMessage());
+                    throw new GraphException("Failed to batch insert edges, errorCode: " + resultSet.getErrorCode()
+                            + ", errorMessage: " + resultSet.getErrorMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to batch insert edges", e);
+            throw new GraphException("Failed to batch insert edges", e);
+        }
+    }
+
+    @Override
+    public GraphEdge updateEdge(GraphEdge edge) throws GraphException {
+        try {
+            Map<String, DataType> propertyTypes = getPropertyTypes(edge.getLabel(), false);
+
+            String setClause = edge.getProperties().entrySet().stream()
+                    .map(entry -> entry.getKey() + " = " + NebulaUtil.formatValue(entry.getValue(), propertyTypes != null ? propertyTypes.get(entry.getKey()) : null))
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("");
+
+            String nql = NebulaUtil.buildUpdateEdge(edge.getLabel(), edge.getStartUid(), edge.getEndUid(), setClause);
+
+            log.info("Execute NGQL: {}", nql);
+
+            ResultSet resultSet = sessionPool.execute(nql);
+            if (!resultSet.isSucceeded()) {
+                log.error("Failed to update edge, errorCode: {}, errorMessage: {}",
+                        resultSet.getErrorCode(), resultSet.getErrorMessage());
+                throw new GraphException("Failed to update edge, errorCode: " + resultSet.getErrorCode()
+                        + ", errorMessage: " + resultSet.getErrorMessage());
+            }
+
+            return edge;
+        } catch (Exception e) {
+            log.error("Failed to update edge: {}", edge, e);
+            throw new GraphException("Failed to update edge", e);
+        }
+    }
+
+    @Override
+    public boolean deleteEdge(GraphEdge edge) throws GraphException {
+        try {
+            String nql = NebulaUtil.buildDeleteEdge(edge.getLabel(), edge.getStartUid(), edge.getEndUid());
+            log.info("Execute NGQL: {}", nql);
+
+            ResultSet resultSet = sessionPool.execute(nql);
+            if (!resultSet.isSucceeded()) {
+                log.error("Failed to delete edge, errorCode: {}, errorMessage: {}",
+                        resultSet.getErrorCode(), resultSet.getErrorMessage());
+                throw new GraphException("Failed to delete edge, errorCode: " + resultSet.getErrorCode()
+                        + ", errorMessage: " + resultSet.getErrorMessage());
+            }
+
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to delete edge: {}", edge, e);
+            throw new GraphException("Failed to delete edge", e);
+        }
+    }
+
+    @Override
+    public GraphData query(String cypher) throws GraphException {
+        try {
+            log.info("Execute NGQL: {}", cypher);
+
+            ResultSet resultSet = sessionPool.execute(cypher);
+            if (!resultSet.isSucceeded()) {
+                log.error("Failed to execute query, errorCode: {}, errorMessage: {}",
+                        resultSet.getErrorCode(), resultSet.getErrorMessage());
+                throw new GraphException("Failed to execute query, errorCode: " + resultSet.getErrorCode()
+                        + ", errorMessage: " + resultSet.getErrorMessage());
+            }
+
+            Map<String, GraphVertex> vertexMap = new LinkedHashMap<>();
+            Map<String, GraphEdge> edgeMap = new LinkedHashMap<>();
+
+            for (int i = 0; i < resultSet.rowsSize(); i++) {
+                ResultSet.Record record = resultSet.rowValues(i);
+                for (ValueWrapper value : record.values()) {
+                    if (value.isVertex()) {
+                        GraphVertex vertex = NebulaUtil.parseVertex(value.asNode());
+                        if (vertex.getUid() != null) {
+                            vertexMap.put(vertex.getUid(), vertex);
+                        }
+                    }
+                    if (value.isEdge()) {
+                        GraphEdge edge = NebulaUtil.parseEdge(value.asRelationship());
+                        edgeMap.put(edge.getUid(), edge);
+                    }
+                    if (value.isPath()) {
+                        PathWrapper path = value.asPath();
+                        for (com.vesoft.nebula.client.graph.data.Node node : path.getNodes()) {
+                            GraphVertex vertex = NebulaUtil.parseVertex(node);
+                            if (vertex.getUid() != null) {
+                                vertexMap.put(vertex.getUid(), vertex);
+                            }
+                        }
+                        for (com.vesoft.nebula.client.graph.data.Relationship rel : path.getRelationships()) {
+                            GraphEdge edge = NebulaUtil.parseEdge(rel);
+                            edgeMap.put(edge.getUid(), edge);
+                        }
+                    }
+                }
+            }
+            Set<String> vertexIds = vertexMap.values().stream().filter(v -> v.getProperties() == null)
+                    .map(GraphVertex::getUid).collect(Collectors.toSet());
+            GraphData graphData = new GraphData();
+            graphData.setVertices(new ArrayList<>(vertexMap.values()));
+            graphData.setEdges(new ArrayList<>(edgeMap.values()));
+
+            if (CollectionUtils.isNotEmpty(graphData.getEdges()) && CollectionUtils.isEmpty(graphData.getVertices())) {
+                graphData.getEdges().forEach(e -> {
+                    vertexIds.add(e.getStartUid());
+                    vertexIds.add(e.getEndUid());
+                });
+
+            }
+            if (CollectionUtils.isNotEmpty(vertexIds)){
+                List<GraphVertex> vertices = this.getVerticesByIds(vertexIds);
+                graphData.setVertices(vertices);
+            }
+            return graphData;
+        } catch (Exception e) {
+            log.error("Failed to execute query: {}", cypher, e);
+            throw new GraphException(ErrorCode.GRAPH_QUERY_FAILED, e);
+        }
+    }
+
+    /**
+     * 根据ID列表查询顶点
+     *
+     * @param idList 顶点ID列表
+     * @return 顶点列表
+     * @throws GraphException 查询异常
+     */
+    public List<GraphVertex> getVerticesByIds(Collection<String> idList) throws GraphException {
+        if (CollectionUtils.isEmpty(idList)) {
+            return Collections.emptyList();
+        }
+
+        try {
+            String idListStr = idList.stream().map(id -> "'" + id + "'").collect(Collectors.joining(", "));
+            String ngql = NebulaUtil.buildMatchVertices(idListStr);
+            log.info("Execute NGQL: {}", ngql);
+
+            ResultSet resultSet = sessionPool.execute(ngql);
+            if (!resultSet.isSucceeded()) {
+                log.error("Failed to query vertices by IDs, errorCode: {}, errorMessage: {}",
+                        resultSet.getErrorCode(), resultSet.getErrorMessage());
+                throw new GraphException("Failed to query vertices by IDs, errorCode: " + resultSet.getErrorCode()
+                        + ", errorMessage: " + resultSet.getErrorMessage());
+            }
+
+            List<GraphVertex> vertices = new ArrayList<>();
+
+            for (int i = 0; i < resultSet.rowsSize(); i++) {
+                ResultSet.Record record = resultSet.rowValues(i);
+                for (ValueWrapper value : record.values()) {
+                    if (value.isVertex()) {
+                        GraphVertex vertex = NebulaUtil.parseVertex(value.asNode());
+                        vertices.add(vertex);
+                    }
+                }
+            }
+
+            return vertices;
+        } catch (IOErrorException e) {
+            log.error("Failed to query vertices by IDs due to IO error", e);
+            throw new GraphException("Failed to query vertices by IDs due to IO error", e);
+        } catch (Exception e) {
+            log.error("Failed to query vertices by IDs", e);
+            throw new GraphException(ErrorCode.GRAPH_QUERY_FAILED, e);
+        }
+    }
+
+    @Override
+    public GraphData expand(String vertexId, int depth) throws GraphException {
+        String ngql = NebulaUtil.buildExpandPath(vertexId, depth);
+        return query(ngql);
+    }
+
+    @Override
+    public GraphData expand(String label, String property, String value, int depth, int limit) throws GraphException {
+        String ngql = String.format(
+                "LOOKUP ON %s WHERE %s.%s == '%s' YIELD id(vertex) AS src"
+                        + " | GO 1 TO %d STEPS FROM $-.src OVER * BIDIRECT YIELD $^ AS v1, $$ AS v2, edge AS e"
+                        + " | LIMIT %d",
+                label, label, property, value, depth, limit);
+        log.debug("Executing expand by property: {}", ngql);
+        return query(ngql);
+    }
+
+    @Override
+    public GraphData findPath(String startVertexId, String endVertexId, int maxDepth) throws GraphException {
+        String ngql = NebulaUtil.buildShortestPath(startVertexId, endVertexId, maxDepth);
+        return query(ngql);
+    }
+
+    @Override
+    public GraphData findPath(PathQuery pathQuery) throws GraphException {
+        PathQuery.Condition start = pathQuery.getStartProperty();
+        PathQuery.Condition end = pathQuery.getEndProperty();
+        String startVid;
+        String endVid;
+        if (start.getProperty().equals(GraphConstants.UID)) {
+            startVid = start.getValue();
+        } else {
+            GraphVertex startVertex = findVertex(start.getLabel(), start.getProperty(), start.getValue());
+            if (startVertex == null) {
+                log.warn("Start vertex not found: label={}, property={}, value={}",
+                        start.getLabel(), start.getProperty(), start.getValue());
+                throw new GraphException("Start vertex not found");
+            }
+            startVid = startVertex.getId();
+        }
+
+        if (GraphConstants.UID.equals(end.getProperty())) {
+            endVid = end.getValue();
+        } else {
+            GraphVertex endVertex = findVertex(end.getLabel(), end.getProperty(), end.getValue());
+            if (endVertex == null) {
+                log.warn("End vertex not found: label={}, property={}, value={}",
+                        end.getLabel(), end.getProperty(), end.getValue());
+                throw new GraphException("End vertex not found");
+            }
+            endVid = endVertex.getId();
+        }
+
+        String pathNgql = String.format(
+                "FIND ALL PATH FROM \"%s\" TO \"%s\" OVER * UPTO %d STEPS YIELD PATH AS p | LIMIT %d",
+                startVid, endVid, pathQuery.getMaxDepth(), pathQuery.getLimit());
+        log.info("Execute path query NGQL: {}", pathNgql);
+
+        return query(pathNgql);
+    }
+
+    @Override
+    public GraphSummary getSummary() throws GraphException {
+        GraphSummary summary = new GraphSummary();
+        try {
+            String submitStatsJob = NebulaUtil.buildSubmitJobStats();
+            ResultSet submitResult = sessionPool.execute(submitStatsJob);
+            if (!submitResult.isSucceeded()) {
+                log.error("Failed to submit STATS job, errorCode: {}, errorMessage: {}",
+                        submitResult.getErrorCode(), submitResult.getErrorMessage());
+                throw new GraphException("Failed to submit STATS job, errorCode: " + submitResult.getErrorCode()
+                        + ", errorMessage: " + submitResult.getErrorMessage());
+            }
+
+            long jobId = submitResult.rowValues(0).get(0).asLong();
+
+            String showJob = NebulaUtil.buildShowJob(jobId);
+            ResultSet jobResult = null;
+            int retryCount = 0;
+            final int maxRetries = 30;
+            while (retryCount < maxRetries) {
+                Thread.sleep(1000);
+                jobResult = sessionPool.execute(showJob);
+                if (!jobResult.isSucceeded()) {
+                    log.error("Failed to get job status, errorCode: {}, errorMessage: {}",
+                            jobResult.getErrorCode(), jobResult.getErrorMessage());
+                    throw new GraphException("Failed to get job status, errorCode: " + jobResult.getErrorCode()
+                            + ", errorMessage: " + jobResult.getErrorMessage());
+                }
+                String status = jobResult.rowValues(1).get(2).asString();
+                if ("FINISHED".equals(status)) {
+                    break;
+                }
+                if ("FAILED".equals(status)) {
+                    throw new GraphException("STATS job failed");
+                }
+                retryCount++;
+            }
+
+            if (retryCount >= maxRetries) {
+                throw new GraphException("STATS job timeout");
+            }
+
+            String showStats = NebulaUtil.buildShowStats();
+            ResultSet statsResult = sessionPool.execute(showStats);
+            if (!statsResult.isSucceeded()) {
+                log.error("Failed to show stats, errorCode: {}, errorMessage: {}",
+                        statsResult.getErrorCode(), statsResult.getErrorMessage());
+                throw new GraphException("Failed to show stats, errorCode: " + statsResult.getErrorCode()
+                        + ", errorMessage: " + statsResult.getErrorMessage());
+            }
+
+            Map<String, Integer> vertexLabelCount = new HashMap<>();
+            Map<String, Integer> edgeLabelCount = new HashMap<>();
+
+            for (int i = 0; i < statsResult.rowsSize(); i++) {
+                ResultSet.Record record = statsResult.rowValues(i);
+                String type = record.get(0).asString();
+                String name = record.get(1).asString();
+                long count = record.get(2).asLong();
+
+                switch (type) {
+                    case "Tag" -> vertexLabelCount.put(name, (int) count);
+                    case "Edge" -> edgeLabelCount.put(name, (int) count);
+                    case "Space" -> {
+                        if ("vertices".equals(name)) {
+                            summary.setVertexCount((int) count);
+                        } else if ("edges".equals(name)) {
+                            summary.setEdgeCount((int) count);
+                        }
+                    }
+                    default -> log.warn("Unknown stats type: {}", type);
+                }
+            }
+
+            summary.setVertexLabelCount(vertexLabelCount);
+            summary.setEdgeLabelCount(edgeLabelCount);
+            summary.setGraphCode(nebulaConf.getGraphCode());
+
+            return summary;
+        } catch (Exception e) {
+            log.error("Failed to get graph summary from Nebula", e);
+            throw new GraphException("Failed to get graph summary from Nebula", e);
+        }
+    }
+
+    @Override
+    public long countVertices(String label) throws GraphException {
+        String nql = NebulaUtil.buildCountVertex(label);
+        try {
+            ResultSet resultSet = sessionPool.execute(nql);
+            if (resultSet.isSucceeded() && resultSet.rowsSize() > 0) {
+                return resultSet.rowValues(0).get(0).asLong();
+            }
+        } catch (Exception e) {
+            log.error("Failed to count vertices with label {} from Nebula", label, e);
+        }
+        return 0L;
+    }
+
+    @Override
+    public long countEdges(String label) throws GraphException {
+        String nql = NebulaUtil.buildCountEdge(label);
+        try {
+            ResultSet resultSet = sessionPool.execute(nql);
+            if (resultSet.isSucceeded() && resultSet.rowsSize() > 0) {
+                return resultSet.rowValues(0).get(0).asLong();
+            }
+        } catch (Exception e) {
+            log.error("Failed to count edges with label {} from Nebula", label, e);
+        }
+        return 0L;
+    }
+
+    @Override
+    public GraphVertex findVertex(String label, String property, String value) throws GraphException {
+        try {
+            String nql = NebulaUtil.buildFindVertexByProperty(label, property, value);
+            log.info("Execute NGQL: {}", nql);
+
+            ResultSet resultSet = sessionPool.execute(nql);
+            if (!resultSet.isSucceeded()) {
+                log.warn("Failed to find vertex by property, errorCode: {}, errorMessage: {}",
+                        resultSet.getErrorCode(), resultSet.getErrorMessage());
+                return null;
+            }
+
+            for (int i = 0; i < resultSet.rowsSize(); i++) {
+                ResultSet.Record record = resultSet.rowValues(i);
+                for (ValueWrapper valueWrapper : record.values()) {
+                    if (valueWrapper.isVertex()) {
+                        return NebulaUtil.parseVertex(valueWrapper.asNode());
+                    }
+                }
+            }
+
+            return null;
+        } catch (Exception e) {
+            log.warn("Failed to find vertex by property: label={}, property={}, value={}, error={}",
+                    label, property, value, e.getMessage());
+            return null;
+        }
+    }
+
+    private String edgeKey(GraphEdge edge) {
+        if (edge.getUid() != null) {
+            return edge.getUid();
+        }
+        return edge.getStartUid() + "->" + edge.getEndUid() + "#" + edge.getLabel();
+    }
+
+    private Map<String, DataType> getPropertyTypes(String label, boolean isVertex) {
+        String nql = isVertex ? NebulaUtil.buildDescribeTag(label) : NebulaUtil.buildDescribeEdge(label);
+        try {
+            ResultSet resultSet = sessionPool.execute(nql);
+            if (!resultSet.isSucceeded()) {
+                log.warn("Failed to describe tag/edge {}, errorCode: {}, errorMessage: {}",
+                        label, resultSet.getErrorCode(), resultSet.getErrorMessage());
+                return null;
+            }
+
+            Map<String, DataType> propertyTypes = new HashMap<>();
+            for (int i = 0; i < resultSet.rowsSize(); i++) {
+                ResultSet.Record record = resultSet.rowValues(i);
+                String fieldName = record.get(0).asString();
+                String typeName = record.get(1).asString();
+                DataType dataType = DataType.instanceOf(typeName);
+                propertyTypes.put(fieldName, dataType);
+            }
+            return propertyTypes;
+        } catch (Exception e) {
+            log.warn("Failed to get property types for {}: {}", label, e.getMessage());
+            return null;
+        }
+    }
+}
+
+package com.chenpp.graph.nebula;
+
+import com.chenpp.graph.core.GraphClient;
+import com.chenpp.graph.core.GraphDataOperations;
+import com.chenpp.graph.core.GraphOperations;
+import com.vesoft.nebula.client.graph.net.NebulaPool;
+import com.vesoft.nebula.client.graph.net.Session;
+import lombok.extern.slf4j.Slf4j;
+
+/**
+ * @author April.Chen
+ * @date 2025/4/9 15:21
+ */
+@Slf4j
+public class NebulaClient implements GraphClient {
+
+    private final NebulaConf nebulaConf;
+
+    public NebulaClient(NebulaConf nebulaConf) {
+        if (nebulaConf.getPartitionNum() <= 0) {
+            nebulaConf.setPartitionNum(3);
+        }
+        if (nebulaConf.getReplicaFactor() <= 0) {
+            nebulaConf.setReplicaFactor(1);
+        }
+        if (nebulaConf.getVidFixedStrLength() <= 0) {
+            nebulaConf.setVidFixedStrLength(32);
+        }
+
+        this.nebulaConf = nebulaConf;
+    }
+
+    @Override
+    public GraphOperations opsForGraph() {
+        return new NebulaGraphOperations(nebulaConf);
+    }
+
+    @Override
+    public GraphDataOperations opsForGraphData() {
+        return new NebulaGraphDataOperations(nebulaConf);
+    }
+
+    @Override
+    public boolean checkConnection() {
+        log.info("Checking Nebula connection");
+        NebulaPool nebulaPool = NebulaClientFactory.getNebulaPool(nebulaConf);
+        if (nebulaPool == null) {
+            log.warn("Failed to get NebulaPool");
+            return false;
+        }
+        try (Session session = nebulaPool.getSession(nebulaConf.getUsername(), nebulaConf.getPassword(), true)) {
+            return session != null && session.ping();
+        } catch (Exception e) {
+            log.error("Error checking Nebula connection", e);
+            return false;
+        }
+    }
+}
+
+package com.chenpp.graph.nebula;
+
+import com.chenpp.graph.core.exception.GraphException;
+import com.vesoft.nebula.client.graph.NebulaPoolConfig;
+import com.vesoft.nebula.client.graph.SessionPool;
+import com.vesoft.nebula.client.graph.SessionPoolConfig;
+import com.vesoft.nebula.client.graph.data.HostAddress;
+import com.vesoft.nebula.client.graph.net.NebulaPool;
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
+/**
+ * nebula client 工厂类
+ *
+ * @author April.Chen
+ * @date 2025/4/8 19:56
+ */
+@Slf4j
+public class NebulaClientFactory {
+    private static final Map<String, SessionPool> CACHE_SESSION_POOL = new ConcurrentHashMap<>();
+    private static final Map<String, NebulaPool> CACHE_NEBULA_POOL = new ConcurrentHashMap<>();
+
+    /**
+     * SessionPool 用于单个图库操作，业务面
+     */
+    public static SessionPool getSessionPool(NebulaConf nebulaConf) {
+        String key = nebulaConf.getHosts() + ":" + nebulaConf.getPort() + ":" + nebulaConf.getGraphCode();
+        SessionPool sessionPool = CACHE_SESSION_POOL.get(key);
+        if (sessionPool != null && sessionPool.isActive()) {
+            return sessionPool;
+        }
+        try {
+            List<HostAddress> addresses = Arrays.stream(nebulaConf.getHosts().split(","))
+                    .map(ip -> new HostAddress(ip, nebulaConf.getPort())).collect(Collectors.toList());
+            String spaceName = nebulaConf.getGraphCode();
+            String user = nebulaConf.getUsername();
+            String password = nebulaConf.getPassword();
+            SessionPoolConfig sessionPoolConfig = new SessionPoolConfig(addresses, spaceName, user, password);
+            sessionPool = new SessionPool(sessionPoolConfig);
+            if (!sessionPool.isActive()) {
+                log.error("Session pool init failed for space: {}", spaceName);
+                throw new GraphException("Session pool init failed for space: " + spaceName);
+            }
+            log.debug("Successfully created session pool for space: {}", spaceName);
+            CACHE_SESSION_POOL.put(key, sessionPool);
+            return sessionPool;
+        } catch (Exception e) {
+            log.error("Failed to create session pool for space: {}", nebulaConf.getGraphCode(), e);
+            throw new GraphException("Failed to create session pool", e);
+        }
+    }
+
+    /**
+     * NebulaPool 用户图库操作，管理面
+     *
+     * @param nebulaConf 配置信息
+     * @return NebulaPool实例
+     */
+    public static NebulaPool getNebulaPool(NebulaConf nebulaConf) {
+        String key = nebulaConf.getHosts() + ":" + nebulaConf.getPort();
+        NebulaPool pool = CACHE_NEBULA_POOL.get(key);
+        if (pool != null) {
+            return pool;
+        }
+        NebulaPoolConfig nebulaPoolConfig = new NebulaPoolConfig();
+        nebulaPoolConfig.setMaxConnSize(10);
+        List<HostAddress> addresses = Arrays.stream(nebulaConf.getHosts().split(","))
+                .map(ip -> new HostAddress(ip, nebulaConf.getPort())).collect(Collectors.toList());
+        pool = new NebulaPool();
+        try {
+            boolean initResult = pool.init(addresses, nebulaPoolConfig);
+            if (!initResult) {
+                log.error("Pool init failed for hosts: {}", nebulaConf.getHosts());
+                throw new GraphException("Nebula pool init failed for " + nebulaConf.getHosts());
+            } else {
+                log.info("Successfully initialized NebulaPool for hosts: {}", nebulaConf.getHosts());
+                CACHE_NEBULA_POOL.put(key, pool);
+            }
+        } catch (Exception e) {
+            log.error("Init nebula session error for hosts: {}", nebulaConf.getHosts(), e);
+            throw new GraphException("Failed to init Nebula pool for " + nebulaConf.getHosts(), e);
+        }
+        return pool;
+    }
+}
+
+
+package com.chenpp.graph.admin.controller;
+
+import com.chenpp.graph.admin.model.GraphExpandRequest;
+import com.chenpp.graph.admin.model.GraphPathRequest;
+import com.chenpp.graph.admin.model.GraphQueryRequest;
+import com.chenpp.graph.admin.model.Result;
+import com.chenpp.graph.admin.service.GraphQueryService;
+import com.chenpp.graph.core.model.GraphData;
+import com.chenpp.graph.core.model.GraphSummary;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
+
+/**
+ * 图查询控制器
+ * 专门处理图数据的查询、展开、路径查找等接口
+ *
+ * @author April.Chen
+ * @date 2025/8/11 10:45
+ */
+@Slf4j
+@RestController
+@RequestMapping("/api/graphs")
+public class GraphQueryController {
+
+    @Autowired
+    private GraphQueryService graphQueryService;
+
+    @PostMapping("/query")
+    public Result<GraphData> query(
+            @RequestBody(required = false) GraphQueryRequest request,
+            @RequestParam(required = false) Long graphId,
+            @RequestParam(required = false) Long connectionId,
+            @RequestParam(required = false) String graphCode) {
+        if (request == null) {
+            request = new GraphQueryRequest();
+        }
+        if (request.getQuery() == null || request.getQuery().isEmpty()) {
+            return Result.error("查询语句不能为空");
+        }
+        if (request.getGraphId() == null) request.setGraphId(graphId);
+        if (request.getConnectionId() == null) request.setConnectionId(connectionId);
+        if (request.getGraphCode() == null) request.setGraphCode(graphCode);
+
+        GraphData graphData = graphQueryService.query(request);
+        return Result.success(graphData);
+    }
+
+    @PostMapping("/expand")
+    public Result<GraphData> expand(@RequestBody GraphExpandRequest request) {
+        GraphData graphData = graphQueryService.expand(request);
+        return Result.success(graphData);
+    }
+
+    @PostMapping("/path")
+    public Result<GraphData> findPath(@RequestBody GraphPathRequest request) {
+        GraphData graphData = graphQueryService.findPath(request);
+        return Result.success(graphData);
+    }
+
+    @GetMapping("/summary")
+    public Result<GraphSummary> getSummary(Long graphId, Long connectionId, String graphCode) {
+        GraphSummary summary = graphQueryService.getSummary(graphId, connectionId, graphCode);
+        return Result.success(summary);
+    }
+}
+
+package com.chenpp.graph.admin.service;
+
+import com.chenpp.graph.admin.model.GraphExpandRequest;
+import com.chenpp.graph.admin.model.GraphQueryRequest;
+import com.chenpp.graph.admin.model.GraphPathRequest;
+import com.chenpp.graph.core.model.GraphData;
+import com.chenpp.graph.core.model.GraphSummary;
+
+/**
+ * 图查询服务接口
+ * 专门处理图数据的查询、展开、路径查找等操作
+ *
+ * @author April.Chen
+ * @date 2026/6/22
+ */
+public interface GraphQueryService {
+
+    /**
+     * 执行图查询
+     *
+     * @param request 查询请求参数
+     * @return 查询结果
+     */
+    GraphData query(GraphQueryRequest request);
+
+    /**
+     * 展开邻居节点
+     *
+     * @param request 展开请求参数
+     * @return 展开结果
+     */
+    GraphData expand(GraphExpandRequest request);
+
+    /**
+     * 查找路径
+     *
+     * @param request 路径查询请求参数
+     * @return 路径查询结果
+     */
+    GraphData findPath(GraphPathRequest request);
+
+    /**
+     * 获取图统计信息
+     *
+     * @param graphId      图ID
+     * @param connectionId 连接ID（可选）
+     * @param graphCode    图代码（可选）
+     * @return 图统计信息
+     */
+    GraphSummary getSummary(Long graphId, Long connectionId, String graphCode);
+}
+
+package com.chenpp.graph.admin.service.impl;
+
+import com.chenpp.graph.admin.model.GraphExpandRequest;
+import com.chenpp.graph.admin.model.GraphQueryRequest;
+import com.chenpp.graph.admin.model.GraphPathRequest;
+import com.chenpp.graph.admin.service.GraphConnectionService;
+import com.chenpp.graph.admin.service.GraphQueryService;
+import com.chenpp.graph.admin.service.GraphService;
+import com.chenpp.graph.admin.util.GraphClientFactory;
+import com.chenpp.graph.core.GraphDataOperations;
+import com.chenpp.graph.core.constant.GraphConstants;
+import com.chenpp.graph.core.model.GraphConf;
+import com.chenpp.graph.core.model.GraphData;
+import com.chenpp.graph.core.model.GraphSummary;
+import com.chenpp.graph.core.model.PathQuery;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+/**
+ * 图查询服务实现类
+ * 专门处理图数据的查询、展开、路径查找等操作
+ *
+ * @author April.Chen
+ * @date 2026/6/22
+ */
+@Slf4j
+@Service
+public class GraphQueryServiceImpl implements GraphQueryService {
+
+    @Autowired
+    private GraphService graphService;
+
+    @Autowired
+    private GraphConnectionService connectionService;
+
+    @Override
+    public GraphData query(GraphQueryRequest request) {
+        GraphDataOperations graphDataOperations = resolveDataOps(request.getGraphId(), request.getConnectionId(), request.getGraphCode());
+        return graphDataOperations.query(request.getQuery());
+    }
+
+    @Override
+    public GraphData expand(GraphExpandRequest request) {
+        Long graphId = request.getGraphId();
+        String vertexId = request.getVertexId();
+        Integer depth = request.getDepth();
+        String label = request.getLabel();
+        String property = request.getProperty();
+        Long connectionId = request.getConnectionId();
+        String graphCode = request.getGraphCode();
+
+        if (StringUtils.isBlank(vertexId)) {
+            throw new IllegalArgumentException("查询值不能为空");
+        }
+
+        if (depth == null) {
+            depth = 1;
+        }
+
+        log.info("展开邻居: queryValue={}, depth={}, label={}, property={}, graphId={}", vertexId, depth, label, property, graphId);
+
+        GraphDataOperations graphDataOperations = resolveDataOps(graphId, connectionId, graphCode);
+
+        if (StringUtils.isNoneBlank(label, property) && !GraphConstants.UID.equals(property)) {
+            return graphDataOperations.expand(label, property, vertexId, depth, 100);
+        }
+
+        return graphDataOperations.expand(vertexId, depth);
+    }
+
+    @Override
+    public GraphData findPath(GraphPathRequest request) {
+        Integer maxDepth = request.getMaxDepth();
+        if (maxDepth == null) {
+            maxDepth = 5;
+        }
+
+        boolean hasStartPropCondition = StringUtils.isNoneBlank(request.getStartLabel(), request.getStartProp(), request.getStartValue());
+        boolean hasEndPropCondition = StringUtils.isNoneBlank(request.getEndLabel(), request.getEndProp(), request.getEndValue());
+
+        GraphDataOperations ops = resolveDataOps(request.getGraphId(), request.getConnectionId(), request.getGraphCode());
+
+        if (hasStartPropCondition && hasEndPropCondition) {
+            PathQuery pq = new PathQuery();
+            pq.setStartProperty(new PathQuery.Condition(request.getStartLabel(), request.getStartProp(), request.getStartValue()));
+            pq.setEndProperty(new PathQuery.Condition(request.getEndLabel(), request.getEndProp(), request.getEndValue()));
+            pq.setMaxDepth(maxDepth);
+            pq.setLimit(1000);
+            return ops.findPath(pq);
+        }
+
+        if (StringUtils.isNotBlank(request.getStartVertexId()) && StringUtils.isNotBlank(request.getEndVertexId())) {
+            return ops.findPath(request.getStartVertexId(), request.getEndVertexId(), maxDepth);
+        }
+
+        throw new IllegalArgumentException("请提供起点和终点的查询条件（属性条件或顶点ID）");
+    }
+
+    @Override
+    public GraphSummary getSummary(Long graphId, Long connectionId, String graphCode) {
+        return resolveDataOps(graphId, connectionId, graphCode).getSummary();
+    }
+
+    private GraphDataOperations resolveDataOps(Long graphId, Long connectionId, String graphCode) {
+        GraphConf graphConf = GraphClientFactory.resolveGraphConf(
+                graphId, connectionId, graphCode, graphService, connectionService);
+        return GraphClientFactory.createGraphClient(graphConf).opsForGraphData();
+    }
+
+}
+
+package com.chenpp.graph.core.model;
+
+import lombok.Data;
+
+import java.util.Map;
+
+/**
+ * 图数据统计
+ *
+ * @author April.Chen
+ * @date 2025/8/26 14:25
+ */
+@Data
+public class GraphSummary {
+
+    private String graphCode;
+    private String graphName;
+    private int vertexCount;
+    private int edgeCount;
+
+    private Map<String, Integer> vertexLabelCount;
+    private Map<String, Integer> edgeLabelCount;
+}
