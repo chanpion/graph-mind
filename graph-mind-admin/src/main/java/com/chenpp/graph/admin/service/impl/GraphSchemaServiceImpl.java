@@ -479,8 +479,12 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             }
             newSchema.setEntities(newEntities);
             alterSchema.setEntities(alterEntities);
-            if (!newEntities.isEmpty()) hasNew = true;
-            if (!alterEntities.isEmpty()) hasAlter = true;
+            if (!newEntities.isEmpty()) {
+                hasNew = true;
+            }
+            if (!alterEntities.isEmpty()) {
+                hasAlter = true;
+            }
         }
 
         if (schema.getRelations() != null && !schema.getRelations().isEmpty()) {
@@ -498,8 +502,12 @@ public class GraphSchemaServiceImpl implements GraphSchemaService {
             }
             newSchema.setRelations(newRelations);
             alterSchema.setRelations(alterRelations);
-            if (!newRelations.isEmpty()) hasNew = true;
-            if (!alterRelations.isEmpty()) hasAlter = true;
+            if (!newRelations.isEmpty()) {
+                hasNew = true;
+            }
+            if (!alterRelations.isEmpty()) {
+                hasAlter = true;
+            }
         }
 
         if (hasNew) {

@@ -14,6 +14,9 @@ logging:
   level:
     com.chenpp.graph.admin: info
     com.chenpp.graph.admin.mapper: info
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ} %-5level [%thread] %logger{36}:%L - %msg%n"
+    file: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ} %-5level [%thread] %logger{36}:%L - %msg%n"
 
 # 权限认证开关配置
 auth:
@@ -69,12 +72,12 @@ spring:
       on-profile: mysql
 
   datasource:
-    url: jdbc:mysql://10.58.11.13:3338/graph_mind?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
-    username: yuntu
-    password: yuntu
-#    url: jdbc:mysql://localhost:3306/graph_mind?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
-#    username: root
-#    password: root123
+#    url: jdbc:mysql://10.58.11.13:3338/graph_mind?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+#    username: yuntu
+#    password: yuntu
+    url: jdbc:mysql://localhost:3306/graph_mind?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: root123
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   sql:

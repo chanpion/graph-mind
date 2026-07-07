@@ -16,7 +16,7 @@ import java.util.List;
  */
 @TableName(value = "graph_vertex_def", excludeProperty = {"properties"})
 @Data
-public class GraphVertexDef implements GraphEntityDef {
+public class GraphVertexDef extends GraphEntityDef {
     @TableId(type = IdType.AUTO)
     private Long id;
 

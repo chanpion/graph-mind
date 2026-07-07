@@ -559,7 +559,8 @@ async function handleFileChange(event) {
 async function handleImportMerge() {
   importing.value = true
   try {
-    await graphApi.importSchema(currentGraphId.value, {
+    await graphApi.importSchema({
+      graphId: currentGraphId.value,
       mode: 'merge',
       vertices: importData.value.vertices,
       edges: importData.value.edges
@@ -579,7 +580,8 @@ async function handleImportMerge() {
 async function handleImportClean() {
   importing.value = true
   try {
-    await graphApi.importSchema(currentGraphId.value, {
+    await graphApi.importSchema({
+      graphId: currentGraphId.value,
       mode: 'replace',
       vertices: importData.value.vertices,
       edges: importData.value.edges

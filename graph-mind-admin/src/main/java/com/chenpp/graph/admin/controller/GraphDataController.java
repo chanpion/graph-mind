@@ -70,10 +70,6 @@ public class GraphDataController {
         return Result.success(result);
     }
 
-    /**
-     * 查询顶点数据列表
-     * 对于发现的图（vertexTypeId < 0），需通过 connectionId + graphCode 发现 label
-     */
     @GetMapping("/vertices")
     public Result<PageResult<GraphVertex>> getVertexDataList(
             @RequestParam Long graphId,
@@ -102,10 +98,6 @@ public class GraphDataController {
         return Result.success(data);
     }
 
-    /**
-     * 查询边数据列表
-     * 对于发现的图（edgeTypeId < 0），需通过 connectionId + graphCode 发现 label
-     */
     @GetMapping("/edges")
     public Result<PageResult<GraphEdge>> getEdgeDataList(
             @RequestParam Long graphId,
@@ -218,9 +210,6 @@ public class GraphDataController {
         return Result.success(true);
     }
 
-    /**
-     * 获取图统计信息
-     */
     @GetMapping("/summary")
     public Result<GraphSummary> getGraphSummary(
             @RequestParam Long graphId,
