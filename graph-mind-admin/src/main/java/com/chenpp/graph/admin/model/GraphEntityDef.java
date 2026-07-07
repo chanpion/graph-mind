@@ -1,5 +1,7 @@
 package com.chenpp.graph.admin.model;
 
+import lombok.Data;
+
 import java.util.List;
 
 /**
@@ -8,25 +10,11 @@ import java.util.List;
  * @author April.Chen
  * @date 2026/6/26
  */
-public interface GraphEntityDef {
+@Data
+public class GraphEntityDef {
 
-    Long getId();
-
-    void setId(Long id);
-
-    Long getGraphId();
-
-    void setGraphId(Long graphId);
-
-    String getLabel();
-
-    void setLabel(String label);
-
-    String getName();
-
-    void setName(String name);
-
-    List<GraphPropertyDef> getProperties();
-
-    void setProperties(List<GraphPropertyDef> properties);
+    private Long id;
+    private  Long graphId;
+    private String label;
+    private List<GraphPropertyDef> properties;
 }

@@ -27,7 +27,7 @@ import java.util.Map;
 public class JanusUtil {
 
     /**
-     * 产品定义的属性数据类型 -> janus 数据类型
+     * 定义的属性数据类型 -> janus 数据类型
      */
     public static final Map<DataType, Class<?>> DATA_TYPE_MAP = new ImmutableMap.Builder<DataType, Class<?>>()
             .put(DataType.Short, Short.class)
@@ -43,7 +43,7 @@ public class JanusUtil {
             .build();
 
     /**
-     * janus 数据类型 -> 产品定义的属性数据类型
+     * janus 数据类型 -> 定义的属性数据类型
      */
     public static final Map<Class<?>, DataType> CLASS_TYPE_MAP = new ImmutableMap.Builder<Class<?>, DataType>()
             .put(Short.class, DataType.Short)
@@ -127,10 +127,6 @@ public class JanusUtil {
         return graphEdge;
     }
 
-
-    /**
-     * 从 TinkerPop 顶点获取 uid 属性值
-     */
     public static String getVertexUid(Vertex vertex, JanusGraph graph) {
         try {
             if (vertex.property(GraphConstants.UID).isPresent()) {
@@ -187,11 +183,10 @@ public class JanusUtil {
             return value;
         }
 
-        if (!(value instanceof String)) {
+        if (!(value instanceof String strValue)) {
             return value;
         }
 
-        String strValue = (String) value;
         try {
             if (propertyType == Date.class) {
                 return DataTypeConverter.parseDate(strValue);

@@ -140,6 +140,81 @@ public class JanusGraphOperations implements GraphOperations {
     }
 
     @Override
+    public void alterSchema(GraphConf graphConf, GraphSchema alterSchema) {
+        JanusGraphManagement management = null;
+        try {
+            management = graph.openManagement();
+
+            if (alterSchema.getEntities() != null) {
+                for (GraphEntity entity : alterSchema.getEntities()) {
+                    VertexLabel vertexLabel = management.getVertexLabel(entity.getLabel());
+                    if (vertexLabel == null) {
+                        log.warn("Vertex label {} not found, skip alter", entity.getLabel());
+                        continue;
+                    }
+                    if (entity.getProperties() != null) {
+                        for (GraphProperty property : entity.getProperties()) {
+                            if (!management.containsPropertyKey(property.getCode())) {
+                                Class<?> clazz = JanusUtil.getJanusDataType(property.getDataType());
+                                if (clazz == null) {
+                                    log.warn("Unsupported data type {} for property {}, skip", property.getDataType(), property.getCode());
+                                    continue;
+                                }
+                                management.makePropertyKey(property.getCode())
+                                        .dataType(clazz)
+                                        .cardinality(Cardinality.SINGLE)
+                                        .make();
+                            }
+                            PropertyKey pk = management.getPropertyKey(property.getCode());
+                            if (pk != null) {
+                                management.addProperties(vertexLabel, pk);
+                                log.info("Altered: added property {} to vertex label {}", property.getCode(), entity.getLabel());
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (alterSchema.getRelations() != null) {
+                for (GraphRelation relation : alterSchema.getRelations()) {
+                    EdgeLabel edgeLabel = management.getEdgeLabel(relation.getLabel());
+                    if (edgeLabel == null) {
+                        log.warn("Edge label {} not found, skip alter", relation.getLabel());
+                        continue;
+                    }
+                    if (relation.getProperties() != null) {
+                        for (GraphProperty property : relation.getProperties()) {
+                            if (!management.containsPropertyKey(property.getCode())) {
+                                Class<?> clazz = JanusUtil.getJanusDataType(property.getDataType());
+                                if (clazz == null) {
+                                    log.warn("Unsupported data type {} for property {}, skip", property.getDataType(), property.getCode());
+                                    continue;
+                                }
+                                management.makePropertyKey(property.getCode())
+                                        .dataType(clazz)
+                                        .cardinality(Cardinality.SINGLE)
+                                        .make();
+                            }
+                            PropertyKey pk = management.getPropertyKey(property.getCode());
+                            if (pk != null) {
+                                management.addProperties(edgeLabel, pk);
+                                log.info("Altered: added property {} to edge label {}", property.getCode(), relation.getLabel());
+                            }
+                        }
+                    }
+                }
+            }
+
+            management.commit();
+            log.info("Successfully altered schema for graph: {}", graphConf.getGraphCode());
+        } catch (Exception e) {
+            log.error("Failed to alter schema for graph: {}", graphConf.getGraphCode(), e);
+            JanusUtil.safeRollback(management);
+            throw new GraphException("Failed to alter schema", e);
+        }
+    }
+
+    @Override
     public GraphSchema getPublishedSchema(GraphConf graphConf) throws GraphException {
         JanusGraphManagement management = null;
         GraphSchema schema = new GraphSchema();
@@ -292,38 +367,46 @@ public class JanusGraphOperations implements GraphOperations {
         Set<GraphProperty> allProperties = new java.util.HashSet<>();
 
         if (entities != null) {
-            entities.stream()
-                    .filter(entity -> entity.getProperties() != null)
-                    .flatMap(entity -> entity.getProperties().stream())
-                    .forEach(allProperties::add);
+            for (GraphEntity entity : entities) {
+                if (entity.getProperties() == null || entity.getProperties().isEmpty()) {
+                    continue;
+                }
+                VertexLabel vertexLabel = management.getVertexLabel(entity.getLabel());
+                if (vertexLabel == null) {
+                    continue;
+                }
+                for (GraphProperty property : entity.getProperties()) {
+                    PropertyKey pk = management.getPropertyKey(property.getCode());
+                    if (pk != null) {
+                        management.addProperties(vertexLabel, pk);
+                        log.info("Added property {} to vertex label {}", property.getCode(), entity.getLabel());
+                    }
+                }
+            }
         }
 
         if (relations != null) {
-            relations.stream()
-                    .filter(relation -> relation.getProperties() != null)
-                    .flatMap(relation -> relation.getProperties().stream())
-                    .forEach(allProperties::add);
-        }
-
-        if (allProperties.isEmpty()) {
-            log.info("No property keys to create");
-            return;
-        }
-
-        for (GraphProperty property : allProperties) {
-            if (!management.containsPropertyKey(property.getCode())) {
-                Class<?> clazz = JanusUtil.getJanusDataType(property.getDataType());
-                if (clazz == null) {
-                    log.info("property ({}) data type ({}) is not supported, skip.", property.getCode(), property.getDataType());
+            for (GraphRelation relation : relations) {
+                if (relation.getProperties() == null || relation.getProperties().isEmpty()) {
                     continue;
                 }
-                PropertyKey propertyKey = management.makePropertyKey(property.getCode())
-                        .dataType(clazz)
-                        .cardinality(Cardinality.SINGLE)
-                        .make();
-                log.info("Created property key: {} with type: {}, propertyKey: {}", property.getCode(), property.getDataType(), propertyKey);
+                EdgeLabel edgeLabel = management.getEdgeLabel(relation.getLabel());
+                if (edgeLabel == null) {
+                    continue;
+                }
+                for (GraphProperty property : relation.getProperties()) {
+                    PropertyKey pk = management.getPropertyKey(property.getCode());
+                    if (pk != null) {
+                        management.addProperties(edgeLabel, pk);
+                        log.info("Added property {} to edge label {}", property.getCode(), relation.getLabel());
+                    }
+                }
             }
         }
+
+
+        log.info("No property keys to create");
+
     }
 
     private void createIndices(JanusGraphManagement management, List<GraphIndex> indexes) {

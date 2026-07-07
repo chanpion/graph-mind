@@ -57,7 +57,6 @@ public class NebulaGraphDataOperations implements GraphDataOperations {
             throw new GraphException(ErrorCode.BAD_REQUEST, "Vertex properties cannot be empty");
         }
         try {
-            // 获取该标签的属性类型映射
             Map<String, DataType> propertyTypes = getPropertyTypes(vertex.getLabel(), true);
 
             String nql = NebulaUtil.buildInsertVertex(vertex, propertyTypes);

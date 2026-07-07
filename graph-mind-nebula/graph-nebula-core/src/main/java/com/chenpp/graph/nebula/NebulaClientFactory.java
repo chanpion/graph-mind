@@ -29,7 +29,6 @@ public class NebulaClientFactory {
      * SessionPool 用于单个图库操作，业务面
      */
     public static SessionPool getSessionPool(NebulaConf nebulaConf) {
-        // 使用 graphCode 作为 space 名称，确保与其他操作一致
         String key = nebulaConf.getHosts() + ":" + nebulaConf.getPort() + ":" + nebulaConf.getGraphCode();
         SessionPool sessionPool = CACHE_SESSION_POOL.get(key);
         if (sessionPool != null && sessionPool.isActive()) {

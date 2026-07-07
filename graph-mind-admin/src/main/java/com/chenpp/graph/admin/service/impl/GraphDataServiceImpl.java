@@ -2,19 +2,18 @@ package com.chenpp.graph.admin.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.chenpp.graph.admin.enums.GraphTypeEnum;
-import com.chenpp.graph.admin.model.GraphInfo;
 import com.chenpp.graph.admin.model.GraphConnection;
 import com.chenpp.graph.admin.model.GraphEdgeDef;
-import com.chenpp.graph.admin.model.GraphVertexDef;
+import com.chenpp.graph.admin.model.GraphInfo;
 import com.chenpp.graph.admin.model.GraphPropertyDef;
+import com.chenpp.graph.admin.model.GraphVertexDef;
 import com.chenpp.graph.admin.model.ImportResult;
 import com.chenpp.graph.admin.model.PageResult;
-import com.chenpp.graph.admin.service.GraphDataService;
 import com.chenpp.graph.admin.service.GraphConnectionService;
+import com.chenpp.graph.admin.service.GraphDataService;
 import com.chenpp.graph.admin.service.GraphEdgeDefService;
-import com.chenpp.graph.admin.service.GraphVertexDefService;
-import com.chenpp.graph.admin.service.GraphPropertyDefService;
 import com.chenpp.graph.admin.service.GraphService;
+import com.chenpp.graph.admin.service.GraphVertexDefService;
 import com.chenpp.graph.admin.util.GraphClientFactory;
 import com.chenpp.graph.core.GraphClient;
 import com.chenpp.graph.core.GraphDataOperations;
@@ -26,14 +25,12 @@ import com.chenpp.graph.core.model.GraphSummary;
 import com.chenpp.graph.core.model.GraphVertex;
 import com.chenpp.graph.core.util.DataTypeConverter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -70,9 +67,6 @@ public class GraphDataServiceImpl implements GraphDataService {
 
     @Autowired
     private GraphEdgeDefService edgeDefService;
-
-    @Autowired
-    private GraphPropertyDefService propertyDefService;
 
     private final Map<String, ReentrantLock> importLocks = new ConcurrentHashMap<>();
 

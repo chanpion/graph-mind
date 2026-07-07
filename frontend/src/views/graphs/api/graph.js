@@ -168,8 +168,8 @@ export const graphApi = {
   },
 
   /** 导入 Schema */
-  importSchema(graphId, data) {
-    return request.post('/api/graphs/schema/import', data, { params: { graphId } })
+  importSchema(data) {
+    return request.post('/api/graphs/schema/import', data)
   },
 
   // ====== 数据导入 ======
