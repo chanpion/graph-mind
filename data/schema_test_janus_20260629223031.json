@@ -1,0 +1,160 @@
+{
+  "version": "1.0",
+  "exportedAt": "2026-06-29T14:30:31.996Z",
+  "graphId": 25,
+  "graphCode": "test_janus",
+  "vertices": [
+    {
+      "id": 35,
+      "graphId": 25,
+      "label": "person",
+      "name": "person",
+      "description": "",
+      "status": 1,
+      "createTime": "2026-06-23 21:38:32",
+      "updateTime": "2026-06-23 21:38:32",
+      "properties": [
+        {
+          "id": 9,
+          "graphId": 25,
+          "entityId": 35,
+          "code": "uid",
+          "name": "唯一标识",
+          "type": "String",
+          "desc": null,
+          "status": 1,
+          "indexed": true,
+          "propertyType": "vertex"
+        },
+        {
+          "id": 10,
+          "graphId": 25,
+          "entityId": 35,
+          "code": "name",
+          "name": "姓名",
+          "type": "String",
+          "desc": null,
+          "status": 1,
+          "indexed": true,
+          "propertyType": "vertex"
+        },
+        {
+          "id": 11,
+          "graphId": 25,
+          "entityId": 35,
+          "code": "age",
+          "name": "年龄",
+          "type": "Int",
+          "desc": null,
+          "status": 1,
+          "indexed": true,
+          "propertyType": "vertex"
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "graphId": 25,
+      "label": "company",
+      "name": "company",
+      "description": "",
+      "status": 1,
+      "createTime": "2026-06-23 21:39:04",
+      "updateTime": "2026-06-23 21:39:04",
+      "properties": [
+        {
+          "id": 12,
+          "graphId": 25,
+          "entityId": 36,
+          "code": "uid",
+          "name": "唯一标识",
+          "type": "String",
+          "desc": null,
+          "status": 1,
+          "indexed": true,
+          "propertyType": "vertex"
+        },
+        {
+          "id": 13,
+          "graphId": 25,
+          "entityId": 36,
+          "code": "name",
+          "name": "名称",
+          "type": "String",
+          "desc": null,
+          "status": 1,
+          "indexed": true,
+          "propertyType": "vertex"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": 23,
+      "graphId": 25,
+      "label": "knows",
+      "name": "knows",
+      "startLabel": "person",
+      "endLabel": "person",
+      "description": "",
+      "status": 1,
+      "createTime": "2026-06-23 21:39:33",
+      "updateTime": "2026-06-23 21:39:33",
+      "properties": [
+        {
+          "id": 14,
+          "graphId": 25,
+          "entityId": 23,
+          "code": "uid",
+          "name": "唯一标识",
+          "type": "String",
+          "desc": null,
+          "status": 1,
+          "indexed": true,
+          "propertyType": "edge"
+        }
+      ],
+      "multiple": false
+    },
+    {
+      "id": 24,
+      "graphId": 25,
+      "label": "works_at",
+      "name": "works_at",
+      "startLabel": "person",
+      "endLabel": "company",
+      "description": "",
+      "status": 1,
+      "createTime": "2026-06-24 11:05:38",
+      "updateTime": "2026-06-24 11:05:38",
+      "properties": [
+        {
+          "id": 30,
+          "graphId": 25,
+          "entityId": 24,
+          "code": "uid",
+          "name": "唯一标识",
+          "type": "String",
+          "desc": null,
+          "status": 1,
+          "indexed": true,
+          "propertyType": "edge"
+        },
+        {
+          "id": 31,
+          "graphId": 25,
+          "entityId": 24,
+          "code": "since",
+          "name": "日期",
+          "type": "Date",
+          "desc": null,
+          "status": 1,
+          "indexed": false,
+          "propertyType": "edge"
+        }
+      ],
+      "multiple": false
+    }
+  ]
+}
